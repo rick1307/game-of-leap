@@ -536,31 +536,228 @@
       .statusbar {gap:8px;}
     }
 
+
+    /* Ledger Trail and Check Create Harness share this document and its state.
+       Styling follows Wild Ledger's existing Operator Ledger Trails. */
+    :root { --lagoon:#29b8b1; --sea-glass:#79d5c2; --mango:#f4bd58; --coral:#ef765d; }
+    [hidden] { display:none !important; }
+      /* Human-facing Ledger Trail: follow the active step, inspect the proof if wanted. */
+  .trail-panel { margin-bottom:17px; }
+  .trail-intro { color:var(--muted); font-size:.83rem; line-height:1.55; margin:5px 0 14px; }
+  .trail-disclosure { border:0; }
+  .trail-disclosure > summary { display:flex; align-items:center; justify-content:space-between; gap:12px; cursor:pointer; list-style:none; }
+  .trail-disclosure > summary::-webkit-details-marker, .trail-step > summary::-webkit-details-marker, .trail-proof > summary::-webkit-details-marker { display:none; }
+  .trail-disclosure > summary::after { content:'⌄'; color:var(--sea-glass); font-weight:900; font-size:1.3rem; flex-shrink:0; }
+  .trail-disclosure[open] > summary::after { transform:rotate(180deg); }
+  .trail-heading { font-weight:850; font-size:1.15rem; }
+  .trail-overall { display:block; color:var(--muted); margin-top:5px; font-size:.76rem; font-weight:650; }
+  .trail-complete .trail-overall { color:#bdf2c8; }
+  .trail-failed .trail-overall { color:#ffb7aa; }
+  .trail-body { padding-top:17px; }
+  .trail-step { border:1px solid var(--line); border-radius:16px; margin-bottom:10px; background:rgba(7,29,42,.37); overflow:hidden; }
+  .trail-step > summary { display:grid; grid-template-columns:34px minmax(0,1fr) auto 16px; gap:9px; align-items:center; padding:13px; cursor:pointer; list-style:none; }
+  .trail-step > summary::after { content:'›'; font-size:1.35rem; color:var(--sea-glass); }
+  .trail-step[open] > summary::after { transform:rotate(90deg); }
+  .trail-step.is-working { border-color:rgba(244,189,88,.72); box-shadow:0 0 0 1px rgba(244,189,88,.12); }
+  .trail-step.is-done { border-color:rgba(121,213,194,.32); }
+  .trail-step.is-failed { border-color:rgba(239,118,93,.75); }
+  .trail-step.is-pending { opacity:.67; }
+  .trail-index { display:grid; place-items:center; width:31px; height:31px; border:1px solid rgba(121,213,194,.28); border-radius:11px; font-size:.8rem; font-weight:900; }
+  .trail-step.is-done .trail-index { color:#bdf2c8; border-color:rgba(130,227,159,.5); }
+  .trail-step.is-failed .trail-index { color:#ffb7aa; border-color:rgba(239,118,93,.55); }
+  .trail-step-title { font-size:.93rem; font-weight:800; line-height:1.3; }
+  .trail-step-state { color:var(--muted); font-size:.64rem; font-weight:900; text-transform:uppercase; letter-spacing:.06em; white-space:nowrap; }
+  .trail-step.is-working .trail-step-state { color:#ffe6af; }
+  .trail-step.is-done .trail-step-state { color:#bdf2c8; }
+  .trail-step.is-failed .trail-step-state { color:#ffb7aa; }
+  .trail-step-body { border-top:1px solid var(--line); padding:12px 14px 15px; }
+  .trail-message { font-size:.84rem; line-height:1.55; margin:0; color:var(--ink); }
+  .trail-proof { border:1px solid var(--line); border-radius:12px; margin-top:12px; }
+  .trail-proof > summary { padding:10px 12px; cursor:pointer; list-style:none; color:var(--sea-glass); font-size:.76rem; font-weight:800; }
+  .trail-proof > summary::after { content:' +'; }
+  .trail-proof[open] > summary::after { content:' −'; }
+  .trail-proof-content { padding:0 12px 12px; color:var(--muted); font-size:.74rem; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .trail-error { color:#ffb7aa; font-size:.81rem; line-height:1.55; margin-top:8px; overflow-wrap:anywhere; }
+  .trail-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:13px; }
+  .trail-done-note { color:#bdf2c8; font-size:.84rem; font-weight:780; line-height:1.5; padding-top:5px; }
+  .trail-note { color:var(--muted); font-size:.77rem; line-height:1.5; margin:0; }
+
+  /* The same rounded X language as Wild Ledger's established Setup Ledger Trail. */
+  .guide-overlay { position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); background:rgba(0,12,19,.80); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .guide-overlay[hidden] { display:none!important; }
+  .guide-window { width:min(470px,100%); max-height:calc(100dvh - 40px); overflow:auto; border:1px solid rgba(121,213,194,.26); border-radius:26px; padding:24px 22px; background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99)); box-shadow:0 34px 90px rgba(0,0,0,.58); }
+  .guide-window::before { content:""; display:block; height:3px; margin:-24px -22px 21px; background:linear-gradient(90deg,var(--lagoon),var(--sea-glass),var(--mango),var(--coral)); }
+  .guide-topline { display:flex; align-items:center; gap:11px; margin-bottom:9px; }
+  .guide-close { flex:0 0 28px; display:grid; place-items:center; width:28px; height:28px; min-width:28px; min-height:28px; padding:0; border:1px solid rgba(236,249,247,.20); border-radius:50%; background:rgba(255,255,255,.035); color:rgba(245,251,250,.78); font:500 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer; -webkit-appearance:none; }
+  .guide-close:focus-visible,.guide-close:hover { border-color:rgba(121,213,194,.7); background:rgba(255,255,255,.11); color:#fff; outline:2px solid var(--sea-glass); outline-offset:2px; }
+  .guide-kicker { color:var(--mango); text-transform:uppercase; letter-spacing:.14em; font-size:.66rem; font-weight:900; }
+  .guide-window h2 { margin:9px 0 9px; font-size:clamp(1.75rem,7vw,2.65rem); line-height:1.04; letter-spacing:-.045em; }
+  .guide-lede { color:var(--muted); font-size:.85rem; line-height:1.55; margin:0 0 14px; }
+  .guide-readonly { color:#bdf2c8; font-size:.78rem; font-weight:800; margin:0 0 18px; }
+  .guide-route { list-style:none; margin:0 0 14px; padding:0; }
+  .guide-route li { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; gap:11px; min-height:56px; color:var(--muted); border-left:2px solid rgba(121,213,194,.15); margin-left:14px; padding:8px 0 8px 14px; position:relative; }
+  .guide-route li::before { content:attr(data-number); position:absolute; left:-16px; top:calc(50% - 15px); display:grid; place-items:center; width:28px; height:28px; border-radius:50%; border:1px solid rgba(121,213,194,.35); background:#082936; color:var(--muted); font-size:.75rem; font-weight:900; }
+  .guide-route li.is-done { color:#bdf2c8; border-left-color:rgba(159,224,176,.48); }
+  .guide-route li.is-done::before { content:'✓'; border-color:rgba(159,224,176,.65); color:#bdf2c8; }
+  .guide-route li.is-working { color:var(--ink); border-left-color:var(--mango); }
+  .guide-route li.is-working::before { border-color:var(--mango); color:#ffe6af; animation:guidePulse 1.4s ease-in-out infinite; }
+  .guide-route li.is-failed,.guide-route li.is-failed::before { color:#ffb7aa; border-color:var(--coral); }
+  .guide-route strong { display:block; font-size:.87rem; }
+  .guide-route small { display:block; margin-top:3px; font-size:.73rem; line-height:1.4; }
+  .guide-status { padding:13px 14px; border:1px solid rgba(244,189,88,.28); border-radius:14px; background:rgba(244,189,88,.05); font-size:.83rem; line-height:1.48; }
+  .guide-status.is-error { border-color:rgba(239,118,93,.6); color:#ffb7aa; }
+  .guide-learn { color:var(--muted); font-size:.72rem; margin:14px 0 0; line-height:1.5; }
+  .guide-recovery { margin-top:13px; display:flex; gap:9px; flex-wrap:wrap; }
+  .guide-recovery[hidden] { display:none!important; }
+  .manual-intro { color:var(--muted); font-size:.79rem; line-height:1.5; margin:0 0 12px; }
+  .manual-tools { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .guide-again { background:rgba(121,213,194,.065); font-size:.76rem; }
+  .step-actions { margin-top:12px; }
+  .step-action { min-height:42px; min-width:170px; padding:10px 16px; border:1px solid rgba(219,248,244,.18); border-radius:12px; font-size:.85rem; font-weight:900; background:rgba(255,255,255,.06); color:var(--muted); cursor:not-allowed; }
+  .step-action.is-next { color:#09291a; border-color:#8ff6ac; background:linear-gradient(110deg,#a2f4b1,#62dba7); box-shadow:0 0 0 2px rgba(159,224,176,.10),0 7px 20px rgba(31,151,91,.15); cursor:pointer; }
+  .step-action.is-next:focus-visible { outline:3px solid var(--mango); outline-offset:2px; }
+  .step-action.is-busy { border-color:rgba(244,189,88,.50); color:#ffe6af; background:rgba(244,189,88,.10); }
+  .step-action.is-busy::before { content:''; display:inline-block; width:11px; height:11px; margin-right:9px; border:2px solid rgba(244,189,88,.3); border-top-color:var(--mango); border-radius:50%; animation:guideSpin .8s linear infinite; vertical-align:-2px; }
+  .step-action.is-done { border-color:rgba(121,213,194,.25); color:#bdf2c8; background:rgba(121,213,194,.04); }
+  .trail-step.is-working .trail-index { border-color:var(--mango); color:#ffe6af; animation:guidePulse 1.4s ease-in-out infinite; }
+  .trail-finished-line { color:#bdf2c8; font-weight:850; }
+  /* Confirmation is the human-facing finish; details remain expandable. */
+  .success-mark { display:grid; place-items:center; width:88px; height:88px; margin:12px auto 15px; border:3px solid #a2f4b1; border-radius:50%; background:rgba(80,215,139,.13); color:#a2f4b1; font-size:3.5rem; font-weight:900; line-height:1; box-shadow:0 0 30px rgba(99,219,151,.13); }
+  .success-heading { color:#bdf2c8; text-align:center; font-size:1.14rem; font-weight:900; margin:0 0 16px; }
+  .guide-success { padding:18px 0 6px; }
+  /* At completion, retire the instructions so every proven checkpoint AND the
+     green confirmation fit together on an iPhone-sized screen. */
+  .guide-window.is-finished .guide-lede { display:none; }
+  .guide-window.is-finished .guide-readonly { margin-bottom:12px; }
+  .check-details { margin:12px 0 16px; padding:16px; border:1px solid rgba(121,213,194,.33); border-radius:15px; background:rgba(121,213,194,.075); }
+  .check-details-heading { font-size:.84rem; font-weight:850; color:#bdf2c8; margin:0 0 12px; }
+  .check-detail-row { display:flex; justify-content:space-between; align-items:baseline; gap:10px; margin-top:10px; flex-wrap:wrap; }
+  .check-detail-label { color:var(--muted); font-size:.78rem; }
+  .check-detail-value { font-weight:800; font-size:.85rem; overflow-wrap:anywhere; max-width:100%; }
+  .check-detail-wallet { width:100%; font-size:.78rem; line-height:1.45; }
+  .check-details-note { color:var(--muted); font-size:.75rem; line-height:1.5; margin:13px 0 0; }
+  .manual-success { text-align:center; padding:20px 8px 5px; }
+  .success-action { display:inline-flex; justify-content:center; align-items:center; min-height:47px; padding:12px 25px; background:linear-gradient(110deg,#a2f4b1,#62dba7); border:1px solid #8ff6ac; border-radius:12px; color:#09291a; font-weight:900; text-decoration:none; }
+  .success-action:focus-visible { outline:3px solid var(--mango); outline-offset:3px; }
+  .proof-details { margin-top:19px; border:1px solid var(--line); border-radius:13px; text-align:left; }
+  .proof-details > summary { padding:12px 14px; color:var(--sea-glass); cursor:pointer; font-size:.79rem; font-weight:850; }
+  .proof-details > div { padding:0 14px 14px; }
+  @keyframes guidePulse { 0%,100%{box-shadow:0 0 0 0 rgba(244,189,88,.28)} 50%{box-shadow:0 0 0 5px rgba(244,189,88,0)} }
+  @keyframes guideSpin { to { transform:rotate(360deg); } }
+  @media(prefers-reduced-motion:reduce) { .guide-route li.is-working::before,.trail-step.is-working .trail-index,.step-action.is-busy::before { animation:none; } }
+
+  @media(max-width:420px) {
+    .trail-step > summary { grid-template-columns:29px minmax(0,1fr) auto 12px; gap:7px; padding:12px 9px; }
+    .trail-index { width:28px; height:28px; }
+    .trail-step-title { font-size:.85rem; }
+    .trail-step-state { font-size:.56rem; }
+  }
+  @media (max-width:600px) {
+    .shell { margin-top:14px; }
+    .console { border-radius:22px; }
+    .nav { margin-bottom:30px; }
+    .grid { grid-template-columns:1fr; }
+  }
+
+    #trailManual { margin:0 0 19px; padding:19px 20px 16px; }
+    #trailManual .trail-heading { color:#f5fbfa; }
+    #trailManual .trail-body { padding-top:13px; }
+    #trailManual .trail-step { color:#f5fbfa; }
+    #trailManual .trail-proof-content { white-space:pre-wrap; }
+    #trailManual .trail-overall { padding:3px 0; }
+    #trailManual .manual-tools { margin-bottom:10px; }
+    #trailManual .guide-again { color:#dbfff4; border:1px solid rgba(121,213,194,.34); border-radius:999px; background:rgba(121,213,194,.09); padding:9px 14px; cursor:pointer; font-weight:800; }
+    .guide-overlay { color:#f5fbfa; }
+    .guide-window { padding-bottom:24px; }
+    /* Existing Trail timeline marker is absolutely positioned: the text
+       should fill the row, not collapse into its 32px grid column. */
+    .guide-route li { display:block; list-style:none; }
+    .guide-no-issue { color:#f9dfaa; font-size:.78rem; line-height:1.5; margin:12px 0 0; }
+    @media(max-width:560px) { #trailManual {padding:17px 13px 13px;} }
+
 </style>
   <link rel="stylesheet" href="../wildLedgerControls.css">
   <link rel="stylesheet" href="../wildLedgerBackend.css">
 </head>
 <body>
+  <!-- Embedded Ledger Trail: visibility over the same Check Create Harness operations.
+       X dismisses guidance; it does not stop, restart, or replace the workbench. -->
+  <div class="guide-overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
+    <div class="guide-window">
+      <div class="guide-topline">
+        <button type="button" class="guide-close" id="guideClose" aria-label="Close Ledger Trail and use Check Create Harness" title="Inspect the Check Create Harness">×</button>
+        <span class="guide-kicker">WILD LEDGER · OPERATOR</span>
+      </div>
+      <h2 id="guideTitle">Ledger Trail</h2>
+      <p class="guide-lede">Follow the actual Check creation work. Press X whenever you want to inspect the machinery and ledger evidence underneath. Your progress stays intact.</p>
+      <ol class="guide-route" id="guideRoute" aria-label="Check issuance progress">
+        <li id="guideStep1" data-number="1"><div><strong>Check context</strong><small id="guideStepText1">Waiting</small></div></li>
+        <li id="guideStep2" data-number="2"><div><strong>Load the workbench</strong><small id="guideStepText2">Waiting</small></div></li>
+        <li id="guideStep3" data-number="3"><div><strong>Prepare the Check</strong><small id="guideStepText3">Waiting</small></div></li>
+        <li id="guideStep4" data-number="4"><div><strong>Sign, send and confirm</strong><small id="guideStepText4">Waiting</small></div></li>
+      </ol>
+      <div class="guide-status" id="guideStatus" role="status" aria-live="polite">Loading the Check workbench…</div>
+      <p class="guide-no-issue" id="guideNoIssue">Check not sent. Preparation, signing, and XRPL confirmation are not connected yet.</p>
+      <p class="guide-learn">Press X to inspect the actual Check form, live XRPL status and expandable evidence. The work continues underneath.</p>
+    </div>
+  </div>
   <main class="wrap">
     <div class="top wl-nav-right">
       <a class="back wl-header-control" href="../operatorCheckbook.html">Checkbook →</a>
     </div>
     <h1>Operator Check Create Harness</h1>
-    <p style="font-size:0.75rem;letter-spacing:0.03em;color:#64748b;font-weight:700;margin:0 0 8px">Move 3 · Applicant handoff enabled</p>
+    <p style="font-size:0.75rem;letter-spacing:0.03em;color:rgba(236,249,247,.68);font-weight:700;margin:0 0 8px">Underlying Check creation controls · Ledger Trail integrated</p>
 
     <p class="intro">
-      Build one LEAP Check from the Badge / Event / Challenge registry already recorded on the XRP Ledger.
+      Inspect the Check workbench, requester handoff, and XRPL evidence. The Ledger Trail above follows the same operations.
     </p>
 
     <div class="prototype">
-      <strong>Canonical Check builder.</strong> This page reads live XRPL history, keeps Badges reusable, suppresses duplicate Event and Challenge recognitions for the destination, and builds the Check draft. Review is the next step; Bifrost signs and Wild Ledger submits from there.
+      <strong>Check creation workbench.</strong> The existing manual controls and XRPL registry remain available for inspection. Automated onboarding preparation, Bifrost signing, and validated issuance will be connected to this same Harness in later moves.
     </div>
 
     <section id="issuanceHandoffPanel" class="prototype" hidden>
-      <strong>Verified applicant from Check Issuance Ledger Trail.</strong>
+      <strong>Verified requester from Membership Requests.</strong>
       <div id="issuanceApplicantDetails" style="margin-top:8px;overflow-wrap:anywhere"></div>
-      <p style="margin:8px 0 0">The applicant and 1 LEAP are filled in automatically. Choose a valid recognition. Review and signing will be connected after the next safeguards are complete.</p>
-      <a id="issuanceReturnLink" href="operatorCheckIssuanceTrail.html" style="display:inline-block;margin-top:8px">← Return to Check Issuance Ledger Trail</a>
+      <p style="margin:8px 0 0">The requester and 1 LEAP are populated from the verified request. Review and signing are not yet connected for onboarding.</p>
+      <a id="issuanceReturnLink" href="../membershipRequests.html" style="display:inline-block;margin-top:8px">← Membership Requests</a>
+    </section>
+    <section class="panel trail-panel" id="trailManual" aria-label="Check issuance progress and evidence">
+      <div class="manual-tools">
+        <span class="trail-heading">Ledger Trail <span class="trail-overall" id="trailOverall" role="status" aria-live="polite">Loading the workbench…</span></span>
+        <button type="button" class="guide-again" id="guideAgain" hidden>Resume guided view</button>
+      </div>
+      <p class="manual-intro">This is the same Check workflow shown in the guided view. Expand a checkpoint to inspect its evidence; the Check controls remain below.</p>
+      <div class="trail-body">
+        <details class="trail-step is-pending" id="trailStep1" open>
+          <summary><span class="trail-index">1</span><span class="trail-step-title">Check context</span><span class="trail-step-state" id="trailState1">Waiting</span></summary>
+          <div class="trail-step-body">
+            <p class="trail-message" id="trailMessage1">Load the verified requester selection or open the manual Check workbench.</p>
+            <details class="trail-proof"><summary>Inspect evidence</summary><div class="trail-proof-content" id="trailProof1">The existing Harness reads the actual short-lived verified-requester handoff; there is no second verification workflow.</div></details>
+          </div>
+        </details>
+        <details class="trail-step is-pending" id="trailStep2">
+          <summary><span class="trail-index">2</span><span class="trail-step-title">Load the workbench</span><span class="trail-step-state" id="trailState2">Waiting</span></summary>
+          <div class="trail-step-body">
+            <p class="trail-message" id="trailMessage2">Load the community Operating Wallet and XRPL recognition registry already used by this form.</p>
+            <details class="trail-proof"><summary>Inspect evidence</summary><div class="trail-proof-content" id="trailProof2">The existing Harness reads live XRPL community authority and the shared registry. Refresh uses these same operations.</div></details>
+          </div>
+        </details>
+        <details class="trail-step is-pending" id="trailStep3">
+          <summary><span class="trail-index">3</span><span class="trail-step-title">Prepare the Check</span><span class="trail-step-state" id="trailState3">Waiting</span></summary>
+          <div class="trail-step-body">
+            <p class="trail-message" id="trailMessage3">Prepare the real onboarding Check transaction.</p>
+            <details class="trail-proof"><summary>Inspect evidence</summary><div class="trail-proof-content" id="trailProof3">Not connected in Move 1. Existing Review Check remains disabled for onboarding. No transaction draft is claimed.</div></details>
+          </div>
+        </details>
+        <details class="trail-step is-pending" id="trailStep4">
+          <summary><span class="trail-index">4</span><span class="trail-step-title">Sign, send and confirm</span><span class="trail-step-state" id="trailState4">Waiting</span></summary>
+          <div class="trail-step-body">
+            <p class="trail-message" id="trailMessage4">Authorize in Bifrost, submit, and verify the Check on XRPL.</p>
+            <details class="trail-proof"><summary>Inspect evidence</summary><div class="trail-proof-content" id="trailProof4">Not connected in Move 1. Only validated Check issuance may complete this checkpoint and display a green confirmation.</div></details>
+          </div>
+        </details>
+      </div>
     </section>
     <div class="statusbar">
       <span id="statusDot" class="dot"></span>
@@ -612,7 +809,7 @@
         </div>
 
         <button id="reviewButton" class="primary" type="submit" disabled>Review Check</button>
-        <span id="issuanceReviewHint" class="hint" hidden>Check review is intentionally not enabled for this applicant yet. Later moves will verify wallet readiness and outstanding Checks before issuance.</span>
+        <span id="issuanceReviewHint" class="hint" hidden>Onboarding Check review is not enabled yet. No Check has been sent.</span>
       </form>
     </section>
 
@@ -695,6 +892,47 @@
 
     document.title = `Operator Check Create Harness | ${community?.communityName || communityId}`;
 
+
+    // Shared Ledger Trail state. These checkpoints observe the existing form's
+    // functions; they do not re-run their proofs or build another transaction.
+    const trailStates = ["pending", "pending", "pending", "pending"];
+    const trailStateLabels = {pending:"Waiting", working:"Working…", done:"Complete", failed:"Needs attention"};
+    let guideMode = true;
+    const trailElement = id => document.getElementById(id);
+    function showTrailStep(number, state, message, proof) {
+      const index = number - 1;
+      trailStates[index] = state;
+      const guided = trailElement(`guideStep${number}`);
+      const manual = trailElement(`trailStep${number}`);
+      guided.className = `is-${state}`;
+      manual.className = `trail-step is-${state}`;
+      trailElement(`guideStepText${number}`).textContent = trailStateLabels[state];
+      trailElement(`trailState${number}`).textContent = trailStateLabels[state];
+      if (message) trailElement(`trailMessage${number}`).textContent = message;
+      if (proof !== undefined) trailElement(`trailProof${number}`).textContent = proof;
+      if (state === "working" || state === "failed") manual.open = true;
+      const firstNotDone = trailStates.findIndex(s => s !== "done");
+      const active = firstNotDone < 0 ? 3 : firstNotDone;
+      const guideMessage = trailElement(`trailMessage${active+1}`).textContent;
+      trailElement("guideStatus").textContent = guideMessage;
+      trailElement("guideStatus").classList.toggle("is-error", trailStates[active] === "failed");
+      trailElement("trailOverall").textContent = guideMessage;
+      // Deliberately NO completion checkmark or navigation here. Only a
+      // validated submitted Check can become a Check-sent success (later move).
+    }
+    function closeGuide() {
+      guideMode = false;
+      trailElement("guideOverlay").hidden = true;
+      trailElement("guideAgain").hidden = false;
+    }
+    function openGuide() {
+      guideMode = true;
+      trailElement("guideOverlay").hidden = false;
+      trailElement("guideAgain").hidden = true;
+    }
+    trailElement("guideClose").addEventListener("click", closeGuide);
+    trailElement("guideAgain").addEventListener("click", openGuide);
+
     function setStatus(text, state="") { statusText.textContent=text; statusDot.className="dot"+(state?" "+state:""); }
     function showError(message) { errorBox.style.display="block"; errorBox.textContent=message; }
     function clearError() { errorBox.style.display="none"; errorBox.textContent=""; }
@@ -704,14 +942,14 @@
     }
     function readIssuanceHandoff() {
       if (!issuanceMode) return null;
-      if (role !== "operator") throw new Error("Use the Operator session to prepare an applicant's first Check.");
+      if (role !== "operator") throw new Error("Use the Operator session to prepare a requester's first Check.");
       let session, builder, selection, report;
       try {
         session = JSON.parse(sessionStorage.getItem("wildLedgerOperatorSession") || "null");
         builder = JSON.parse(sessionStorage.getItem(BUILDER_KEY) || "null");
         selection = JSON.parse(sessionStorage.getItem(SELECTION_KEY) || "null");
         report = JSON.parse(sessionStorage.getItem(REPORT_KEY) || "null");
-      } catch (_) { throw new Error("The applicant handoff could not be read. Return to the Check Issuance Ledger Trail."); }
+      } catch (_) { throw new Error("The requester handoff could not be read. Return to Membership Requests."); }
       const sessionVersion = Number(session?.version);
       const operatorWallet = String(sessionVersion===2 ? session?.connectedWallet : session?.verifiedWallet || "").trim();
       const validSession = session?.role === "operator" &&
@@ -733,19 +971,21 @@
           builder.applicant !== selection.applicant || builder.requestHash !== selection.requestHash ||
           !isClassicAddress(builder.applicant) || !/^[0-9A-F]{64}$/.test(String(builder.requestHash || "")) ||
           !Array.isArray(report.requests))
-        throw new Error("The selected applicant is not verified for this Operator and community. Return to the Check Issuance Ledger Trail.");
+        throw new Error("The selected requester is not verified for this Operator and community. Return to Membership Requests.");
       const row = report.requests.find(r => r?.applicant === builder.applicant && r?.hash === builder.requestHash);
       if (!row || row.recognition?.status !== "awaiting" || row.recognition.proof !== null ||
           !isClassicAddress(row.destination) || !Number.isSafeInteger(row.ledger) || row.ledger <= 0 ||
           !Number.isSafeInteger(row.txIndex) || row.txIndex < 0 ||
           row.drops !== row.expectedDrops || !/^[1-9][0-9]*$/.test(String(row.drops || "")))
-        throw new Error("This applicant is no longer present in the verified Awaiting LEAP report. Return to Membership Requests.");
+        throw new Error("This requester is no longer present in the verified Awaiting LEAP report. Return to Membership Requests.");
       return {applicant:builder.applicant, operatorWallet, requestHash:builder.requestHash};
     }
     function applyIssuanceHandoff() {
       if (!issuanceMode) return;
       try {
         issuanceContext = readIssuanceHandoff();
+        showTrailStep(1, "done", "Verified requester handoff loaded into the Check Create Harness.",
+          `Community ID: ${communityId}\nRequester wallet: ${issuanceContext.applicant}\nVerified request: ${issuanceContext.requestHash}\nOperating Wallet: ${issuanceContext.operatorWallet}\nSource: existing Membership Requests report and Operator session.`);
         destination.value = issuanceContext.applicant;
         amount.value = "1";
         destination.readOnly = true;
@@ -753,23 +993,24 @@
         document.getElementById("issuanceApplicantDetails").textContent =
           `Community: ${communityId} · Applicant: ${issuanceContext.applicant}`;
         document.getElementById("issuanceHandoffPanel").hidden = false;
-        document.getElementById("destinationHint").textContent = "Verified applicant from the Check Issuance Ledger Trail.";
+        document.getElementById("destinationHint").textContent = "Verified requester from Membership Requests.";
         document.getElementById("amountHint").textContent = "First LEAP: 1 (filled in automatically).";
         document.getElementById("issuanceReviewHint").hidden = false;
         document.getElementById("issuanceReturnLink").href =
-          `operatorCheckIssuanceTrail.html?community=${encodeURIComponent(communityId)}&role=operator`;
+          `../membershipRequests.html?community=${encodeURIComponent(communityId)}&role=operator`;
         clearError();
       } catch (error) {
+        showTrailStep(1, "failed", "The verified requester handoff needs attention.", error?.message || String(error));
         issuanceContext = null;
         destination.value = "";
         amount.value = "";
         destination.readOnly = true;
         amount.readOnly = true;
         document.getElementById("issuanceHandoffPanel").hidden = false;
-        document.getElementById("issuanceApplicantDetails").textContent = "Applicant handoff needs attention.";
+        document.getElementById("issuanceApplicantDetails").textContent = "Requester handoff needs attention.";
         document.getElementById("issuanceReviewHint").hidden = false;
         document.getElementById("issuanceReturnLink").href =
-          `operatorCheckIssuanceTrail.html?community=${encodeURIComponent(communityId)}&role=operator`;
+          `../membershipRequests.html?community=${encodeURIComponent(communityId)}&role=operator`;
         showError(error?.message || String(error));
       }
       renderRecognitionChoices();
@@ -878,6 +1119,8 @@
     function restoreDraft(){let draft=null;try{draft=JSON.parse(sessionStorage.getItem("leapCheckDraft")||"null");}catch{} if(!draft||draft.communityId&&draft.communityId!==communityId)return; destination.value="";amount.value=draft.amount||"";reason.value=CATEGORIES.includes(draft.reason)?draft.reason:"";renderRecognitionChoices();if(draft.recognition&&[...recognition.options].some(o=>o.value===draft.recognition))recognition.value=draft.recognition;updatePreview();}
 
     async function start(){
+      showTrailStep(2, "working", "Loading the real XRPL authority and Check workbench data…",
+        "The Harness is using its existing authority resolver and XRPL registry loader. No duplicate Ledger Trail validation is running.");
       clearError();refreshButton.disabled=true;resetRegistry();setStatus("XRPL: resolving authority…");
       const client=new DirectXRPLClient(XRPL_SERVER);
       try{
@@ -904,14 +1147,24 @@
         if (issuanceMode) {
           applyIssuanceHandoff();
           if (issuanceContext && operatingWallet !== issuanceContext.operatorWallet) {
+            showTrailStep(2, "failed", "The current XRPL Operating Wallet does not match the requester handoff.",
+              `XRPL Operating Wallet: ${operatingWallet}\nHandoff Operating Wallet: ${issuanceContext.operatorWallet}`);
             issuanceContext = null;
             destination.value = "";
             amount.value = "";
             renderRecognitionChoices();
-            showError("XRPL no longer confirms your Operator wallet. Return to the Check Issuance Ledger Trail.");
+            showError("XRPL no longer confirms your Operator wallet. Return to Membership Requests.");
           }
         } else restoreDraft();
-      }catch(error){authority=null;operatingWallet="";setStatus("XRPL: connection problem","error");showError(error?.message||String(error));updatePreview();}
+        if (!issuanceMode || issuanceContext) {
+          showTrailStep(2, "done", "XRPL Operating Wallet and Check workbench data loaded.",
+            `Community ID: ${communityId}\nOperating Wallet: ${operatingWallet}\nXRPL status: ${statusText.textContent}\nRegistry: loaded by the existing Harness.\nNo Check has been prepared, signed, or sent.`);
+          showTrailStep(3, "pending", "Check preparation has not been connected to this onboarding workflow.",
+            "The existing onboarding Review button remains disabled. A real transaction draft must be prepared in a later move; display of details is not completion.");
+        }
+      }catch(error){authority=null;operatingWallet="";setStatus("XRPL: connection problem","error");showError(error?.message||String(error));
+        showTrailStep(2, "failed", "The workbench could not load its XRPL evidence.", error?.message || String(error));
+        updatePreview();}
       finally{client.close();refreshButton.disabled=false;}
     }
 
@@ -938,6 +1191,8 @@
     });
     destination.value="";
     if (issuanceMode) applyIssuanceHandoff();
+    else showTrailStep(1, "done", "Manual Check Create Harness opened; recipient is entered in the form.",
+      "No Membership Requests handoff was supplied. This is the existing manual Check creation path, not a verified requester selection.");
     start();
   </script>
 </body>
