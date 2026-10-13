@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#071f2c">
-<title>Membership Requests Bootstrap | Wild Ledger</title>
+<title>Membership Requests | Wild Ledger</title>
 <style>
   :root {
     --ink: #f5fbfa;
@@ -205,6 +205,194 @@
     .grid { grid-template-columns:1fr; }
   }
 
+  /* Established Get Wild Ledger Trail appearance. Presentation only:
+     underlying verified-XRPL steps, X/manual view, recovery, and handoff stay unchanged. */
+  .guide-overlay:not([hidden]) {
+    animation: membershipTrailVeil .34s ease both;
+  }
+  .guide-window {
+    position: relative;
+    width:min(470px,100%);
+    max-height:calc(100dvh - 40px);
+    padding:24px 22px 22px;
+    overflow:auto;
+    border:1px solid rgba(121,213,194,.24);
+    border-radius:26px;
+    background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99));
+    box-shadow:0 34px 90px rgba(0,0,0,.58);
+    color:#f5fbfa;
+    font-family:"Times New Roman",Times,serif;
+    animation:membershipTrailPanelIn .38s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .guide-window::before {
+    height:3px;
+    margin:-24px -22px 21px;
+    background:linear-gradient(90deg,#29b8b1,#79d5c2,#f4bd58,#ef765d);
+  }
+  .guide-topline { gap:10px; margin:0 0 6px; }
+  .guide-close {
+    flex:0 0 28px;
+    width:28px;height:28px;min-width:28px;min-height:28px;
+    margin:0;padding:0;
+    border:1px solid rgba(236,249,247,.20);
+    border-radius:50%;
+    background:rgba(255,255,255,.035);
+    color:rgba(245,251,250,.72);
+    font:500 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    box-shadow:none;
+    transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;
+  }
+  .guide-close:hover,.guide-close:focus-visible {
+    border-color:rgba(121,213,194,.42);
+    color:#fff;
+    background:rgba(255,255,255,.08);
+  }
+  .guide-close:active { transform:scale(.94); }
+  .guide-kicker {
+    padding-left:0;
+    color:#f4bd58;
+    font-size:.64rem;
+    font-weight:950;
+    letter-spacing:.16em;
+  }
+  .guide-window h2 {
+    margin:7px 0 6px;
+    font-size:clamp(1.8rem,8vw,2.8rem);
+    line-height:normal;
+    font-weight:700;
+    letter-spacing:-.045em;
+    color:#f5fbfa;
+  }
+  .guide-lede {
+    margin:0 0 12px;
+    color:rgba(236,249,247,.64);
+    font-size:.78rem;
+    line-height:1.5;
+  }
+  .guide-readonly {
+    color:rgba(189,242,200,.80);
+    font-size:.68rem;
+    font-weight:650;
+    margin:0 0 18px;
+  }
+  .guide-route {
+    display:grid;
+    gap:0;
+    margin:4px 0 18px;
+    padding:0;
+    list-style:none;
+  }
+  .guide-route li {
+    position:relative;
+    display:grid;
+    grid-template-columns:36px minmax(0,1fr);
+    align-items:start;
+    gap:11px;
+    min-height:58px;
+    margin:0;
+    padding:0;
+    border:0;
+    color:#f5fbfa;
+    list-style:none;
+  }
+  .guide-route li::before {
+    content:'○';
+    position:relative;
+    left:auto;
+    top:auto;
+    display:grid;
+    place-items:center;
+    width:28px;
+    height:28px;
+    margin-top:1px;
+    border:1px solid rgba(236,249,247,.22);
+    border-radius:50%;
+    background:#082936;
+    color:rgba(236,249,247,.40);
+    font-size:.76rem;
+    font-weight:950;
+    line-height:1;
+    z-index:1;
+    animation:none;
+    box-shadow:none;
+  }
+  .guide-route li:not(:last-child)::after {
+    content:'';
+    position:absolute;
+    top:28px;
+    left:13px;
+    width:2px;
+    height:32px;
+    background:linear-gradient(to bottom,rgba(121,213,194,.18),rgba(121,213,194,.05));
+  }
+  .guide-route li strong {
+    display:block;
+    padding-top:1px;
+    color:#f5fbfa;
+    font-size:.82rem;
+    font-weight:700;
+  }
+  .guide-route li small {
+    display:block;
+    margin-top:3px;
+    color:rgba(236,249,247,.43);
+    font-size:.66rem;
+    line-height:1.35;
+  }
+  .guide-route li.is-done::before {
+    content:'✓';
+    border-color:rgba(159,224,176,.48);
+    background:rgba(159,224,176,.12);
+    color:#bdf2c8;
+  }
+  .guide-route li.is-done:not(:last-child)::after {
+    background:linear-gradient(to bottom,rgba(121,213,194,.75),rgba(121,213,194,.25));
+  }
+  .guide-route li.is-done small { color:rgba(189,242,200,.66); }
+  .guide-route li.is-working::before {
+    content:'•';
+    border-color:rgba(244,189,88,.70);
+    background:rgba(244,189,88,.12);
+    color:#ffe2a7;
+    animation:membershipTrailPulse 1.6s ease-out infinite;
+  }
+  .guide-route li.is-working strong { color:#ffe2a7; }
+  .guide-route li.is-working small { color:rgba(255,226,167,.72); }
+  .guide-route li.is-failed::before {
+    content:'!';
+    border-color:rgba(255,183,170,.58);
+    background:rgba(239,118,93,.12);
+    color:#ffb7aa;
+  }
+  .guide-route li.is-failed strong,.guide-route li.is-failed small { color:#ffb7aa; }
+  .guide-status {
+    margin:5px 0 0;
+    padding:10px 12px;
+    border:1px solid rgba(121,213,194,.12);
+    border-radius:12px;
+    background:rgba(2,24,34,.34);
+    color:rgba(236,249,247,.62);
+    font-size:.68rem;
+    line-height:1.42;
+  }
+  .guide-status.is-error {
+    color:#ffb7aa;
+    border-color:rgba(239,118,93,.24);
+  }
+  .guide-learn {
+    margin:12px 0 0;
+    color:rgba(236,249,247,.50);
+    font-size:.66rem;
+    line-height:1.45;
+  }
+  @keyframes membershipTrailVeil { from {opacity:0;} to {opacity:1;} }
+  @keyframes membershipTrailPanelIn { from {opacity:0;transform:translateY(10px) scale(.985);} to {opacity:1;transform:none;} }
+  @keyframes membershipTrailPulse { from {box-shadow:0 0 0 0 rgba(244,189,88,.22);} to {box-shadow:0 0 0 8px rgba(244,189,88,0);} }
+  @media(prefers-reduced-motion:reduce) {
+    .guide-overlay:not([hidden]),.guide-window,.guide-route li.is-working::before {animation:none;}
+  }
+
+
   /* Existing Membership Requests report styles, unchanged. */
 
   .report-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
@@ -263,7 +451,7 @@
   <!-- Guided Ledger Trail: closing the tour changes presentation, never an in-flight XRPL read. -->
   <div class="guide-overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
     <div class="guide-window">
-      <div class="guide-topline"><button type="button" class="guide-close" id="guideClose" aria-label="Close guided tour and explore the steps" title="Explore the ledger steps">×</button><span class="guide-kicker">Wild Ledger · Ledger Trail</span></div>
+      <div class="guide-topline"><button type="button" class="guide-close" id="guideClose" aria-label="Close guided tour and explore the steps" title="Explore the ledger steps">×</button><span class="guide-kicker">Wild Ledger · Operator</span></div>
       <h2 id="guideTitle">Ledger Trail</h2>
       <p class="guide-lede">Wild Ledger checks your membership requests and gets you ready for your community. Tap X at any time to explore the actual checks.</p>
       <p class="guide-readonly">Read-only check. No XRP is spent.</p>
