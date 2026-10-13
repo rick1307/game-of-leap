@@ -399,8 +399,8 @@ async function copyApplicant(address, button) {
 }
 
 function beginCheckIssuance(request) {
-  // Use only the applicant already proven by the existing Membership Requests
-  // Ledger Trail. The dedicated issuance page independently checks this handoff.
+  // Use only the requester already proven by the Membership Requests
+  // Ledger Trail. The integrated Check Create Harness reads this verified handoff.
   const session = readOperatorSession();
   const report = session && checkedHandoff(session);
   const matching = report?.requests.find(row =>
@@ -425,7 +425,7 @@ function beginCheckIssuance(request) {
     window.alert("Wild Ledger could not carry this applicant to Check Issuance. Please try again.");
     return;
   }
-  window.location.assign(`test-harness/operatorCheckIssuanceTrail.html?community=${encodeURIComponent(session.communityId)}&role=operator`);
+  window.location.assign(`test-harness/operatorCheckCreateHarness.html?community=${encodeURIComponent(session.communityId)}&role=operator&issuance=1`);
 }
 
 function makeRequestRow(request, index, communityId) {
