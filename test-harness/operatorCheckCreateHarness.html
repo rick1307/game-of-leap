@@ -840,30 +840,12 @@
     const LEGACY_DISTRIBUTORS = Array.isArray(config.leapDistributors) ? config.leapDistributors.map(String) : [];
     const NAMESPACE = community?.leapNamespace || `${communityId}-LEAP`;
     const CATEGORIES = ["BADGE", "EVENT", "CHALLENGE"];
-    const BUILDER_KEY = "wildLedger.checkIssuanceBuilderHandoff";
     const SELECTION_KEY = "wildLedger.checkIssuanceHandoff";
     const REPORT_KEY = "wildLedger.membershipRequestsHandoff";
     const HANDOFF_MAX_AGE_MS = 10 * 60 * 1000;
-    // A navigation can lose its URL query on some return paths. The handoff
-    // itself is short-lived and later revalidated against the Operator session,
-    // the verified Membership Requests report, and current XRPL authority.
-    // Never silently show an empty manual builder for a just-selected applicant.
-    const explicitIssuance = params.get("issuance") === "1";
-    const recentBuilderHandoff = (() => {
-      try {
-        const handoff = JSON.parse(sessionStorage.getItem(BUILDER_KEY) || "null");
-        const age = Date.now() - Number(handoff?.handedOffAt);
-        return handoff?.version === 1 && handoff?.source === "operatorCheckIssuanceTrail" &&
-          handoff.communityId === communityId && Number.isFinite(age) && age >= -30000 && age < 120000;
-      } catch (_) { return false; }
-    })();
-    const issuanceMode = explicitIssuance || (params.get("issuance") !== "0" && recentBuilderHandoff);
-    if (issuanceMode && !explicitIssuance) {
-      // Keep refresh/navigation in the same explicit onboarding context.
-      const u = new URL(location.href);
-      u.searchParams.set("issuance", "1");
-      history.replaceState(history.state, "", u.href);
-    }
+    // The selected requester comes directly from Membership Requests, not from
+    // a second Check Issuance Trail page. Explicit mode preserves manual use.
+    const issuanceMode = params.get("issuance") === "1";
     let issuanceContext = null;
 
     let authority = null;
@@ -943,10 +925,9 @@
     function readIssuanceHandoff() {
       if (!issuanceMode) return null;
       if (role !== "operator") throw new Error("Use the Operator session to prepare a requester's first Check.");
-      let session, builder, selection, report;
+      let session, selection, report;
       try {
         session = JSON.parse(sessionStorage.getItem("wildLedgerOperatorSession") || "null");
-        builder = JSON.parse(sessionStorage.getItem(BUILDER_KEY) || "null");
         selection = JSON.parse(sessionStorage.getItem(SELECTION_KEY) || "null");
         report = JSON.parse(sessionStorage.getItem(REPORT_KEY) || "null");
       } catch (_) { throw new Error("The requester handoff could not be read. Return to Membership Requests."); }
@@ -957,28 +938,23 @@
          (sessionVersion === 2 && session?.source === "wallet-connect + validated-xrpl-authority")) &&
         String(session?.communityId || "").toUpperCase() === communityId && isClassicAddress(operatorWallet) &&
         (!sessionStorage.getItem("wildLedgerOperatorWallet") || sessionStorage.getItem("wildLedgerOperatorWallet")===operatorWallet);
-      if (!validSession || builder?.version !== 1 || builder?.source !== "operatorCheckIssuanceTrail" ||
-          selection?.version !== 1 || selection?.source !== "membershipRequests" ||
+      if (!validSession || selection?.version !== 1 || selection?.source !== "membershipRequests" ||
           report?.version !== 2 || report?.source !== "membershipRequestsBootstrap" ||
-          !currentTimestamp(builder?.handedOffAt,HANDOFF_MAX_AGE_MS) ||
           !currentTimestamp(selection?.selectedAt,HANDOFF_MAX_AGE_MS) ||
           !currentTimestamp(report?.verifiedAt,60*60*1000) ||
-          Number(builder.handedOffAt) < Number(selection.selectedAt)-30000 ||
           Number(selection.selectedAt) < Number(report.verifiedAt)-30000 ||
-          builder.communityId !== communityId || selection.communityId !== communityId ||
-          report.communityId !== communityId || builder.operatorWallet !== operatorWallet ||
+          selection.communityId !== communityId || report.communityId !== communityId ||
           selection.operatorWallet !== operatorWallet || report.operatorWallet !== operatorWallet ||
-          builder.applicant !== selection.applicant || builder.requestHash !== selection.requestHash ||
-          !isClassicAddress(builder.applicant) || !/^[0-9A-F]{64}$/.test(String(builder.requestHash || "")) ||
+          !isClassicAddress(selection.applicant) || !/^[0-9A-F]{64}$/.test(String(selection.requestHash || "")) ||
           !Array.isArray(report.requests))
         throw new Error("The selected requester is not verified for this Operator and community. Return to Membership Requests.");
-      const row = report.requests.find(r => r?.applicant === builder.applicant && r?.hash === builder.requestHash);
+      const row = report.requests.find(r => r?.applicant === selection.applicant && r?.hash === selection.requestHash);
       if (!row || row.recognition?.status !== "awaiting" || row.recognition.proof !== null ||
           !isClassicAddress(row.destination) || !Number.isSafeInteger(row.ledger) || row.ledger <= 0 ||
           !Number.isSafeInteger(row.txIndex) || row.txIndex < 0 ||
           row.drops !== row.expectedDrops || !/^[1-9][0-9]*$/.test(String(row.drops || "")))
         throw new Error("This requester is no longer present in the verified Awaiting LEAP report. Return to Membership Requests.");
-      return {applicant:builder.applicant, operatorWallet, requestHash:builder.requestHash};
+      return {applicant:selection.applicant, operatorWallet, requestHash:selection.requestHash};
     }
     function applyIssuanceHandoff() {
       if (!issuanceMode) return;
@@ -991,7 +967,7 @@
         destination.readOnly = true;
         amount.readOnly = true;
         document.getElementById("issuanceApplicantDetails").textContent =
-          `Community: ${communityId} · Applicant: ${issuanceContext.applicant}`;
+          `Community: ${communityId} · Requester: ${issuanceContext.applicant}`;
         document.getElementById("issuanceHandoffPanel").hidden = false;
         document.getElementById("destinationHint").textContent = "Verified requester from Membership Requests.";
         document.getElementById("amountHint").textContent = "First LEAP: 1 (filled in automatically).";
