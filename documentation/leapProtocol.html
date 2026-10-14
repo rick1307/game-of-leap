@@ -713,7 +713,7 @@ WILD-LEDGER/COMMUNITY-REQUEST</code></pre>
 <tr><th>Protocol act</th><th>XRPL transaction</th><th>Meaning</th></tr>
 <tr><td>Community allocation offer</td><td><code>CheckCreate</code></td><td>The LEAP Distributor offers LEAP to a named community.</td></tr>
 <tr><td>Community allocation delivery</td><td><code>CheckCash</code></td><td>The allocation Check is redeemed and LEAP is delivered.</td></tr>
-<tr><td>Member recognition by Check</td><td><code>CheckCreate</code> + successful <code>CheckCash</code></td><td>The Operating Wallet offers recognition; the member later accepts and receives the LEAP.</td></tr>
+<tr><td>Wallet onboarding by Check</td><td><code>CheckCreate</code> + successful <code>CheckCash</code></td><td>The authorized Community Operating Wallet issues a 1-LEAP Check to a requesting wallet. Successful cashing delivers LEAP and establishes membership in the issuing community; it is not member recognition.</td></tr>
 <tr><td>Member recognition by direct delivery</td><td><code>Payment</code></td><td>The Operating Wallet delivers LEAP immediately to a member already able to receive it.</td></tr>
 <tr><td>Recognition-definition lifecycle</td><td>No-op <code>AccountSet</code></td><td>Creates, ends, or ignores a community-defined Badge, Event, or Challenge without moving LEAP.</td></tr>
 <tr><td>Community authority state</td><td>No-op <code>AccountSet</code></td><td>Publishes a canonical community authority value without moving LEAP.</td></tr>
@@ -747,30 +747,39 @@ WILD-LEDGER/COMMUNITY-REQUEST</code></pre>
 <p>
           <code>CheckCreate</code> records the allocation offer. Successful <code>CheckCash</code> completes delivery. <code>CheckCancel</code> cancels an unredeemed delivery.
         </p>
-<h3>7.1 Member recognition by Check</h3>
+<h3>7.1 Wallet onboarding by Check</h3>
 <div class="flow">
-          Authorized Community Operating Wallet → CheckCreate → member → CheckCash → Earned LEAP
+          Authorized Community Operating Wallet → CheckCreate → requesting wallet → CheckCash → community membership
         </div>
 <ul class="checklist">
-<li>The recognition is protocol-defined and available under the Protocol Core, or its community-defined definition already exists and is available at the ledger position of the <code>CheckCreate</code>.</li>
-<li><code>Account</code> is the Community Operating Wallet authorized for that community at that ledger position.</li>
-<li><code>Destination</code> is the intended member wallet.</li>
-<li><code>SendMax</code> identifies canonical LEAP and contains a positive whole-number amount.</li>
-<li>The standard recognition Check omits XRPL <code>Expiration</code>.</li>
-<li>Exactly one canonical <code>&lt;COMMUNITY&gt;-LEAP/&lt;CATEGORY&gt;=&lt;CANONICAL-ID&gt;</code> recognition memo is present.</li>
-<li>The <code>CheckCreate</code> is successful and validated.</li>
+<li>The requesting wallet has submitted a valid community membership request.</li>
+<li><code>Account</code> is the Community Operating Wallet authorized for that community at the ledger position of the <code>CheckCreate</code>.</li>
+<li><code>Destination</code> is the requesting wallet.</li>
+<li><code>SendMax</code> identifies canonical LEAP with a value of exactly 1 LEAP.</li>
+<li>The standard onboarding Check omits XRPL <code>Expiration</code>.</li>
+<li>The onboarding Check does not carry a Badge, Event, or Challenge recognition memo.</li>
+<li>The <code>CheckCreate</code> transaction succeeds and is validated.</li>
 </ul>
 <div class="rule">
-<div class="tag">Pending vs. Earned</div>
+<div class="tag">Pending vs. Cashed</div>
 <div>
-            A recognition <code>CheckCreate</code> is a pending recognition offer. It is <strong>not</strong> Earned LEAP until that exact Check is successfully cashed.
-            The later <code>CheckCash</code> references the Check by <code>CheckID</code>. For official recognition, the cashing result must deliver a positive whole-number amount of LEAP. Earned LEAP is the amount actually delivered by the successful <code>CheckCash</code>, not merely the earlier <code>SendMax</code> offer.
+            A successful <code>CheckCreate</code> establishes an outstanding onboarding Check. It does not transfer LEAP or establish community membership.
+            When the requesting wallet successfully cashes the Check, it receives 1 LEAP from the issuing community and becomes a member of that community.
+            The <code>CheckCash</code> references the original Check by <code>CheckID</code>. Validated cashing completes LEAP delivery.
+          </div>
+</div>
+<div class="rule">
+<div class="tag">Onboarding Is Not Recognition</div>
+<div>
+            Receiving LEAP from a community establishes membership in that community, regardless of how the LEAP was delivered. A wallet may belong to multiple communities.
+            An onboarding Check establishes membership when cashed, but it is not a Badge, Event, or Challenge recognition award.
+            Onboarding and recognition are distinct operations. Official LEAP recognition is handled through authorized direct LEAP <code>Payment</code> transactions under Section 7.2.
           </div>
 </div>
 <div class="fact">
 <div class="tag">XRPL Fact</div>
 <div>
-            A recipient does not need a pre-existing LEAP trust line before the recognition Check is created. Current XRPL behavior can create the required zero-limit trust line when an issued-token Check is successfully cashed.
+            A recipient does not need a pre-existing LEAP trust line before an onboarding Check is created. Current XRPL behavior can create the required zero-limit trust line when an issued-token Check is successfully cashed.
           </div>
 </div>
 <h3>7.2 Member recognition by Payment</h3>
