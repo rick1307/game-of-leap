@@ -472,8 +472,7 @@
   .proof-line:last-child { margin-bottom:0; }
   .proof-label { display:block; color:var(--muted); font-weight:750; margin-bottom:3px; }
   .proof-value { display:block; color:var(--ink); overflow-wrap:anywhere; font-variant-ligatures:none; }
-  .copy-wallet { min-height:33px; padding:6px 10px; font-size:.75rem; font-weight:800; color:#dcfff4; border:1px solid rgba(121,213,194,.36); border-radius:9px; background:rgba(121,213,194,.065); cursor:pointer; margin-top:7px; }
-  .copy-wallet:focus-visible,.proof-toggle > summary:focus-visible { outline:2px solid var(--mango); outline-offset:2px; }
+  .proof-toggle > summary:focus-visible { outline:2px solid var(--mango); outline-offset:2px; }
   .issue-first-leap { display:block; margin-top:11px; min-height:40px; padding:9px 13px; border:1px solid rgba(121,213,194,.58); border-radius:12px; background:rgba(121,213,194,.16); color:#dbfff4; font-size:.79rem; font-weight:850; cursor:pointer; text-align:center; }
   .issue-first-leap:hover,.issue-first-leap:focus-visible { border-color:#bdf2c8; background:rgba(121,213,194,.27); outline-offset:2px; }
   .report-foot { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-top:17px; }
@@ -622,8 +621,7 @@
 <p aria-live="polite" class="request-status" id="requestStatus" role="status">Opening verified membership requests…</p>
 <div hidden="" id="requestList"></div>
 <div class="report-foot" hidden="" id="requestFoot">
-<p class="notice" id="requestNotice">Onboarding Checks identify wallets. Cashing a Check does not, by itself, enable ordinary LEAP transfers or establish earned community membership. Results are a validated snapshot; use Check for new requests to update.</p>
-<a class="action" href="onboardingCheckbook.html" id="refreshLink">Check for new requests</a>
+<p class="notice" id="requestNotice">Onboarding Checks identify wallets. Cashing a Check does not, by itself, enable ordinary LEAP transfers or establish earned community membership. Results reflect a validated XRPL snapshot.</p>
 </div>
 </section>
 </div>
@@ -1494,18 +1492,6 @@ function proofLine(label, value) {
   return line;
 }
 
-async function copyApplicant(address, button) {
-  try {
-    if (!navigator.clipboard?.writeText) throw new Error("Clipboard is unavailable");
-    await navigator.clipboard.writeText(address);
-    button.textContent = "Copied";
-    button.setAttribute("aria-label", "Applicant address copied");
-  } catch (_) {
-    button.textContent = "Copy unavailable";
-    button.setAttribute("aria-label", "Copy unavailable; full address is shown in details");
-  }
-}
-
 function beginCheckIssuance(request) {
   // Use only the requester already proven by the Membership Requests
   // Ledger Trail. The integrated Check Create Harness reads this verified handoff.
@@ -1543,12 +1529,7 @@ function makeRequestRow(request, communityId, siblingRequests = []) {
   address.className = "applicant-main";
   address.title = request.applicant;
   address.textContent = shortWallet(request.applicant);
-  const copy = document.createElement("button");
-  copy.type = "button";
-  copy.className = "copy-wallet";
-  copy.textContent = "Copy address";
-  copy.addEventListener("click", () => copyApplicant(request.applicant, copy));
-  applicant.append(address, copy);
+  applicant.append(address);
   tr.append(createCell("Requester", applicant));
 
   const requested = document.createElement("span");
@@ -1646,7 +1627,6 @@ function showMatchingPayments(requests, communityId) {
   list.replaceChildren();
   list.hidden = false;
   $("requestFoot").hidden = false;
-  $("refreshLink").href = `onboardingCheckbook.html?community=${encodeURIComponent(communityId)}&role=operator`;
   $("requestCount").hidden = false;
   const rowsByWallet = new Map();
   const newestFirst = [...requests].sort((a,b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash));
