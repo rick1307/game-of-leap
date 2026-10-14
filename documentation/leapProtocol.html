@@ -817,9 +817,16 @@ WILD-LEDGER/COMMUNITY-REQUEST</code></pre>
         </div>
 <h3>7.4 Check state and cancellation</h3>
 <p>
-          Standard recognition Checks have no protocol expiration. An open Check remains pending until it is cashed or canceled.
-          A successful <code>CheckCancel</code> removes the outstanding Check ledger object but does not erase the historical <code>CheckCreate</code> transaction.
-          A canceled, unredeemed recognition Check contributes no Earned LEAP.
+          Standard wallet onboarding Checks omit XRPL Expiration. An outstanding Check remains pending until successfully cashed or canceled.
+        </p>
+<p>
+          A successful <code>CheckCancel</code> removes the outstanding Check ledger object and releases its associated XRP owner reserve, but does not erase the historical <code>CheckCreate</code> transaction.
+        </p>
+<p>
+          A canceled, unredeemed onboarding Check delivers no LEAP, establishes no community membership, and contributes no Earned LEAP or stars.
+        </p>
+<p>
+          A canceled, unredeemed Distributor allocation Check does not deliver the proposed allocation to the community.
         </p>
 <div class="note">
           Cleanup timing, reminders, buttons, wallet-specific navigation, and other operating conveniences are Wild Ledger policy and UI behavior, not LEAP Protocol state.
@@ -1047,7 +1054,7 @@ AND source = Community Operating Wallet authorized at that ledger position
 AND destination = member wallet
 AND asset = canonical LEAP
 AND decoded memo = &lt;COMMUNITY&gt;-LEAP/BADGE=&lt;CANONICAL-ID&gt;
-AND (successful matching CheckCash OR successful recognition Payment)</code></pre>
+AND successful recognition Payment</code></pre>
 <div class="rule">
 <div class="tag">LEAP Standard</div>
 <div>
@@ -1117,8 +1124,16 @@ SFL-CAMEO</code></pre>
 <p>Filter by the canonical LEAP issuer and currency value. The resulting balance answers current holdings only; it does not determine Earned LEAP or stars.</p>
 <h3>11.2 Member Earned LEAP and recognition history — <code>account_tx</code></h3>
 <p>
-          Scan validated member history with pagination. For each candidate recognition, validate the community namespace, recognition origin and applicable definition state at that ledger position, authorized Community Operating Wallet, asset identity, destination, transaction type, result, and memo.
-          For Check recognition, link the originating <code>CheckCreate</code> to the successful <code>CheckCash</code> by Check ID and use the amount actually delivered. For Payment recognition, use the amount actually delivered by the successful Payment.
+          Scan validated member history with pagination.
+        </p>
+<p>
+          For Badge, Event, and Challenge recognition, validate the community namespace, recognition origin and applicable definition state at that ledger position, authorized Community Operating Wallet, asset identity, destination, transaction type, result, and memo. Recognition is delivered through successful direct LEAP Payments, using the amount actually delivered.
+        </p>
+<p>
+          For wallet onboarding, link the authorized Community Operating Wallet's valid 1-LEAP onboarding <code>CheckCreate</code> to the successful <code>CheckCash</code> by Check ID. Successful cashing establishes membership and contributes 1 Earned LEAP to the issuing community's member history and star standing, without creating a Badge, Event, or Challenge recognition award.
+        </p>
+<p>
+          An outstanding or canceled onboarding Check contributes no Earned LEAP.
         </p>
 <h3>11.3 Recognition opportunity catalog</h3>
 <p>
@@ -1146,7 +1161,10 @@ SFL-CAMEO</code></pre>
         </p>
 <h3>11.8 Wild Ledger Join Request Price and membership requests</h3>
 <p>
-          For each established Community ID, reconstruct price statements from the validated transaction histories of the wallets that were authorized Community Operating Wallets at the relevant ledger positions. The current price is the latest valid price statement, or 1 drop when none exists. Scan the same historical Operating Wallet accounts for candidate native-XRP Payments carrying the canonical membership-request memo. A request is valid only if the destination was the authorized Operating Wallet and the exact amount matched the price immediately preceding that Payment. Take the applicant's address from the transaction's <code>Account</code>. Requests validly delivered to a previous Operating Wallet remain part of that community's history after authority transfers. An Operator-facing report may distinguish unfulfilled requests by correlating this history with later validated recognition activity; a request alone never counts as membership.
+          For each established Community ID, reconstruct price statements from the validated transaction histories of the wallets that were authorized Community Operating Wallets at the relevant ledger positions. The current price is the latest valid price statement, or 1 drop when none exists. Scan the same historical Operating Wallet accounts for candidate native-XRP Payments carrying the canonical membership-request memo. A request is valid only if the destination was the authorized Operating Wallet and the exact amount matched the price immediately preceding that Payment. Take the applicant's address from the transaction's <code>Account</code>. Requests validly delivered to a previous Operating Wallet remain part of that community's history after authority transfers. An Operator-facing report may identify unfulfilled membership requests by examining subsequent validated LEAP delivery from the community to each requesting wallet, including successful cashing of an authorized 1-LEAP onboarding Check or a valid direct LEAP Payment.
+        </p>
+<p>
+          A membership request alone does not establish membership. Creating an onboarding Check does not establish membership; successful cashing does.
         </p>
 <h3>11.9 Query output map</h3>
 <table>
