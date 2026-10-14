@@ -450,6 +450,7 @@
   .requests-table .proof-toggle { min-width:0; }
   .table-wrap { width:100%; overflow-x:auto; }
   .requests-table { width:100%; border-collapse:separate; border-spacing:0; text-align:left; font-size:.85rem; }
+  .requests-table caption.label { color:var(--ink); font-size:.84rem; font-weight:850; }
   .requests-table th { padding:12px 10px; font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.075em; font-weight:850; border-bottom:1px solid rgba(121,213,194,.29); }
   .requests-table td { padding:16px 10px; vertical-align:middle; border-bottom:1px solid var(--line); line-height:1.45; }
   .requests-table tbody tr:last-child td { border-bottom:0; }
@@ -610,7 +611,6 @@
 <div class="report-heading">
 <div>
 <h2>Onboarding lifecycle</h2>
-<p class="report-subtitle">One requester, three stages: Requested → Issued → Cashed. Open Evidence for the XRPL details.</p>
 </div>
 </div>
 <div class="lifecycle-announcement" data-state="clear" hidden id="requestCount" role="status" aria-live="polite" aria-atomic="true">
@@ -619,14 +619,11 @@
     <span class="lifecycle-announcement-totals" id="requestCountTotals">0 to issue · 0 outstanding · 0 cashed</span>
   </div>
 </div>
-<p aria-live="polite" class="request-status" id="requestStatus" role="status">Opening verified membership requests…</p>
+<p aria-live="polite" class="request-status" id="requestStatus" role="status" hidden>Opening verified membership requests…</p>
 <div hidden="" id="requestList"></div>
-<div class="report-foot" hidden="" id="requestFoot">
-<p class="notice" id="requestNotice">Onboarding Checks identify wallets. Cashing a Check does not, by itself, enable ordinary LEAP transfers or establish earned community membership. Results reflect a validated XRPL snapshot.</p>
-</div>
 </section>
 </div>
-      <p id="verificationNote" class="trail-note" aria-live="polite"></p>
+      <p id="verificationNote" class="trail-note" hidden></p>
 
     </section>
   </main>
@@ -1627,7 +1624,6 @@ function showMatchingPayments(requests, communityId) {
   const list = $("requestList");
   list.replaceChildren();
   list.hidden = false;
-  $("requestFoot").hidden = false;
   $("requestCount").hidden = false;
   const rowsByWallet = new Map();
   const newestFirst = [...requests].sort((a,b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash));
