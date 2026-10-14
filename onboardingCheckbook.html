@@ -398,7 +398,52 @@
   .report-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
   .report-heading h2 { margin:0 0 5px; }
   .report-subtitle { max-width:570px; color:var(--muted); font-size:.85rem; line-height:1.55; margin:0 0 13px; }
-  .request-count { color:#bdf2c8; font-size:.83rem; font-weight:850; padding:8px 12px; border:1px solid rgba(121,213,194,.35); background:rgba(121,213,194,.085); border-radius:999px; white-space:nowrap; }
+  /* A status announcement, not an action or button. Color follows the existing lifecycle counts. */
+  .lifecycle-announcement {
+    display:flex;
+    align-items:center;
+    gap:14px;
+    width:100%;
+    margin:2px 0 17px;
+    padding:15px 17px;
+    border:1px solid var(--announcement-border);
+    border-radius:16px;
+    background:var(--announcement-background);
+    color:var(--announcement-text);
+    cursor:default;
+  }
+  .lifecycle-announcement[data-state="action"] {
+    --announcement-border:rgba(239,118,93,.54);
+    --announcement-background:rgba(239,118,93,.12);
+    --announcement-text:#ffc2b8;
+  }
+  .lifecycle-announcement[data-state="outstanding"] {
+    --announcement-border:rgba(244,189,88,.55);
+    --announcement-background:rgba(244,189,88,.11);
+    --announcement-text:#ffe4a0;
+  }
+  .lifecycle-announcement[data-state="clear"] {
+    --announcement-border:rgba(121,213,194,.43);
+    --announcement-background:rgba(121,213,194,.10);
+    --announcement-text:#bdf2c8;
+  }
+  .lifecycle-announcement::before {
+    content:"!";
+    flex:0 0 35px;
+    display:grid;
+    place-items:center;
+    width:35px;
+    height:35px;
+    border-radius:50%;
+    border:1px solid currentColor;
+    font-size:1.05rem;
+    font-weight:900;
+  }
+  .lifecycle-announcement[data-state="outstanding"]::before { content:"◷"; }
+  .lifecycle-announcement[data-state="clear"]::before { content:"✓"; }
+  .lifecycle-announcement-copy { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .lifecycle-announcement-title { color:var(--announcement-text); font-size:.91rem; font-weight:850; line-height:1.3; }
+  .lifecycle-announcement-totals { color:var(--ink); font-size:.81rem; line-height:1.45; font-variant-numeric:tabular-nums; }
   .request-status { color:var(--muted); line-height:1.5; font-size:.82rem; margin:0 0 17px; }
   .request-status.error { color:#ffb7aa; }
   .lifecycle-muted { display:block; color:var(--muted); font-size:.73rem; margin-top:5px; }
@@ -443,7 +488,6 @@
     .requests-table tr td:last-child { border-bottom:0; }
     .requests-table td::before { content:attr(data-label); color:var(--muted); font-size:.73rem; font-weight:780; padding-top:3px; }
     .proof-toggle { min-width:0; }
-    .request-count { align-self:flex-start; }
   }
 
 </style>
@@ -568,7 +612,12 @@
 <h2>Onboarding lifecycle</h2>
 <p class="report-subtitle">One requester, three stages: Requested → Issued → Cashed. Open Evidence for the XRPL details.</p>
 </div>
-<span class="request-count" hidden="" id="requestCount"></span>
+</div>
+<div class="lifecycle-announcement" data-state="clear" hidden id="requestCount" role="status" aria-live="polite" aria-atomic="true">
+  <div class="lifecycle-announcement-copy">
+    <strong class="lifecycle-announcement-title" id="requestCountTitle">All caught up</strong>
+    <span class="lifecycle-announcement-totals" id="requestCountTotals">0 to issue · 0 outstanding · 0 cashed</span>
+  </div>
 </div>
 <p aria-live="polite" class="request-status" id="requestStatus" role="status">Opening verified membership requests…</p>
 <div hidden="" id="requestList"></div>
@@ -1609,7 +1658,11 @@ function showMatchingPayments(requests, communityId) {
   const issuedCount = groups.filter(g => g[0].onboardingCheck?.status === "issued").length;
   const cashedCount = groups.filter(g => g[0].onboardingCheck?.status === "cashed").length;
   const waitingCount = groups.filter(g => g[0].onboardingCheck?.status === "unissued" && g[0].recognition.status === "awaiting").length;
-  $("requestCount").textContent = `${waitingCount} to issue · ${issuedCount} outstanding · ${cashedCount} cashed`;
+  const announcement = $("requestCount");
+  announcement.dataset.state = waitingCount > 0 ? "action" : issuedCount > 0 ? "outstanding" : "clear";
+  $("requestCountTitle").textContent = waitingCount > 0 ? "Action needed · Checks to issue" :
+    issuedCount > 0 ? "Outstanding Checks · XRP reserve in use" : "All caught up";
+  $("requestCountTotals").textContent = `${waitingCount} to issue · ${issuedCount} outstanding · ${cashedCount} cashed`;
   if (!groups.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
