@@ -1383,7 +1383,7 @@ function beginCheckIssuance(request) {
     window.alert("Wild Ledger could not carry this applicant to Check Issuance. Please try again.");
     return;
   }
-  window.location.assign(`test-harness/operatorCheckCreateHarness.html?community=${encodeURIComponent(session.communityId)}&role=operator&issuance=1`);
+  window.location.assign(`checkIssuance.html?community=${encodeURIComponent(session.communityId)}&role=operator&issuance=1`);
 }
 
 function makeRequestRow(request, index, communityId) {
