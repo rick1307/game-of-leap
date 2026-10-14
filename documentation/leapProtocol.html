@@ -1170,8 +1170,8 @@ SFL-CAMEO</code></pre>
 <table>
 <tr><th>Question</th><th>Authoritative derivation</th></tr>
 <tr><td>What LEAP does this wallet hold now?</td><td>Validated <code>account_lines</code></td></tr>
-<tr><td>Is this wallet a member of this community?</td><td>At least one unit of community Earned LEAP in validated recognition history</td></tr>
-<tr><td>How much LEAP has this member earned here?</td><td>Sum actual LEAP delivered by valid community recognition Checks and Payments</td></tr>
+<tr><td>Is this wallet a member of this community?</td><td>A wallet becomes a member of a community when it first receives LEAP from that community through a validated transaction. This includes successfully cashing an authorized onboarding Check or receiving a valid direct LEAP Payment from the community. A membership request or an outstanding, uncashed onboarding Check does not establish membership.</td></tr>
+<tr><td>How much LEAP has this member earned here?</td><td>Sum the actual LEAP delivered to the wallet by the community through valid direct recognition Payments and successfully cashed, authorized onboarding Checks. Both contribute to the member's cumulative Earned LEAP in that community. Onboarding LEAP is Earned LEAP, but it is not Badge, Event, or Challenge recognition. Outstanding or canceled onboarding Checks contribute no Earned LEAP.</td></tr>
 <tr><td>What is this member's star standing here?</td><td>Apply the universal star thresholds to community Earned LEAP</td></tr>
 <tr><td>What recognitions has this member earned?</td><td>Validated recognition history after lifecycle/provenance validation</td></tr>
 <tr><td>What recognition opportunities exist now?</td><td>Protocol-defined recognition in the Protocol Core + validated community recognition lifecycle history</td></tr>
@@ -1200,7 +1200,7 @@ SFL-CAMEO</code></pre>
 <li>LEAP-moving acts use the canonical LEAP issuer and canonical LEAP currency value.</li>
 <li>Member-facing recognition identifies the intended member destination and exactly one canonical Badge, Event, or Challenge memo.</li>
 <li>A new recognition award references either a protocol-defined recognition available under the Protocol Core or a community-defined recognition that already exists and is available at the award's ledger position.</li>
-<li>A Check-based recognition is pending at <code>CheckCreate</code> and becomes earned only after the matching Check is successfully cashed.</li>
+<li>An Operator-issued onboarding Check is pending when its <code>CheckCreate</code> successfully validates. Creating the Check does not deliver LEAP or establish community membership. When the onboarding Check is successfully cashed, the recipient receives LEAP, becomes a member of the issuing community, and receives credit for that LEAP as Earned LEAP in that community. An onboarding Check is not a Badge, Event, or Challenge recognition award.</li>
 <li>A Payment-based recognition becomes earned only when the LEAP Payment successfully validates and delivers LEAP.</li>
 <li>A community-defined lifecycle record is a no-op <code>AccountSet</code> from the authorized Community Operating Wallet, contains exactly one canonical lifecycle memo, and changes no AccountSet-specific setting. Protocol-defined recognition does not use community lifecycle records.</li>
 <li>A lifecycle <code>CREATE</code> does not reuse an already-reserved recognition ID.</li>
@@ -1265,7 +1265,6 @@ SFL-CAMEO</code></pre>
 <tr><td>Earlier structured or split memo representations</td><td>Read-only compatibility after complete authority, asset, destination, result, and semantic validation. Never emit new records in the old form.</td></tr>
 <tr><td>Free-form historical memo</td><td>Do not automatically grant recognition. Map only when provenance and intended meaning can be established under an explicit legacy rule.</td></tr>
 <tr><td>Recognition ID established before lifecycle activation</td><td>May be treated as a legacy-established definition when supported by valid authorized historical recognition. The ID remains reserved and may later receive <code>END</code> or <code>IGNORE</code> without retroactive <code>CREATE</code>.</td></tr>
-<tr><td>Legacy Check with XRPL <code>Expiration</code></td><td>Interpret according to its actual ledger fields. New standard recognition Checks omit expiration.</td></tr>
 <tr><td>Pre-authority-state community</td><td>Use the documented existing-community migration rule to establish the first canonical <code>OPERATING-WALLET</code> value.</td></tr>
 </table>
 <div class="rule">
