@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="theme-color" content="#071f2c">
-<title>Membership Requests | Wild Ledger</title>
+<title>Onboarding Checkbook | Wild Ledger</title>
 <style>
   :root {
     --ink: #f5fbfa;
@@ -480,9 +480,9 @@
         <a id="backLink" class="back-link" href="viewCommunity.html" hidden>← View Community</a>
       </nav>
       <div class="eyebrow">Wild Ledger · Operator</div>
-      <h1 id="pageTitle">Membership Requests</h1>
+      <h1 id="pageTitle">Onboarding Checkbook</h1>
 
-      <section class="panel trail-panel" id="trailPanel" aria-label="Membership Requests Ledger Trail">
+      <section class="panel trail-panel" id="trailPanel" aria-label="Onboarding Checkbook Ledger Trail">
         <div class="manual-tools"><span class="trail-finished-line" id="manualHeadline">Ledger checks</span><button type="button" id="guideAgain" class="action guide-again" hidden>Continue guided tour</button></div>
         <p class="manual-intro" id="manualIntro" hidden>Explore the same steps at your pace. The <strong>green button</strong> is the next action. A running check shows activity; the next button turns green only after the proof succeeds. Open any <strong>Evidence</strong> section to inspect the XRPL details.</p>
         <details class="trail-disclosure" id="trailDisclosure" open>
@@ -1033,7 +1033,7 @@ async function performStep(number) {
     $("communityId").textContent = session.communityId;
     $("operatorWallet").textContent = session.wallet;
     $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(session.communityId)}&role=operator`;
-    document.title = `Membership Requests · ${communityName} | Wild Ledger`;
+    document.title = `Onboarding Checkbook · ${communityName} | Wild Ledger`;
     $("requestStatus").classList.remove("error");
     $("requestStatus").textContent = "Finding membership-request payments in XRPL history…";
     // Read historical, Operator-authorized price statements using Wild Ledger's
@@ -1106,7 +1106,7 @@ async function performStep(number) {
       throw new Error("The verified results could not be saved for Check Issuance in this browser tab. No ledger transaction was sent. Please free some browser storage and try this step again.");
     }
     $("backLink").hidden = false;
-    document.title = `Membership Requests · ${$("communityName").textContent} | Wild Ledger`;
+    document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
     return {message:"All checks passed. Membership Requests are ready.",evidence:`Session rechecked: ${current.communityId}\nOperator wallet: ${current.wallet}\nVerified report rows: ${requests.length}\nCandidates not qualifying under Protocol 0.24: ${runContext.excluded}\nHistorical Operating Wallet request records included.`};
   }
   throw new Error("Unknown Ledger Trail step.");
@@ -1544,7 +1544,7 @@ function openReport() {
   $("communityName").textContent = String(data.communityName || session.name || session.communityId);
   $("communityId").textContent = session.communityId;
   $("operatorWallet").textContent = session.wallet;
-  document.title = `Membership Requests · ${$("communityName").textContent} | Wild Ledger`;
+  document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
   $("authorizedContent").hidden = false;
   showMatchingPayments(data.requests, session.communityId);
   const stamp = new Date(data.verifiedAt);
