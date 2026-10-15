@@ -192,6 +192,25 @@
   @keyframes guideSpin { to { transform:rotate(360deg); } }
   @media(prefers-reduced-motion:reduce) { .guide-route li.is-working::before,.trail-step.is-working .trail-index,.step-action.is-busy::before { animation:none; } }
 
+  /* First-LEAP issuance: a separate Ledger Trail using the established guide appearance. */
+  .issuance-window { width:min(500px,100%); }
+  .issuance-steps { padding:0; margin:16px 0; list-style:none; }
+  .issuance-step { display:flex; gap:11px; padding:9px 0; border-bottom:1px solid var(--line); align-items:flex-start; }
+  .issuance-step .issuance-dot { display:grid; place-items:center; flex:0 0 29px; height:29px; border:1px solid rgba(121,213,194,.35); border-radius:10px; font-size:.78rem; font-weight:800; }
+  .issuance-step.is-working .issuance-dot { border-color:var(--mango); color:#ffe6af; animation:guidePulse 1.4s infinite; }
+  .issuance-step.is-done .issuance-dot { border-color:#a2f4b1; color:#bdf2c8; }
+  .issuance-step.is-failed .issuance-dot { border-color:var(--coral); color:#ffb7aa; }
+  .issuance-step strong { display:block; font-size:.86rem; }
+  .issuance-step small { display:block; color:var(--muted); font-size:.73rem; line-height:1.45; margin-top:3px; overflow-wrap:anywhere; }
+  .issuance-evidence { border:1px solid var(--line); border-radius:12px; margin:12px 0; }
+  .issuance-evidence > summary { color:var(--sea-glass); font-size:.78rem; font-weight:850; padding:11px; cursor:pointer; }
+  .issuance-evidence pre { padding:0 12px 12px; margin:0; font:normal .72rem/1.5 ui-monospace,SFMono-Regular,monospace; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--muted); }
+  .issuance-wallet-qr { width:min(245px,100%); display:block; margin:10px auto; background:white; padding:8px; border-radius:10px; }
+  .issuance-actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:14px; }
+  .issuance-actions .step-action { min-width:0; flex:1 1 160px; }
+  .issuance-actions [hidden], .issuance-wallet-qr[hidden] { display:none!important; }
+  .issuance-compact { font-size:.75rem; color:var(--muted); line-height:1.5; overflow-wrap:anywhere; }
+  .issuance-error { color:#ffb7aa; }
   @media(max-width:420px) {
     .trail-step > summary { grid-template-columns:29px minmax(0,1fr) auto 12px; gap:7px; padding:12px 9px; }
     .trail-index { width:28px; height:28px; }
@@ -513,6 +532,35 @@
     </div>
   </div>
 
+  <!-- In-place issuance: independent of the read-only report Trail; no new page. -->
+  <div class="guide-overlay" id="issuanceOverlay" role="dialog" aria-modal="true" aria-labelledby="issuanceTitle" hidden>
+    <div class="guide-window issuance-window">
+      <div class="guide-topline"><button type="button" class="guide-close" id="issuanceClose" aria-label="Return to Checkbook">×</button><span class="guide-kicker">Wild Ledger · Operator</span></div>
+      <h2 id="issuanceTitle">Issue First LEAP</h2>
+      <p class="guide-lede">An onboarding Check for the verified requester. Issuing a Check does not deliver LEAP; the recipient must cash it.</p>
+      <div class="issuance-compact" id="issuanceRecipient"></div>
+      <ol class="issuance-steps" id="issuanceSteps" aria-label="Issuance Ledger Trail checkpoints">
+        <li class="issuance-step" data-stage="0"><span class="issuance-dot">1</span><div><strong>Verify request and authority</strong><small>Recheck XRPL history before issuing.</small></div></li>
+        <li class="issuance-step" data-stage="1"><span class="issuance-dot">2</span><div><strong>Prepare 1-LEAP Check</strong><small>Canonical asset; no memo or Expiration.</small></div></li>
+        <li class="issuance-step" data-stage="2"><span class="issuance-dot">3</span><div><strong>Connect Bifrost</strong><small>Use the current Operating Wallet.</small></div></li>
+        <li class="issuance-step" data-stage="3"><span class="issuance-dot">4</span><div><strong>Sign Check</strong><small>Review and approve the prepared transaction.</small></div></li>
+        <li class="issuance-step" data-stage="4"><span class="issuance-dot">5</span><div><strong>Submit and validate</strong><small>Confirm final XRPL consensus.</small></div></li>
+        <li class="issuance-step" data-stage="5"><span class="issuance-dot">6</span><div><strong>Verify issuance</strong><small>Independently inspect the created Check ID.</small></div></li>
+        <li class="issuance-step" data-stage="6"><span class="issuance-dot">7</span><div><strong>Return to Checkbook</strong><small>Refresh the Requested → Issued → Cashed lifecycle.</small></div></li>
+      </ol>
+      <p class="guide-status" id="issuanceStatus" role="status" aria-live="polite">Ready.</p>
+      <img class="issuance-wallet-qr" id="issuanceQr" alt="Bifrost wallet connection QR code" hidden>
+      <div class="issuance-compact" id="issuanceUri" hidden></div>
+      <details class="issuance-evidence"><summary>Transaction and XRPL evidence</summary><pre id="issuanceEvidence">Waiting for verification.</pre></details>
+      <p class="issuance-compact issuance-error" id="issuanceError" role="alert" hidden></p>
+      <div class="issuance-actions">
+        <button type="button" class="step-action is-next" id="issuanceAction" disabled>Checking XRPL…</button>
+        <button type="button" class="step-action" id="issuanceReturn" hidden>Return to Checkbook</button>
+      </div>
+      <p class="guide-learn">Bifrost signs; Wild Ledger submits and independently verifies. An outstanding Check consumes XRP reserve until cashed or canceled.</p>
+    </div>
+  </div>
+
   <main class="shell">
     <section class="console" aria-labelledby="pageTitle">
       <nav class="nav" aria-label="Operator navigation">
@@ -579,7 +627,7 @@
 <a class="action" href="getWild.html" id="reportGateLink">Sign in through Get Wild</a>
 </section>
       <div hidden="" id="authorizedContent">
-<p class="lede">Requests to join your community, discovered from XRPL. This page only reads ledger history; no XRP is spent.</p>
+<p class="lede">Requests to join your community, discovered from XRPL. The report is read-only; issuing a Check launches a separate signed Ledger Trail.</p>
 <section aria-label="Verified community" class="panel">
 <div class="row">
 <div>
@@ -1207,8 +1255,8 @@ async function performStep(number) {
     const current = assertSessionUnchanged();
     const requests = runContext.requests;
     if (!Array.isArray(requests)) throw new Error("The search has not finished. Return to the previous step.");
-    // This page owns both the Ledger Trail and the report. Store the proven
-    // result rows for the subsequent Check Issuance Harness (no second XRPL scan).
+    // This page owns the read-only Trail, report, and issuance handoff.
+    // Store proven results for the existing report; issuance performs a fresh check.
     const handoff = {
       version: 2,
       source: "membershipRequestsBootstrap",
@@ -1235,7 +1283,7 @@ async function performStep(number) {
     try {
       sessionStorage.setItem("wildLedger.membershipRequestsHandoff", JSON.stringify(handoff));
     } catch (_) {
-      throw new Error("The verified results could not be saved for Check Issuance in this browser tab. No ledger transaction was sent. Please free some browser storage and try this step again.");
+      throw new Error("The verified Onboarding Checkbook results could not be saved in this browser tab. No ledger transaction was sent. Please free some browser storage and try this step again.");
     }
     $("backLink").hidden = false;
     document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
@@ -1377,16 +1425,34 @@ $("guideAgain").addEventListener("click", openGuide);
 $("guideRetry").addEventListener("click", runNext);
 $("retryButton").addEventListener("click", runNext);
 for (let n = 1; n <= 4; n++) $(`stepAction${n}`).addEventListener("click", () => { if (nextStep() === n && !guideMode) void runNext(); });
+// Issue First LEAP shares this page's authoritative request, authority, and
+// historical-price scanner. Re-running Steps 2–4 is a NEW ledger read, not
+// a reuse of the old report's browser snapshot.
+window.addEventListener("wildLedgerIssuanceAudit", event => {
+  const { resolve, reject } = event.detail || {};
+  void (async () => {
+    if (!completed || busy || !reportIsReady()) throw new Error("Finish the membership-request Ledger Trail first.");
+    assertSessionUnchanged();
+    await performStep(2);
+    await performStep(3);
+    await performStep(4);
+    const session = assertSessionUnchanged();
+    return { session, rows:runContext.requests };
+  })().then(resolve, reject);
+});
 resetTrail();
 refreshControls();
 void runNext();
 </script>
 <script type="module">
-import { isClassicAddress } from "./js/xrplTransport.js";
+import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
+import { decode } from "https://esm.sh/ripple-binary-codec@2.11.0?bundle";
+import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
+import { isClassicAddress, DirectXRPLClient, prepareTransaction, submitSignedTransaction } from "./js/xrplTransport.js";
+import { resolveWalletAccess } from "./js/communityAccess.js";
 
 const $ = id => document.getElementById(id);
 const HANDOFF_KEY = "wildLedger.membershipRequestsHandoff";
-const CHECK_ISSUANCE_HANDOFF_KEY = "wildLedger.checkIssuanceHandoff";
 const MAX_HANDOFF_AGE_MS = 60 * 60 * 1000;
 const params = new URLSearchParams(window.location.search);
 
@@ -1472,35 +1538,360 @@ function createCell(label, valueNode) {
   return td;
 }
 
-function beginCheckIssuance(request) {
-  // Use only the requester already proven by the Membership Requests
-  // Ledger Trail. The integrated Check Create Harness reads this verified handoff.
-  const session = readOperatorSession();
-  const report = session && checkedHandoff(session);
-  const matching = report?.requests.find(row =>
-    row.applicant === request.applicant && row.hash === request.hash &&
-    row.recognition.status === "awaiting" && row.onboardingCheck?.status === "unissued");
-  if (!matching) {
-    window.alert("This applicant's verified report is no longer current. Run the Membership Requests Ledger Trail again.");
-    return;
-  }
-  const selection = {
-    version: 1,
-    source: "membershipRequests",
-    communityId: session.communityId,
-    operatorWallet: session.wallet,
-    applicant: matching.applicant,
-    requestHash: matching.hash,
-    selectedAt: Date.now()
-  };
-  try {
-    sessionStorage.setItem(CHECK_ISSUANCE_HANDOFF_KEY, JSON.stringify(selection));
-  } catch (_) {
-    window.alert("Wild Ledger could not carry this applicant to Check Issuance. Please try again.");
-    return;
-  }
-  window.location.assign(`checkIssuance.html?community=${encodeURIComponent(session.communityId)}&role=operator&issuance=1`);
+// Issuance Trail: no second page and no duplicate membership-request scanner.
+// Once signed, retain only the exact signed transaction for safe retry; never
+// generate a second signature to recover an uncertain submission.
+const ISSUANCE_PENDING_KEY = "wildLedger.firstLeapSignedCheck";
+const issueStage = Array(7).fill("pending");
+const issue = { busy:false, selected:null, signer:null, prepared:null, signedBlob:"", pendingHash:"", verified:null, confirmed:false };
+const runtime = window.WILD_LEDGER_CONFIG || {};
+const issueServer = String(runtime.xrplWebSocket || "").trim();
+const issueProjectId = String(runtime.walletConnectProjectId || "").trim();
+const issueIssuer = String(runtime.leapIssuer || "").trim();
+const issueCurrency = String(runtime.leapCurrency || "").trim();
+const HASH = /^[A-F0-9]{64}$/;
+// XRPL transaction IDs are SHA-512Half of TXN\0 + the signed serialized bytes.
+// Knowing the hash BEFORE submission permits recovery even if submit times out.
+async function signedCheckHash(blob) {
+  const bytes=Uint8Array.from(blob.match(/../g), h => Number.parseInt(h,16));
+  const payload=new Uint8Array(bytes.length+4);
+  payload.set([0x54,0x58,0x4E,0x00]);
+  payload.set(bytes,4);
+  const digest=new Uint8Array(await crypto.subtle.digest("SHA-512",payload));
+  return Array.from(digest.slice(0,32),b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
 }
+
+function issueUpdate(stage, state, message) {
+  issueStage[stage] = state;
+  const item = document.querySelector(`#issuanceSteps [data-stage="${stage}"]`);
+  item.className = `issuance-step is-${state}`;
+  item.querySelector(".issuance-dot").textContent = state === "done" ? "✓" : state === "failed" ? "×" : String(stage + 1);
+  item.querySelector("small").textContent = message;
+  $("issuanceStatus").textContent = message;
+}
+function issueEvidence(message) { $("issuanceEvidence").textContent = message; }
+function issueAction(label, handler) {
+  const button = $("issuanceAction");
+  button.textContent = label;
+  button.disabled = !handler;
+  button.className = "step-action" + (handler ? " is-next" : " is-busy");
+  button.onclick = handler ? () => void issueGuarded(handler) : null;
+}
+function issueFail(stage,error) {
+  const message = String(error?.message || error || "Unknown failure");
+  issueUpdate(stage,"failed",`Needs attention: ${message}`);
+  $("issuanceError").textContent = message;
+  $("issuanceError").hidden = false;
+  $("issuanceClose").disabled = !!issue.signedBlob;
+  // Only a signed transaction may be retried after submission ambiguity.
+  if (issue.signedBlob) issueAction("Reconcile this signed Check", reconcileSignedCheck);
+  else issueAction("Try this step again", stage <= 1 ? startIssuePreflight : stage === 2 ? connectIssueWallet : signIssueCheck);
+}
+async function issueGuarded(fn) {
+  if (issue.busy) return;
+  issue.busy = true;
+  $("issuanceError").hidden = true;
+  issueAction("Working…",null);
+  try { await fn(); }
+  catch(error) { issueFail(issueStage.findIndex(s => s === "working") >= 0 ? issueStage.findIndex(s => s === "working") : 4,error); }
+  finally { issue.busy = false; }
+}
+function assertIssueSession() {
+  const session = readOperatorSession();
+  if (!session || session.communityId !== issue.selected?.communityId || session.wallet !== issue.selected?.operatorWallet)
+    throw new Error("The Operator session changed. Return through Get Wild.");
+  return session;
+}
+function auditCurrentCheckbook() {
+  return new Promise((resolve,reject) => {
+    window.dispatchEvent(new CustomEvent("wildLedgerIssuanceAudit", {detail:{resolve,reject}}));
+  });
+}
+function qualifiedFirstRequest(rows) {
+  const row = rows.find(r => r.applicant === issue.selected.applicant && r.hash === issue.selected.requestHash);
+  if (!row || row.recognition?.status !== "awaiting" || row.onboardingCheck?.status !== "unissued")
+    throw new Error("XRPL no longer shows this wallet as awaiting its first Check. No Check will be created. Return to the refreshed Checkbook.");
+  return row;
+}
+async function liveIssuePreflight() {
+  assertIssueSession();
+  const access = await resolveWalletAccess({account:issue.selected.operatorWallet,serverUrl:issueServer,force:true});
+  if (!(access?.operatorMatches || []).some(m => m.authorityEstablished === true &&
+      String(m.communityId || "").toUpperCase() === issue.selected.communityId &&
+      m.currentAccount === issue.selected.operatorWallet)) throw new Error("XRPL does not confirm current Operating Wallet authority.");
+  const fresh = await auditCurrentCheckbook();
+  assertIssueSession();
+  qualifiedFirstRequest(fresh.rows);
+  return fresh;
+}
+function assertCheck(tx, withSigningFields = false) {
+  if (tx?.TransactionType !== "CheckCreate" || tx.Account !== issue.selected.operatorWallet ||
+      tx.Destination !== issue.selected.applicant ||
+      String(tx.SendMax?.issuer || "") !== issueIssuer ||
+      String(tx.SendMax?.currency || "").toUpperCase() !== issueCurrency.toUpperCase() ||
+      String(tx.SendMax?.value) !== "1" ||
+      tx.Expiration !== undefined || tx.Memos !== undefined || tx.InvoiceID !== undefined ||
+      tx.DestinationTag !== undefined || tx.Paths !== undefined)
+    throw new Error("The transaction does not match the approved memo-free, no-expiration, 1-LEAP onboarding Check.");
+  if (withSigningFields) {
+    if (!issue.prepared) throw new Error("The original prepared Check was lost before signing.");
+    // A signing wallet may add signature fields, but may not rewrite any
+    // transaction field. Compare nested issued-token objects by value.
+    const canonical = value => value && typeof value === "object" ?
+      (Array.isArray(value) ? value.map(canonical) : Object.fromEntries(
+        Object.keys(value).sort().map(key => [key,canonical(value[key])]))) : value;
+    const signFields = new Set(["SigningPubKey","TxnSignature","Signers"]);
+    for (const [key,value] of Object.entries(issue.prepared)) {
+      if (signFields.has(key)) continue;
+      if (JSON.stringify(canonical(tx[key])) !== JSON.stringify(canonical(value)))
+        throw new Error(`Bifrost changed the prepared Check field ${key}. No submission is allowed.`);
+    }
+    for (const key of Object.keys(tx)) {
+      if (!signFields.has(key) && !(key in issue.prepared) &&
+          !(key === "Flags" && Number(tx.Flags) === 0))
+        throw new Error(`Bifrost added an unexpected Check field ${key}. No submission is allowed.`);
+    }
+  }
+}
+function readSavedSignedCheck() {
+  try {
+    const record = JSON.parse(sessionStorage.getItem(ISSUANCE_PENDING_KEY) || "null");
+    if (!record || record.version !== 1 || record.communityId !== issue.selected.communityId ||
+        record.operatorWallet !== issue.selected.operatorWallet || record.applicant !== issue.selected.applicant ||
+        record.requestHash !== issue.selected.requestHash ||
+        !/^[0-9A-Fa-f]{80,}$/.test(record.signedBlob || "")) return null;
+    return record;
+  } catch (_) { return null; }
+}
+function persistSignedCheck() {
+  sessionStorage.setItem(ISSUANCE_PENDING_KEY,JSON.stringify({version:1, ...issue.selected,
+    signedBlob:issue.signedBlob,txHash:issue.pendingHash}));
+}
+function clearSavedSignedCheck() {
+  sessionStorage.removeItem(ISSUANCE_PENDING_KEY);
+  issue.signedBlob="";
+}
+async function startIssuePreflight() {
+  issueUpdate(0,"working","Reading fresh membership and community authority evidence…");
+  await liveIssuePreflight();
+  issueUpdate(0,"done","Verified request remains eligible; Operator authority is current.");
+  issueUpdate(1,"working","Simulating canonical 1-LEAP CheckCreate on XRPL…");
+  if (!issueProjectId || !isClassicAddress(issueIssuer) || !issueCurrency || !issueServer)
+    throw new Error("Required WalletConnect, XRPL, or canonical LEAP configuration is unavailable.");
+  const result = await prepareTransaction({serverUrl:issueServer,txJson:{
+    TransactionType:"CheckCreate", Account:issue.selected.operatorWallet,
+    Destination:issue.selected.applicant,
+    SendMax:{currency:issueCurrency,issuer:issueIssuer,value:"1"}
+  }});
+  issue.prepared = result.preparedTx;
+  assertCheck(issue.prepared);
+  issueEvidence(`Community: ${issue.selected.communityId}\nRequest: ${issue.selected.requestHash}\nFrom: ${issue.selected.operatorWallet}\nTo: ${issue.selected.applicant}\nCanonical LEAP issuer: ${issueIssuer}\nCurrency: ${issueCurrency}\nSendMax: 1 LEAP\nMemo: none\nExpiration: none\nFee: ${issue.prepared.Fee} drops\nSimulated result: ${result.engineResult}\nPrepared transaction:\n${JSON.stringify(issue.prepared,null,2)}`);
+  issueUpdate(1,"done",`Prepared and checked · fee ${issue.prepared.Fee} drops. Issuing an outstanding Check uses XRP reserve.`);
+  issueAction("Connect Bifrost",connectIssueWallet);
+}
+async function connectIssueWallet() {
+  issueUpdate(2,"working","Create a new WalletConnect pairing in Bifrost. Scan the QR code and approve the connection.");
+  assertIssueSession();
+  if (issue.signer) { try { await issue.signer.disconnect(); } catch (_) {} }
+  issue.signer = new WalletConnectXrplSigner({projectId:issueProjectId,
+    metadata:{name:"Wild Ledger Onboarding Checkbook",description:"Sign one 1-LEAP onboarding Check",url:location.origin,icons:[`${location.origin}/favicon.ico`]}});
+  const connection = await issue.signer.connect({onUri:async uri => {
+    $("issuanceQr").src=await QRCode.toDataURL(uri,{width:520,margin:2,errorCorrectionLevel:"M"});
+    $("issuanceQr").hidden=false;
+    $("issuanceUri").textContent=uri;
+    $("issuanceUri").hidden=false;
+  }});
+  if (connection.account !== issue.selected.operatorWallet) throw new Error("The Bifrost account does not match the current Community Operating Wallet.");
+  await liveIssuePreflight();
+  $("issuanceQr").hidden=true;
+  $("issuanceUri").hidden=true;
+  issueUpdate(2,"done",`Connected and checked ${connection.account}.`);
+  issueAction("Sign the prepared Check",signIssueCheck);
+}
+async function signIssueCheck() {
+  issueUpdate(3,"working","Review the exact prepared Check in Bifrost and approve its signature. No transaction has been submitted yet.");
+  assertIssueSession();
+  await liveIssuePreflight();
+  if (issue.signer?.account !== issue.selected.operatorWallet) throw new Error("The signing wallet is no longer the authorized Operator.");
+  assertCheck(issue.prepared);
+  const signed = await issue.signer.signTransaction(issue.prepared);
+  const blob = String(signed?.signedBlob || "").toUpperCase();
+  if (!/^[A-F0-9]{80,}$/.test(blob)) throw new Error("Bifrost did not return a valid signed transaction blob.");
+  assertCheck(decode(blob),true);
+  issue.signedBlob=blob;
+  issue.pendingHash=await signedCheckHash(blob);
+  persistSignedCheck(); // Must succeed before offering submit or another signature.
+  $("issuanceClose").disabled=true;
+  issueUpdate(3,"done","Bifrost returned the exact signed Check; no XRPL submission has occurred yet.");
+  issueAction("Submit signed Check to XRPL",submitIssueCheck);
+}
+async function findValidatedIssue(hash) {
+  if (!HASH.test(hash)) return null;
+  const client=new DirectXRPLClient(issueServer);
+  try {
+    await client.connect();
+    const reply=await client.request("tx",{transaction:hash,binary:false},20000);
+    return reply.result?.validated === true ? reply.result : null;
+  } catch(error) {
+    if (/not found|txnNotFound/i.test(String(error?.message || ""))) return null;
+    throw error;
+  } finally { client.close(); }
+}
+async function checkIssueReadback(tx,hash) {
+  if (tx?.validated !== true || (tx.meta || tx.metaData)?.TransactionResult !== "tesSUCCESS")
+    throw new Error("No successful validated CheckCreate was found. Issuance is not confirmed.");
+  const actual=tx.tx_json || tx.tx || tx.transaction || tx;
+  assertCheck(actual);
+  const meta=tx.meta || tx.metaData || {};
+  const created=(meta.AffectedNodes || []).find(node => node?.CreatedNode?.LedgerEntryType === "Check" && HASH.test(String(node.CreatedNode.LedgerIndex || "").toUpperCase()));
+  const id=String(created?.CreatedNode?.LedgerIndex || "").toUpperCase();
+  if (!HASH.test(id)) throw new Error("The validated transaction did not provide a created Check ID.");
+  // The actual current Check ledger object, not a browser flag, proves it is open.
+  const client=new DirectXRPLClient(issueServer);
+  let open=false;
+  try {
+    await client.connect();
+    try {
+      const ledger=await client.request("ledger_entry",{check:id,ledger_index:"validated"},20000);
+      const obj=ledger?.result?.node || {};
+      if (obj.LedgerEntryType !== "Check" || obj.Account !== issue.selected.operatorWallet ||
+        obj.Destination !== issue.selected.applicant || obj.Expiration !== undefined ||
+        obj.SendMax?.issuer !== issueIssuer || String(obj.SendMax?.currency || "").toUpperCase() !== issueCurrency.toUpperCase() ||
+        String(obj.SendMax?.value) !== "1") throw new Error("The live Check object did not match the validated onboarding transaction.");
+      open=true;
+    } catch(error) {
+      // A member may cash the Check immediately. Its disappearance is not
+      // proof of cashing; the following historical reconciliation must be.
+      if (!/entryNotFound|not found/i.test(String(error?.message||""))) throw error;
+    }
+  } finally { client.close(); }
+  issue.verified={hash,id,ledger:tx.ledger_index,open};
+  issueEvidence(`VALIDATED ON XRPL\nTransaction: ${hash}\nLedger: ${tx.ledger_index}\nResult: tesSUCCESS\nCheck ID: ${id}\nAccount: ${issue.selected.operatorWallet}\nDestination: ${issue.selected.applicant}\nSendMax: 1 canonical LEAP\nMemo: none\nExpiration: none\nCurrent Check ledger object: ${open ? "verified open" : "not found; requires cashed-history proof"}`);
+}
+async function finishIssuedCheck() {
+  issueUpdate(6,"working","Reconstructing this applicant's row from current XRPL evidence…");
+  const fresh=await auditCurrentCheckbook();
+  const row=fresh.rows.find(r => r.applicant===issue.selected.applicant && r.hash===issue.selected.requestHash);
+  if (!row || !["issued","cashed"].includes(row.onboardingCheck?.status) || row.onboardingCheck.id!==issue.verified.id ||
+      (!issue.verified.open && row.onboardingCheck.status!=="cashed"))
+    throw new Error("The Check is validated, but the refreshed Checkbook has not confirmed the Check's present status. Retry readback; do not issue again.");
+  window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified"));
+  issueUpdate(6,"done",row.onboardingCheck.status==="cashed" ?
+    "Checkbook refreshed: recipient has already cashed the Check." :
+    "Checkbook refreshed: Check Issued, awaiting cashing.");
+  issue.confirmed=true;
+  clearSavedSignedCheck();
+  $("issuanceClose").disabled=false;
+  issueAction("✓ Check Issued",null);
+  $("issuanceReturn").hidden=false;
+  $("issuanceStatus").textContent="✓ Check Issued · Validated, independently verified, and reflected in the Checkbook.";
+}
+async function verifyIssuedCheck() {
+  issueUpdate(5,"working","Reading the validated transaction and the live Check ledger object…");
+  const tx=await findValidatedIssue(issue.pendingHash);
+  if (!tx) throw new Error("The signed transaction is not yet confirmed on the validated ledger. Reconcile the same signed Check.");
+  await checkIssueReadback(tx,issue.pendingHash);
+  issueUpdate(5,"done",`Validated Check ID: ${issue.verified.id}.`);
+  await finishIssuedCheck();
+}
+async function submitIssueCheck() {
+  issueUpdate(4,"working","Checking current authority and request eligibility before submitting the signed Check…");
+  await liveIssuePreflight();
+  if (!issue.signedBlob) throw new Error("No signed Check is available to submit.");
+  const signedTx=decode(issue.signedBlob);
+  assertCheck(signedTx,!!issue.prepared);
+  if (!(signedTx.TxnSignature || (Array.isArray(signedTx.Signers) && signedTx.Signers.length)))
+    throw new Error("The stored transaction has no XRPL signature.");
+  if (await signedCheckHash(issue.signedBlob)!==issue.pendingHash)
+    throw new Error("Signed transaction bytes no longer match the saved XRPL hash.");
+  issueUpdate(4,"working","Submitting the exact signed Check to XRPL; waiting for validated consensus…");
+  const result=await submitSignedTransaction({serverUrl:issueServer,signedBlob:issue.signedBlob,onSubmitted:({txHash}) => {
+    const returnedHash=String(txHash || "").toUpperCase();
+    if (returnedHash && returnedHash !== issue.pendingHash) throw new Error("XRPL returned a different transaction hash for the signed Check.");
+    persistSignedCheck();
+    issueEvidence(`XRPL accepted signed Check.\nTransaction hash: ${issue.pendingHash}\nAwaiting validated consensus. Do not sign another Check.`);
+  }});
+  if (String(result.txHash || "").toUpperCase()!==issue.pendingHash) throw new Error("Validated hash did not match the original signed Check.");
+  persistSignedCheck();
+  if (result.finalResult!=="tesSUCCESS") throw new Error(`Validated XRPL result was ${result.finalResult}; Check issuance was not successful.`);
+  issueUpdate(4,"done",`CheckCreate validated in ledger ${result.ledgerIndex}.`);
+  await verifyIssuedCheck();
+}
+async function reconcileSignedCheck() {
+  issueUpdate(4,"working","Checking the original signed transaction before any retry…");
+  // If we have the hash, look it up first; never ask for another signature.
+  if (issue.pendingHash) {
+    const tx=await findValidatedIssue(issue.pendingHash);
+    if (tx) {
+      if ((tx.meta||tx.metaData)?.TransactionResult!=="tesSUCCESS")
+        throw new Error("The signed Check validated unsuccessfully. No issuance is claimed; retain its evidence for review.");
+      issueUpdate(4,"done","Original signed Check was already validated.");
+      await verifyIssuedCheck();
+      return;
+    }
+  }
+  // Resubmitting IDENTICAL signed bytes cannot create a second Check.
+  await submitIssueCheck();
+}
+function beginCheckIssuance(request, recoveryOnly=false) {
+  const session=readOperatorSession();
+  const report=session && checkedHandoff(session);
+  const matching=report?.requests.find(row => row.applicant===request.applicant && row.hash===request.hash);
+  const eligible=matching?.recognition?.status === "awaiting" && matching?.onboardingCheck?.status === "unissued";
+  const unresolved=(()=>{try{return JSON.parse(sessionStorage.getItem(ISSUANCE_PENDING_KEY)||"null");}catch(_){return null;}})();
+  if (unresolved && unresolved.communityId===session?.communityId && unresolved.operatorWallet===session?.wallet &&
+      (!matching || unresolved.applicant!==matching.applicant || unresolved.requestHash!==matching.hash)) {
+    window.alert("A different signed onboarding Check remains unresolved in this tab. Reconcile that Check before initiating another issuance.");
+    return;
+  }
+  if ((!eligible && !(recoveryOnly && unresolved && matching)) || issue.busy || !$("issuanceOverlay").hidden) {
+    if (!eligible && !recoveryOnly) window.alert("This request is no longer eligible for first issuance. Return to the verified Checkbook.");
+    return;
+  }
+  issue.selected={communityId:session.communityId,operatorWallet:session.wallet,
+    applicant:matching.applicant,requestHash:matching.hash};
+  issue.prepared=null;issue.signer=null;issue.verified=null;issue.confirmed=false;issue.signedBlob="";issue.pendingHash="";
+  issueStage.fill("pending");
+  for(let n=0;n<7;n++) {
+    const el=document.querySelector(`#issuanceSteps [data-stage="${n}"]`);
+    el.className="issuance-step";el.querySelector(".issuance-dot").textContent=String(n+1);
+  }
+  $("issuanceOverlay").hidden=false;
+  $("issuanceClose").disabled=false;
+  $("issuanceReturn").hidden=true;
+  $("issuanceQr").hidden=true;
+  $("issuanceUri").hidden=true;
+  $("issuanceError").hidden=true;
+  $("issuanceRecipient").textContent=`Community ${session.communityId} · Recipient ${matching.applicant} · 1 canonical LEAP`;
+  issueEvidence(`Verified membership request: ${matching.hash}\nSource: validated XRPL Payment\nIssuing wallet: ${session.wallet}`);
+  const saved=readSavedSignedCheck();
+  if (saved) {
+    issue.signedBlob=saved.signedBlob;
+    issue.pendingHash=String(saved.txHash || "").toUpperCase();
+    $("issuanceClose").disabled=true;
+    [0,1,2,3].forEach(n=>issueUpdate(n,"done",["Previous request rechecked on report","Previous transaction prepared","Previously connected","Signed Check recovered from this tab"][n]));
+    issueAction("Reconcile this signed Check",reconcileSignedCheck);
+    $("issuanceStatus").textContent="A signed Check already exists in this tab. Reconcile it; do not sign another.";
+  } else {
+    issueAction("Checking XRPL…",null);
+    void issueGuarded(startIssuePreflight);
+  }
+}
+$("issuanceClose").addEventListener("click",()=>{if (!issue.busy && !issue.signedBlob) $("issuanceOverlay").hidden=true;});
+$("issuanceReturn").addEventListener("click",()=>{if(issue.confirmed) $("issuanceOverlay").hidden=true;});
+// On mobile Safari, a return from Bifrost may reload the page. Once the
+// ordinary read-only report is verified, reopen an unresolved signed Check's
+// Trail even when its row now says Issued. Never request another signature.
+window.addEventListener("wildLedgerMembershipRequestsVerified", () => {
+  if (!$("issuanceOverlay").hidden) return;
+  const session=readOperatorSession();
+  const report=session && checkedHandoff(session);
+  let saved=null;
+  try { saved=JSON.parse(sessionStorage.getItem(ISSUANCE_PENDING_KEY)||"null"); } catch (_) {}
+  if (!saved || !session || saved.communityId!==session.communityId || saved.operatorWallet!==session.wallet) return;
+  const row=report?.requests?.find(r=>r.applicant===saved.applicant && r.hash===saved.requestHash);
+  if (row) beginCheckIssuance(row,true);
+});
 
 function makeRequestRow(request) {
   const tr = document.createElement("tr");
