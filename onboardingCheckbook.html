@@ -419,8 +419,13 @@
   .issuance-evidence { margin:12px 0; border:1px solid var(--line); border-radius:12px; }
   .issuance-evidence > summary { padding:11px; color:var(--sea-glass); font-size:.78rem; font-weight:850; cursor:pointer; }
   .issuance-evidence pre { margin:0; padding:0 12px 12px; color:var(--muted); font:normal .72rem/1.5 ui-monospace,SFMono-Regular,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
-  .issuance-actions { margin-top:12px; }
-  .issuance-actions .step-action { display:block; width:100%; min-height:44px; }
+  /* Only the established close X belongs to the normal Trail. If and only
+     if a wallet pairing expires, a quiet QR-refresh affordance is allowed. */
+  .issuance-refresh-qr { display:block; margin:12px auto 0; padding:6px 10px; border:0; border-radius:7px;
+    color:var(--sea-glass); background:transparent; font-family:inherit; font-size:.73rem; font-weight:700; line-height:1.5;
+    text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+  .issuance-refresh-qr:focus-visible { outline:2px solid var(--sea-glass); outline-offset:3px; }
+  .issuance-refresh-qr[hidden] { display:none!important; }
   .issuance-error { color:#ffb7aa; }
   .issuance-complete { display:grid; grid-template-columns:36px minmax(0,1fr); gap:10px; align-items:center; margin-top:12px; color:#bdf2c8; font-size:.80rem; font-weight:850; }
   .issuance-complete-mark { display:grid; place-items:center; width:34px; height:34px; border:1px solid rgba(159,224,176,.48); border-radius:50%; background:rgba(159,224,176,.12); }
@@ -558,6 +563,7 @@
         <strong id="issuanceHandoffTitle">GO TO BIFROST NOW</strong>
         <p id="issuanceHandoffCopy"></p>
         <img class="issuance-wallet-qr" id="issuanceQr" alt="Bifrost wallet connection QR code" hidden>
+        <button type="button" class="issuance-refresh-qr" id="issuanceRefreshQr" hidden>Refresh QR code</button>
         <div id="issuanceUri" hidden></div>
       </div>
       <ol class="issuance-steps" id="issuanceSteps" aria-label="Issuance Ledger Trail checkpoints">
@@ -573,9 +579,6 @@
       <div class="issuance-complete" id="issuanceComplete" role="status" aria-live="polite" hidden><span class="issuance-complete-mark">✓</span><span>Check Issued · Ledger Trail complete.</span></div>
       <details class="issuance-evidence"><summary>Transaction and XRPL evidence</summary><pre id="issuanceEvidence">Waiting for verification.</pre></details>
       <p class="issuance-compact issuance-error" id="issuanceError" role="alert" hidden></p>
-      <div class="issuance-actions">
-        <button type="button" class="step-action is-next" id="issuanceAction" hidden disabled>Try again</button>
-      </div>
       <p class="guide-learn">Bifrost signs; Wild Ledger submits and independently verifies. An outstanding Check consumes XRP reserve until cashed or canceled.</p>
     </div>
   </div>
@@ -1562,7 +1565,8 @@ function createCell(label, valueNode) {
 // generate a second signature to recover an uncertain submission.
 const ISSUANCE_PENDING_KEY = "wildLedger.firstLeapSignedCheck";
 const issueStage = Array(7).fill("pending");
-const issue = { busy:false, signing:false, cancelled:false, selected:null, signer:null, prepared:null, signedBlob:"", pendingHash:"", verified:null, confirmed:false };
+const issue = { busy:false, signing:false, cancelled:false, selected:null, signer:null, prepared:null,
+  signedBlob:"", pendingHash:"", verified:null, confirmed:false, qrRetries:0, recoveryAttempts:0, retryTimer:null, pairingPending:false };
 const runtime = window.WILD_LEDGER_CONFIG || {};
 const issueServer = String(runtime.xrplWebSocket || "").trim();
 const issueProjectId = String(runtime.walletConnectProjectId || "").trim();
@@ -1596,47 +1600,91 @@ function issueHandoff(copy, qrReady=false) {
   $("issuanceHandoffCopy").textContent=copy;
   $("issuanceHandoff").hidden=false;
   $("issuanceQr").hidden=!qrReady;
+  $("issuanceRefreshQr").hidden=true;
   $("issuanceUri").hidden=true; // URI stays diagnostic-only, never shown to the user.
 }
 function hideIssueHandoff() {
   $("issuanceHandoff").hidden=true;
   $("issuanceQr").hidden=true;
   $("issuanceQr").removeAttribute("src");
+  $("issuanceRefreshQr").hidden=true;
   $("issuanceUri").hidden=true;
   $("issuanceUri").textContent="";
 }
-function issueAction(label, handler) {
-  const button = $("issuanceAction");
-  button.textContent = label;
-  button.hidden = !handler;
-  button.disabled = !handler;
-  button.className = "step-action" + (handler ? " is-next" : " is-busy");
-  button.onclick = handler ? () => void issueGuarded(handler) : null;
+function cancelIssueRetry() {
+  if (issue.retryTimer !== null) clearTimeout(issue.retryTimer);
+  issue.retryTimer=null;
+}
+function scheduleIssueRetry(fn, delayMs, stage, message) {
+  // Retrying a signed Check always means reconciling the ORIGINAL signed bytes,
+  // never requesting another wallet signature or creating a second Check.
+  issueUpdate(stage,"working",message);
+  $("issuanceError").hidden=true;
+  cancelIssueRetry();
+  issue.retryTimer=setTimeout(() => {
+    issue.retryTimer=null;
+    if (issue.cancelled || issue.confirmed || issue.busy || $("issuanceOverlay").hidden) return;
+    void issueGuarded(fn);
+  },delayMs);
 }
 function issueFail(stage,error) {
   hideIssueHandoff();
   issue.signing=false;
-  const message = String(error?.message || error || "Unknown failure");
+  const message=String(error?.message || error || "Unknown failure");
+  $("issuanceClose").disabled=false;
+
+  // An unconfirmed wallet PAIRING can safely be replaced by a fresh QR.
+  // Never loop automatically on wrong-wallet/authority failures or rejected signing.
+  const unsafePairing=/does not match|not the current|Operator session changed|authority|eligib|request|no longer/i.test(message);
+  const pairingRejected=/reject|declin|denied|cancelled|canceled|user disapprov|unauthoriz/i.test(message);
+  const pairingFailure=stage===2 && issue.pairingPending && !issue.signedBlob && !unsafePairing && !pairingRejected;
+  issue.pairingPending=false;
+  if (pairingFailure) {
+    if (issue.qrRetries < 1) {
+      issue.qrRetries++;
+      scheduleIssueRetry(connectIssueWallet,1100,2,"Bifrost pairing was not confirmed. Generating a fresh QR automatically…");
+    } else {
+      issueUpdate(2,"failed","Bifrost pairing expired or could not be confirmed. A fresh QR can be generated below.");
+      issueHandoff("This wallet pairing did not reach Safari. Refresh the QR only when you're ready to pair again in Bifrost.");
+      $("issuanceHandoffTitle").textContent="BIFROST PAIRING EXPIRED";
+      $("issuanceRefreshQr").hidden=false;
+      $("issuanceError").textContent=message;
+      $("issuanceError").hidden=false;
+    }
+    return;
+  }
+
+  // A signed Check MUST remain the single source of truth. Automatically
+  // reconcile its hash or resubmit precisely the same blob (as before).
+  if (issue.signedBlob && issue.recoveryAttempts < 3 &&
+      !/validated unsuccessfully|validated XRPL result was (?!tesSUCCESS)|Operator session changed/i.test(message)) {
+    const delayMs=1500 * (2 ** issue.recoveryAttempts++);
+    scheduleIssueRetry(reconcileSignedCheck,delayMs,Math.max(4,stage),
+      "Checking the original signed Check again against XRPL; no new signature will be requested…");
+    return;
+  }
+
   issueUpdate(stage,"failed",`Needs attention: ${message}`);
-  $("issuanceError").textContent = message;
-  $("issuanceError").hidden = false;
-  $("issuanceClose").disabled = !!issue.signedBlob;
-  // Only a signed transaction may be retried after submission ambiguity.
-  if (issue.signedBlob) issueAction("Reconcile this signed Check", reconcileSignedCheck);
-  else issueAction("Try this step again", stage <= 1 ? startIssuePreflight : stage === 2 ? connectIssueWallet : signIssueCheck);
+  $("issuanceError").textContent=issue.signedBlob ?
+    `${message} The original signed Check is retained in this tab. No new Check will be signed. Close with X; when the verified Checkbook reloads, it will resume reconciliation.` : message;
+  $("issuanceError").hidden=false;
+  // Deliberate wallet rejection or protocol/authority failure is a STOP,
+  // not an excuse to solicit another signature. The X remains available.
 }
 async function issueGuarded(fn) {
-  if (issue.busy) return;
-  issue.busy = true;
-  $("issuanceError").hidden = true;
-  issueAction("Working…",null);
+  if (issue.busy || issue.cancelled) return;
+  issue.busy=true;
+  $("issuanceError").hidden=true;
   try { await fn(); }
   catch(error) {
-    if (!issue.cancelled) issueFail(issueStage.findIndex(s => s === "working") >= 0 ? issueStage.findIndex(s => s === "working") : 4,error);
+    if (!issue.cancelled) {
+      const activeStage=issueStage.findIndex(s=>s==="working");
+      issueFail(activeStage>=0 ? activeStage : (issue.signedBlob ? 4 : 2),error);
+    }
   }
   finally {
     if (issue.cancelled && issue.signer) { try { await issue.signer.disconnect(); } catch (_) {} }
-    issue.busy = false;
+    issue.busy=false;
   }
 }
 function assertIssueSession() {
@@ -1740,6 +1788,7 @@ async function connectIssueWallet() {
   if (issue.signer) { try { await issue.signer.disconnect(); } catch (_) {} }
   issue.signer = new WalletConnectXrplSigner({projectId:issueProjectId,
     metadata:{name:"Wild Ledger Onboarding Checkbook",description:"Sign one 1-LEAP onboarding Check",url:location.origin,icons:[`${location.origin}/favicon.ico`]}});
+  issue.pairingPending=true;
   const connection = await issue.signer.connect({onUri:async uri => {
     if (issue.cancelled) return;
     $("issuanceQr").src=await QRCode.toDataURL(uri,{width:520,margin:2,errorCorrectionLevel:"M"});
@@ -1747,6 +1796,7 @@ async function connectIssueWallet() {
     issueHandoff("Open Bifrost, approve this wallet connection, then return here. Wild Ledger will verify the connected wallet and continue automatically.",true);
     $("issuanceStatus").textContent="Waiting for Bifrost connection. You can leave Safari and return to this Trail.";
   }});
+  issue.pairingPending=false;
   assertIssueSession(); // A closed, unsigned Trail must never advance to signing.
   if (connection.account !== issue.selected.operatorWallet) throw new Error("The Bifrost account does not match the current Community Operating Wallet.");
   await liveIssuePreflight();
@@ -1771,7 +1821,8 @@ async function signIssueCheck() {
   issue.signedBlob=blob;
   issue.pendingHash=await signedCheckHash(blob);
   persistSignedCheck(); // Must succeed before submission or another signature.
-  $("issuanceClose").disabled=true;
+  issue.signing=false; // Signature has safely returned; X can now close without losing the signed Check.
+  $("issuanceClose").disabled=false;
   issueUpdate(3,"done","Bifrost returned the exact signed Check; no XRPL submission has occurred yet.");
   await submitIssueCheck();
 }
@@ -1831,8 +1882,8 @@ async function finishIssuedCheck() {
     "Checkbook refreshed: Check Issued, awaiting cashing.");
   issue.confirmed=true;
   clearSavedSignedCheck();
+  cancelIssueRetry();
   $("issuanceClose").disabled=false;
-  issueAction("",null);
   $("issuanceStatus").textContent="✓ Check Issued · Validated, independently verified, and reflected in the Checkbook.";
   $("issuanceComplete").hidden=false;
   // Like established provisioning Trails, show validated completion then return
@@ -1905,7 +1956,8 @@ function beginCheckIssuance(request, recoveryOnly=false) {
   issue.selected={communityId:session.communityId,operatorWallet:session.wallet,
     applicant:matching.applicant,requestHash:matching.hash};
   issue.prepared=null;issue.signer=null;issue.verified=null;issue.confirmed=false;issue.signedBlob="";issue.pendingHash="";
-  issue.signing=false;issue.cancelled=false;
+  cancelIssueRetry();
+  issue.signing=false;issue.cancelled=false;issue.qrRetries=0;issue.recoveryAttempts=0;issue.pairingPending=false;
   issueStage.fill("pending");
   for(let n=0;n<7;n++) {
     const el=document.querySelector(`#issuanceSteps [data-stage="${n}"]`);
@@ -1922,18 +1974,26 @@ function beginCheckIssuance(request, recoveryOnly=false) {
   if (saved) {
     issue.signedBlob=saved.signedBlob;
     issue.pendingHash=String(saved.txHash || "").toUpperCase();
-    $("issuanceClose").disabled=true;
+    $("issuanceClose").disabled=false;
     [0,1,2,3].forEach(n=>issueUpdate(n,"done",["Previous request rechecked on report","Previous transaction prepared","Previously connected","Signed Check recovered from this tab"][n]));
-    issueAction("Reconcile this signed Check",reconcileSignedCheck);
-    $("issuanceStatus").textContent="A signed Check already exists in this tab. Reconcile it; do not sign another.";
+    $("issuanceStatus").textContent="Reconciling the previously signed Check with XRPL automatically; no new signature.";
+    void issueGuarded(reconcileSignedCheck);
   } else {
-    issueAction("Checking XRPL…",null);
     void issueGuarded(startIssuePreflight);
   }
 }
+$("issuanceRefreshQr").addEventListener("click",()=>{
+  if (issue.busy || issue.signing || issue.signedBlob || issue.cancelled || $("issuanceOverlay").hidden) return;
+  issue.qrRetries=0;
+  $("issuanceRefreshQr").hidden=true;
+  void issueGuarded(connectIssueWallet);
+});
 $("issuanceClose").addEventListener("click",()=>{
-  if (issue.signing || issue.signedBlob) return; // Signing or signed: never discard the recoverable transaction.
-  issue.cancelled=true;
+  if (issue.signing) return; // Wait for Bifrost's pending signature reply before allowing exit.
+  cancelIssueRetry();
+  if (!issue.signedBlob) issue.cancelled=true;
+  // Once signed, closing the Trail does NOT discard the stored Check/hash.
+  // Reloading this Checkbook will reconcile the same signed transaction.
   hideIssueHandoff();
   $("issuanceOverlay").hidden=true;
 });
