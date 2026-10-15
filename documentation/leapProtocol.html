@@ -387,6 +387,13 @@
 </div>
 </div>
 <div class="rule">
+<div class="tag">Distribution and Earned LEAP</div>
+<div>
+<p>Wild Ledger exists to distribute LEAP through communities. Earned LEAP records qualifying LEAP actually delivered by a community to a member. Recognition is a specific type of community distribution associated with an existing Badge, Event, or Challenge.</p>
+<p>Not all Earned LEAP is recognition. For example, successfully cashing an authorized community onboarding Check produces Earned LEAP without creating a Badge, Event, or Challenge recognition award.</p>
+</div>
+</div>
+<div class="rule">
 <div class="tag">Canonical State Principle</div>
 <div>
             <strong>Canonical community state exists only on XRPL. Wild Ledger is an interpreter of canonical state, never its keeper.</strong>
@@ -414,6 +421,7 @@
 <li>Keep ephemeral application identity, such as nicknames and opaque session IDs, non-authoritative and limited to the function that requires it.</li>
 <li>Interpret protocol meaning from the transaction type, authorized provenance, canonical asset identity, canonical memo, and validated result together.</li>
 <li>Never treat a memo by itself as proof of official LEAP activity.</li>
+<li>An Operator's authority alone does not make a LEAP transfer official community recognition. To qualify as recognition, the transaction MUST satisfy the applicable Badge, Event, or Challenge rules, including the required canonical memo, authorized provenance, canonical LEAP identity, and successful validated delivery.</li>
 <li>Member recognition always involves LEAP moving to a member.</li>
 <li>Recognition-definition lifecycle state never moves LEAP and never recognizes a member.</li>
 <li>Recognition opportunities and member recognition history are separate views and must never be substituted for one another. Protocol-defined recognition comes from this Protocol Core; community-defined recognition state comes from validated XRPL lifecycle history; member-earned recognition comes from validated LEAP-bearing XRPL transactions.</li>
@@ -1016,7 +1024,9 @@ WILD-LEDGER/COMMUNITY-REQUEST</code></pre>
 <div>
             Star standing is derived from that community's cumulative Earned LEAP using the protocol-defined thresholds 1, 10, 20, 50, and 100. The thresholds and star vocabulary are universal across Wild Ledger and are not configurable by individual communities.
             Sending, spending, or otherwise moving LEAP after it was earned changes current holdings but does not erase the earned history or reduce stars.
-            Receiving LEAP through ordinary transfers, trades, purchases, self-transfers, or non-recognition Payments does not create community Earned LEAP or stars.
+            Receiving LEAP through ordinary transfers, trades, purchases, self-transfers, or Payments that do not satisfy the applicable community recognition rules does not create community Earned LEAP or stars.
+             Earned LEAP is established through successfully cashed, authorized community onboarding Checks and valid direct community recognition Payments.
+             Official community recognition requires a valid Badge, Event, or Challenge award satisfying the applicable canonical memo, authority, and transaction validation rules.
           </div>
 </div>
 <h3>Current LEAP vs. Earned LEAP</h3>
