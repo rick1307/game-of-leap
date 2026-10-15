@@ -192,25 +192,6 @@
   @keyframes guideSpin { to { transform:rotate(360deg); } }
   @media(prefers-reduced-motion:reduce) { .guide-route li.is-working::before,.trail-step.is-working .trail-index,.step-action.is-busy::before { animation:none; } }
 
-  /* First-LEAP issuance: a separate Ledger Trail using the established guide appearance. */
-  .issuance-window { width:min(500px,100%); }
-  .issuance-steps { padding:0; margin:16px 0; list-style:none; }
-  .issuance-step { display:flex; gap:11px; padding:9px 0; border-bottom:1px solid var(--line); align-items:flex-start; }
-  .issuance-step .issuance-dot { display:grid; place-items:center; flex:0 0 29px; height:29px; border:1px solid rgba(121,213,194,.35); border-radius:10px; font-size:.78rem; font-weight:800; }
-  .issuance-step.is-working .issuance-dot { border-color:var(--mango); color:#ffe6af; animation:guidePulse 1.4s infinite; }
-  .issuance-step.is-done .issuance-dot { border-color:#a2f4b1; color:#bdf2c8; }
-  .issuance-step.is-failed .issuance-dot { border-color:var(--coral); color:#ffb7aa; }
-  .issuance-step strong { display:block; font-size:.86rem; }
-  .issuance-step small { display:block; color:var(--muted); font-size:.73rem; line-height:1.45; margin-top:3px; overflow-wrap:anywhere; }
-  .issuance-evidence { border:1px solid var(--line); border-radius:12px; margin:12px 0; }
-  .issuance-evidence > summary { color:var(--sea-glass); font-size:.78rem; font-weight:850; padding:11px; cursor:pointer; }
-  .issuance-evidence pre { padding:0 12px 12px; margin:0; font:normal .72rem/1.5 ui-monospace,SFMono-Regular,monospace; white-space:pre-wrap; overflow-wrap:anywhere; color:var(--muted); }
-  .issuance-wallet-qr { width:min(245px,100%); display:block; margin:10px auto; background:white; padding:8px; border-radius:10px; }
-  .issuance-actions { display:flex; gap:9px; flex-wrap:wrap; margin-top:14px; }
-  .issuance-actions .step-action { min-width:0; flex:1 1 160px; }
-  .issuance-actions [hidden], .issuance-wallet-qr[hidden] { display:none!important; }
-  .issuance-compact { font-size:.75rem; color:var(--muted); line-height:1.5; overflow-wrap:anywhere; }
-  .issuance-error { color:#ffb7aa; }
   @media(max-width:420px) {
     .trail-step > summary { grid-template-columns:29px minmax(0,1fr) auto 12px; gap:7px; padding:12px 9px; }
     .trail-index { width:28px; height:28px; }
@@ -412,6 +393,39 @@
   }
 
 
+  /* First LEAP uses Get Wild's established full-screen Ledger Trail language.
+     Scoped to issuance: the read-only report Trail is intentionally unchanged. */
+  .issuance-window { width:min(470px,100%); font-family:var(--wl-backend-font,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif); }
+  .issuance-window h2 { font-family:inherit; font-weight:700; }
+  .issuance-purpose { margin:1px 0 7px; font-size:.89rem; font-weight:850; color:#f5fbfa; }
+  .issuance-compact { font-size:.72rem; color:var(--muted); line-height:1.5; overflow-wrap:anywhere; }
+  .issuance-steps { display:grid; gap:0; padding:0; margin:5px 0 18px; list-style:none; }
+  .issuance-step { position:relative; display:grid; grid-template-columns:36px minmax(0,1fr); gap:11px; min-height:58px; align-items:start; padding:0; margin:0; border:0; }
+  .issuance-step .issuance-dot { position:relative; display:grid; place-items:center; width:28px; height:28px; margin-top:1px; border:1px solid rgba(236,249,247,.22); border-radius:50%; background:#082936; color:rgba(236,249,247,.4); font-size:.76rem; font-weight:950; z-index:1; }
+  .issuance-step:not(:last-child) .issuance-dot::after { content:""; position:absolute; top:27px; left:50%; transform:translateX(-50%); width:2px; height:32px; background:linear-gradient(to bottom,rgba(121,213,194,.18),rgba(121,213,194,.05)); }
+  .issuance-step.is-working .issuance-dot { border-color:rgba(244,189,88,.70); background:rgba(244,189,88,.12); color:#ffe2a7; animation:membershipTrailPulse 1.6s ease-out infinite; }
+  .issuance-step.is-working strong { color:#ffe2a7; }
+  .issuance-step.is-done .issuance-dot { border-color:rgba(159,224,176,.48); background:rgba(159,224,176,.12); color:#bdf2c8; }
+  .issuance-step.is-done:not(:last-child) .issuance-dot::after { background:linear-gradient(to bottom,rgba(121,213,194,.75),rgba(121,213,194,.25)); }
+  .issuance-step.is-done small { color:rgba(189,242,200,.66); }
+  .issuance-step.is-failed .issuance-dot { border-color:rgba(255,183,170,.58); background:rgba(239,118,93,.12); color:#ffb7aa; }
+  .issuance-step.is-failed strong,.issuance-step.is-failed small { color:#ffb7aa; }
+  .issuance-step strong { display:block; padding-top:1px; font-size:.82rem; font-weight:700; }
+  .issuance-step small { display:block; margin-top:3px; color:rgba(236,249,247,.43); font-size:.66rem; line-height:1.35; overflow-wrap:anywhere; }
+  .issuance-handoff { margin:13px 0 18px; padding:16px; border:1px solid rgba(244,189,88,.30); border-radius:17px; background:linear-gradient(145deg,rgba(244,189,88,.10),rgba(41,184,177,.06)); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); }
+  .issuance-handoff strong { display:block; color:#ffe2a7; font-size:1.05rem; letter-spacing:.01em; }
+  .issuance-handoff p { margin:6px 0 0; color:rgba(255,244,214,.80); font-size:.76rem; line-height:1.45; }
+  .issuance-wallet-qr { display:block; width:min(220px,72vw); margin:14px auto 0; padding:7px; border-radius:13px; background:white; }
+  .issuance-evidence { margin:12px 0; border:1px solid var(--line); border-radius:12px; }
+  .issuance-evidence > summary { padding:11px; color:var(--sea-glass); font-size:.78rem; font-weight:850; cursor:pointer; }
+  .issuance-evidence pre { margin:0; padding:0 12px 12px; color:var(--muted); font:normal .72rem/1.5 ui-monospace,SFMono-Regular,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .issuance-actions { margin-top:12px; }
+  .issuance-actions .step-action { display:block; width:100%; min-height:44px; }
+  .issuance-error { color:#ffb7aa; }
+  .issuance-complete { display:grid; grid-template-columns:36px minmax(0,1fr); gap:10px; align-items:center; margin-top:12px; color:#bdf2c8; font-size:.80rem; font-weight:850; }
+  .issuance-complete-mark { display:grid; place-items:center; width:34px; height:34px; border:1px solid rgba(159,224,176,.48); border-radius:50%; background:rgba(159,224,176,.12); }
+  @media(prefers-reduced-motion:reduce) { .issuance-step.is-working .issuance-dot { animation:none; } }
+
   /* Existing Membership Requests report styles, unchanged. */
 
   .report-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
@@ -536,26 +550,31 @@
   <div class="guide-overlay" id="issuanceOverlay" role="dialog" aria-modal="true" aria-labelledby="issuanceTitle" hidden>
     <div class="guide-window issuance-window">
       <div class="guide-topline"><button type="button" class="guide-close" id="issuanceClose" aria-label="Return to Checkbook">×</button><span class="guide-kicker">Wild Ledger · Operator</span></div>
-      <h2 id="issuanceTitle">Issue First LEAP</h2>
+      <h2 id="issuanceTitle">The Ledger Trail</h2>
+      <p class="issuance-purpose">Issue First LEAP</p>
       <p class="guide-lede">An onboarding Check for the verified requester. Issuing a Check does not deliver LEAP; the recipient must cash it.</p>
       <div class="issuance-compact" id="issuanceRecipient"></div>
+      <div class="issuance-handoff" id="issuanceHandoff" hidden>
+        <strong id="issuanceHandoffTitle">GO TO BIFROST NOW</strong>
+        <p id="issuanceHandoffCopy"></p>
+        <img class="issuance-wallet-qr" id="issuanceQr" alt="Bifrost wallet connection QR code" hidden>
+        <div id="issuanceUri" hidden></div>
+      </div>
       <ol class="issuance-steps" id="issuanceSteps" aria-label="Issuance Ledger Trail checkpoints">
-        <li class="issuance-step" data-stage="0"><span class="issuance-dot">1</span><div><strong>Verify request and authority</strong><small>Recheck XRPL history before issuing.</small></div></li>
-        <li class="issuance-step" data-stage="1"><span class="issuance-dot">2</span><div><strong>Prepare 1-LEAP Check</strong><small>Canonical asset; no memo or Expiration.</small></div></li>
-        <li class="issuance-step" data-stage="2"><span class="issuance-dot">3</span><div><strong>Connect Bifrost</strong><small>Use the current Operating Wallet.</small></div></li>
-        <li class="issuance-step" data-stage="3"><span class="issuance-dot">4</span><div><strong>Sign Check</strong><small>Review and approve the prepared transaction.</small></div></li>
-        <li class="issuance-step" data-stage="4"><span class="issuance-dot">5</span><div><strong>Submit and validate</strong><small>Confirm final XRPL consensus.</small></div></li>
-        <li class="issuance-step" data-stage="5"><span class="issuance-dot">6</span><div><strong>Verify issuance</strong><small>Independently inspect the created Check ID.</small></div></li>
-        <li class="issuance-step" data-stage="6"><span class="issuance-dot">7</span><div><strong>Return to Checkbook</strong><small>Refresh the Requested → Issued → Cashed lifecycle.</small></div></li>
+        <li class="issuance-step" data-stage="0"><span class="issuance-dot">○</span><div><strong>Verify request and authority</strong><small>Recheck XRPL history before issuing.</small></div></li>
+        <li class="issuance-step" data-stage="1"><span class="issuance-dot">○</span><div><strong>Prepare 1-LEAP Check</strong><small>Canonical asset; no memo or Expiration.</small></div></li>
+        <li class="issuance-step" data-stage="2"><span class="issuance-dot">○</span><div><strong>Connect Bifrost</strong><small>Use the current Operating Wallet.</small></div></li>
+        <li class="issuance-step" data-stage="3"><span class="issuance-dot">○</span><div><strong>Sign Check</strong><small>Review and approve the prepared transaction.</small></div></li>
+        <li class="issuance-step" data-stage="4"><span class="issuance-dot">○</span><div><strong>Submit and validate</strong><small>Confirm final XRPL consensus.</small></div></li>
+        <li class="issuance-step" data-stage="5"><span class="issuance-dot">○</span><div><strong>Verify issuance</strong><small>Independently inspect the created Check ID.</small></div></li>
+        <li class="issuance-step" data-stage="6"><span class="issuance-dot">○</span><div><strong>Return to Checkbook</strong><small>Refresh the Requested → Issued → Cashed lifecycle.</small></div></li>
       </ol>
       <p class="guide-status" id="issuanceStatus" role="status" aria-live="polite">Ready.</p>
-      <img class="issuance-wallet-qr" id="issuanceQr" alt="Bifrost wallet connection QR code" hidden>
-      <div class="issuance-compact" id="issuanceUri" hidden></div>
+      <div class="issuance-complete" id="issuanceComplete" role="status" aria-live="polite" hidden><span class="issuance-complete-mark">✓</span><span>Check Issued · Ledger Trail complete.</span></div>
       <details class="issuance-evidence"><summary>Transaction and XRPL evidence</summary><pre id="issuanceEvidence">Waiting for verification.</pre></details>
       <p class="issuance-compact issuance-error" id="issuanceError" role="alert" hidden></p>
       <div class="issuance-actions">
-        <button type="button" class="step-action is-next" id="issuanceAction" disabled>Checking XRPL…</button>
-        <button type="button" class="step-action" id="issuanceReturn" hidden>Return to Checkbook</button>
+        <button type="button" class="step-action is-next" id="issuanceAction" hidden disabled>Try again</button>
       </div>
       <p class="guide-learn">Bifrost signs; Wild Ledger submits and independently verifies. An outstanding Check consumes XRP reserve until cashed or canceled.</p>
     </div>
@@ -1543,7 +1562,7 @@ function createCell(label, valueNode) {
 // generate a second signature to recover an uncertain submission.
 const ISSUANCE_PENDING_KEY = "wildLedger.firstLeapSignedCheck";
 const issueStage = Array(7).fill("pending");
-const issue = { busy:false, selected:null, signer:null, prepared:null, signedBlob:"", pendingHash:"", verified:null, confirmed:false };
+const issue = { busy:false, signing:false, cancelled:false, selected:null, signer:null, prepared:null, signedBlob:"", pendingHash:"", verified:null, confirmed:false };
 const runtime = window.WILD_LEDGER_CONFIG || {};
 const issueServer = String(runtime.xrplWebSocket || "").trim();
 const issueProjectId = String(runtime.walletConnectProjectId || "").trim();
@@ -1565,19 +1584,38 @@ function issueUpdate(stage, state, message) {
   issueStage[stage] = state;
   const item = document.querySelector(`#issuanceSteps [data-stage="${stage}"]`);
   item.className = `issuance-step is-${state}`;
-  item.querySelector(".issuance-dot").textContent = state === "done" ? "✓" : state === "failed" ? "×" : String(stage + 1);
+  item.querySelector(".issuance-dot").textContent = state === "done" ? "✓" : state === "failed" ? "×" : state === "working" ? "•" : "○";
   item.querySelector("small").textContent = message;
   $("issuanceStatus").textContent = message;
 }
 function issueEvidence(message) { $("issuanceEvidence").textContent = message; }
+// The QR and wallet handoff occupy the same place as Get Wild's Trail action.
+// A button appears only when there is an explicit recovery action to take.
+function issueHandoff(copy, qrReady=false) {
+  $("issuanceHandoffTitle").textContent="GO TO BIFROST NOW";
+  $("issuanceHandoffCopy").textContent=copy;
+  $("issuanceHandoff").hidden=false;
+  $("issuanceQr").hidden=!qrReady;
+  $("issuanceUri").hidden=true; // URI stays diagnostic-only, never shown to the user.
+}
+function hideIssueHandoff() {
+  $("issuanceHandoff").hidden=true;
+  $("issuanceQr").hidden=true;
+  $("issuanceQr").removeAttribute("src");
+  $("issuanceUri").hidden=true;
+  $("issuanceUri").textContent="";
+}
 function issueAction(label, handler) {
   const button = $("issuanceAction");
   button.textContent = label;
+  button.hidden = !handler;
   button.disabled = !handler;
   button.className = "step-action" + (handler ? " is-next" : " is-busy");
   button.onclick = handler ? () => void issueGuarded(handler) : null;
 }
 function issueFail(stage,error) {
+  hideIssueHandoff();
+  issue.signing=false;
   const message = String(error?.message || error || "Unknown failure");
   issueUpdate(stage,"failed",`Needs attention: ${message}`);
   $("issuanceError").textContent = message;
@@ -1593,10 +1631,16 @@ async function issueGuarded(fn) {
   $("issuanceError").hidden = true;
   issueAction("Working…",null);
   try { await fn(); }
-  catch(error) { issueFail(issueStage.findIndex(s => s === "working") >= 0 ? issueStage.findIndex(s => s === "working") : 4,error); }
-  finally { issue.busy = false; }
+  catch(error) {
+    if (!issue.cancelled) issueFail(issueStage.findIndex(s => s === "working") >= 0 ? issueStage.findIndex(s => s === "working") : 4,error);
+  }
+  finally {
+    if (issue.cancelled && issue.signer) { try { await issue.signer.disconnect(); } catch (_) {} }
+    issue.busy = false;
+  }
 }
 function assertIssueSession() {
+  if (issue.cancelled) throw new Error("The unsigned Ledger Trail was closed.");
   const session = readOperatorSession();
   if (!session || session.communityId !== issue.selected?.communityId || session.wallet !== issue.selected?.operatorWallet)
     throw new Error("The Operator session changed. Return through Get Wild.");
@@ -1687,26 +1731,28 @@ async function startIssuePreflight() {
   assertCheck(issue.prepared);
   issueEvidence(`Community: ${issue.selected.communityId}\nRequest: ${issue.selected.requestHash}\nFrom: ${issue.selected.operatorWallet}\nTo: ${issue.selected.applicant}\nCanonical LEAP issuer: ${issueIssuer}\nCurrency: ${issueCurrency}\nSendMax: 1 LEAP\nMemo: none\nExpiration: none\nFee: ${issue.prepared.Fee} drops\nSimulated result: ${result.engineResult}\nPrepared transaction:\n${JSON.stringify(issue.prepared,null,2)}`);
   issueUpdate(1,"done",`Prepared and checked · fee ${issue.prepared.Fee} drops. Issuing an outstanding Check uses XRP reserve.`);
-  issueAction("Connect Bifrost",connectIssueWallet);
+  await connectIssueWallet();
 }
 async function connectIssueWallet() {
-  issueUpdate(2,"working","Create a new WalletConnect pairing in Bifrost. Scan the QR code and approve the connection.");
+  issueUpdate(2,"working","Waiting for Bifrost to connect the current Operating Wallet…");
   assertIssueSession();
+  issueHandoff("First handoff: approve the Wild Ledger Operating Wallet connection in Bifrost, then return here. The Trail will continue automatically.");
   if (issue.signer) { try { await issue.signer.disconnect(); } catch (_) {} }
   issue.signer = new WalletConnectXrplSigner({projectId:issueProjectId,
     metadata:{name:"Wild Ledger Onboarding Checkbook",description:"Sign one 1-LEAP onboarding Check",url:location.origin,icons:[`${location.origin}/favicon.ico`]}});
   const connection = await issue.signer.connect({onUri:async uri => {
+    if (issue.cancelled) return;
     $("issuanceQr").src=await QRCode.toDataURL(uri,{width:520,margin:2,errorCorrectionLevel:"M"});
-    $("issuanceQr").hidden=false;
-    $("issuanceUri").textContent=uri;
-    $("issuanceUri").hidden=false;
+    if (issue.cancelled) return;
+    issueHandoff("Open Bifrost, approve this wallet connection, then return here. Wild Ledger will verify the connected wallet and continue automatically.",true);
+    $("issuanceStatus").textContent="Waiting for Bifrost connection. You can leave Safari and return to this Trail.";
   }});
+  assertIssueSession(); // A closed, unsigned Trail must never advance to signing.
   if (connection.account !== issue.selected.operatorWallet) throw new Error("The Bifrost account does not match the current Community Operating Wallet.");
   await liveIssuePreflight();
-  $("issuanceQr").hidden=true;
-  $("issuanceUri").hidden=true;
+  hideIssueHandoff();
   issueUpdate(2,"done",`Connected and checked ${connection.account}.`);
-  issueAction("Sign the prepared Check",signIssueCheck);
+  await signIssueCheck();
 }
 async function signIssueCheck() {
   issueUpdate(3,"working","Review the exact prepared Check in Bifrost and approve its signature. No transaction has been submitted yet.");
@@ -1714,16 +1760,20 @@ async function signIssueCheck() {
   await liveIssuePreflight();
   if (issue.signer?.account !== issue.selected.operatorWallet) throw new Error("The signing wallet is no longer the authorized Operator.");
   assertCheck(issue.prepared);
+  issueHandoff("Second handoff: review and sign the prepared 1-LEAP Check in Bifrost, then return here. Wild Ledger will submit only after Bifrost returns the signature.");
+  issue.signing=true;
+  $("issuanceClose").disabled=true; // Do not abandon an in-flight Bifrost signature.
   const signed = await issue.signer.signTransaction(issue.prepared);
+  hideIssueHandoff();
   const blob = String(signed?.signedBlob || "").toUpperCase();
   if (!/^[A-F0-9]{80,}$/.test(blob)) throw new Error("Bifrost did not return a valid signed transaction blob.");
   assertCheck(decode(blob),true);
   issue.signedBlob=blob;
   issue.pendingHash=await signedCheckHash(blob);
-  persistSignedCheck(); // Must succeed before offering submit or another signature.
+  persistSignedCheck(); // Must succeed before submission or another signature.
   $("issuanceClose").disabled=true;
   issueUpdate(3,"done","Bifrost returned the exact signed Check; no XRPL submission has occurred yet.");
-  issueAction("Submit signed Check to XRPL",submitIssueCheck);
+  await submitIssueCheck();
 }
 async function findValidatedIssue(hash) {
   if (!HASH.test(hash)) return null;
@@ -1782,9 +1832,13 @@ async function finishIssuedCheck() {
   issue.confirmed=true;
   clearSavedSignedCheck();
   $("issuanceClose").disabled=false;
-  issueAction("✓ Check Issued",null);
-  $("issuanceReturn").hidden=false;
+  issueAction("",null);
   $("issuanceStatus").textContent="✓ Check Issued · Validated, independently verified, and reflected in the Checkbook.";
+  $("issuanceComplete").hidden=false;
+  // Like established provisioning Trails, show validated completion then return
+  // to the already-refreshed Checkbook without introducing another button.
+  await new Promise(resolve=>setTimeout(resolve,1150));
+  $("issuanceOverlay").hidden=true;
 }
 async function verifyIssuedCheck() {
   issueUpdate(5,"working","Reading the validated transaction and the live Check ledger object…");
@@ -1851,16 +1905,16 @@ function beginCheckIssuance(request, recoveryOnly=false) {
   issue.selected={communityId:session.communityId,operatorWallet:session.wallet,
     applicant:matching.applicant,requestHash:matching.hash};
   issue.prepared=null;issue.signer=null;issue.verified=null;issue.confirmed=false;issue.signedBlob="";issue.pendingHash="";
+  issue.signing=false;issue.cancelled=false;
   issueStage.fill("pending");
   for(let n=0;n<7;n++) {
     const el=document.querySelector(`#issuanceSteps [data-stage="${n}"]`);
-    el.className="issuance-step";el.querySelector(".issuance-dot").textContent=String(n+1);
+    el.className="issuance-step";el.querySelector(".issuance-dot").textContent="○";
   }
   $("issuanceOverlay").hidden=false;
   $("issuanceClose").disabled=false;
-  $("issuanceReturn").hidden=true;
-  $("issuanceQr").hidden=true;
-  $("issuanceUri").hidden=true;
+  hideIssueHandoff();
+  $("issuanceComplete").hidden=true;
   $("issuanceError").hidden=true;
   $("issuanceRecipient").textContent=`Community ${session.communityId} · Recipient ${matching.applicant} · 1 canonical LEAP`;
   issueEvidence(`Verified membership request: ${matching.hash}\nSource: validated XRPL Payment\nIssuing wallet: ${session.wallet}`);
@@ -1877,8 +1931,22 @@ function beginCheckIssuance(request, recoveryOnly=false) {
     void issueGuarded(startIssuePreflight);
   }
 }
-$("issuanceClose").addEventListener("click",()=>{if (!issue.busy && !issue.signedBlob) $("issuanceOverlay").hidden=true;});
-$("issuanceReturn").addEventListener("click",()=>{if(issue.confirmed) $("issuanceOverlay").hidden=true;});
+$("issuanceClose").addEventListener("click",()=>{
+  if (issue.signing || issue.signedBlob) return; // Signing or signed: never discard the recoverable transaction.
+  issue.cancelled=true;
+  hideIssueHandoff();
+  $("issuanceOverlay").hidden=true;
+});
+document.addEventListener("visibilitychange",()=>{
+  if ($( "issuanceHandoff" ).hidden || $("issuanceOverlay").hidden) return;
+  $("issuanceStatus").textContent=document.visibilityState==="hidden" ?
+    "Bifrost has the helm. Return to this Trail after approving in the wallet." :
+    "Back in Wild Ledger. Waiting for verified proof from Bifrost…";
+});
+window.addEventListener("focus",()=>{
+  if (!$("issuanceHandoff").hidden && !$("issuanceOverlay").hidden)
+    $("issuanceStatus").textContent="Checking the Bifrost handoff; this Trail advances only after wallet approval.";
+});
 // On mobile Safari, a return from Bifrost may reload the page. Once the
 // ordinary read-only report is verified, reopen an unresolved signed Check's
 // Trail even when its row now says Issued. Never request another signature.
