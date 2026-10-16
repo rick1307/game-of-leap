@@ -175,6 +175,28 @@
   .step-action.is-busy::before { content:''; display:inline-block; width:11px; height:11px; margin-right:9px; border:2px solid rgba(244,189,88,.3); border-top-color:var(--mango); border-radius:50%; animation:guideSpin .8s linear infinite; vertical-align:-2px; }
   .step-action.is-done { border-color:rgba(121,213,194,.25); color:#bdf2c8; background:rgba(121,213,194,.04); }
   .trail-step.is-working .trail-index { border-color:var(--mango); color:#ffe6af; animation:guidePulse 1.4s ease-in-out infinite; }
+  /* Embedded read-only Ledger Trail: reuse the EXACT First LEAP activity
+     indicator dimensions, colors, and timing. The existing step marker's
+     width, height, border, radius and layout are not altered. */
+  .trail-step.is-working .trail-index { position:relative; font-size:0; }
+  .trail-step.is-working .trail-index::before {
+    content:""; position:absolute; inset:0; margin:auto; box-sizing:border-box;
+    width:14px; height:14px;
+    border:2px solid transparent; border-top-color:#ffe2a7; border-right-color:#ffe2a7;
+    border-radius:50%; animation:issuanceActivitySpin .9s linear infinite;
+  }
+  /* Same wallet-wait visual vocabulary, only when a real wallet handoff
+     sets is-awaiting-wallet; this read-only Trail currently has none. */
+  .trail-step.is-working.is-awaiting-wallet .trail-index::before {
+    width:8px; height:8px;
+    border:0; background:#ffe2a7; border-radius:50%;
+    box-shadow:0 0 0 0 rgba(255,226,167,.5);
+    animation:issuanceWalletPulse 1.45s ease-in-out infinite;
+  }
+  @media(prefers-reduced-motion:reduce) {
+    .trail-step.is-working .trail-index::before { animation:none; }
+  }
+
   .trail-finished-line { color:#bdf2c8; font-weight:850; }
   /* Confirmation is the human-facing finish; details remain expandable. */
   .success-mark { display:grid; place-items:center; width:88px; height:88px; margin:12px auto 15px; border:3px solid #a2f4b1; border-radius:50%; background:rgba(80,215,139,.13); color:#a2f4b1; font-size:3.5rem; font-weight:900; line-height:1; box-shadow:0 0 30px rgba(99,219,151,.13); }
