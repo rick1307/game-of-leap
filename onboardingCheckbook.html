@@ -221,7 +221,7 @@
     background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99));
     box-shadow:0 34px 90px rgba(0,0,0,.58);
     color:#f5fbfa;
-    font-family:"Times New Roman",Times,serif;
+    font-family:var(--wl-backend-font,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif);
     animation:membershipTrailPanelIn .38s cubic-bezier(.2,.8,.2,1) both;
   }
   .guide-window::before {
@@ -350,11 +350,26 @@
   }
   .guide-route li.is-done small { color:rgba(189,242,200,.66); }
   .guide-route li.is-working::before {
-    content:'•';
+    content:'';
     border-color:rgba(244,189,88,.70);
     background:rgba(244,189,88,.12);
     color:#ffe2a7;
     animation:membershipTrailPulse 1.6s ease-out infinite;
+  }
+  /* Match the First LEAP activity arc exactly, without changing the
+     opening Trail's 28px circle, border, connectors, spacing, or layout. */
+  .guide-route .guide-activity { display:none; pointer-events:none; }
+  .guide-route li.is-working > .guide-activity {
+    position:absolute; top:8px; left:7px; z-index:2; display:block;
+    box-sizing:border-box; width:14px; height:14px;
+    border:2px solid transparent; border-top-color:#ffe2a7; border-right-color:#ffe2a7;
+    border-radius:50%; animation:issuanceActivitySpin .9s linear infinite;
+  }
+  .guide-route li.is-working.is-awaiting-wallet > .guide-activity {
+    width:8px; height:8px; top:11px; left:10px;
+    border:0; background:#ffe2a7; border-radius:50%;
+    box-shadow:0 0 0 0 rgba(255,226,167,.5);
+    animation:issuanceWalletPulse 1.45s ease-in-out infinite;
   }
   .guide-route li.is-working strong { color:#ffe2a7; }
   .guide-route li.is-working small { color:rgba(255,226,167,.72); }
@@ -389,12 +404,12 @@
   @keyframes membershipTrailPanelIn { from {opacity:0;transform:translateY(10px) scale(.985);} to {opacity:1;transform:none;} }
   @keyframes membershipTrailPulse { from {box-shadow:0 0 0 0 rgba(244,189,88,.22);} to {box-shadow:0 0 0 8px rgba(244,189,88,0);} }
   @media(prefers-reduced-motion:reduce) {
-    .guide-overlay:not([hidden]),.guide-window,.guide-route li.is-working::before {animation:none;}
+    .guide-overlay:not([hidden]),.guide-window,.guide-route li.is-working::before,.guide-route li.is-working > .guide-activity {animation:none;}
   }
 
 
   /* First LEAP uses Get Wild's established full-screen Ledger Trail language.
-     Scoped to issuance: the read-only report Trail is intentionally unchanged. */
+     Both Trails share the same type and checkpoint activity indicator. */
   .issuance-window { width:min(470px,100%); font-family:var(--wl-backend-font,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif); }
   .issuance-window h2 { font-family:inherit; font-weight:700; }
   .issuance-purpose { margin:1px 0 7px; font-size:.89rem; font-weight:850; color:#f5fbfa; }
@@ -549,14 +564,14 @@
   <div class="guide-overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
     <div class="guide-window">
       <div class="guide-topline"><button type="button" class="guide-close" id="guideClose" aria-label="Close guided tour and explore the steps" title="Explore the ledger steps">×</button><span class="guide-kicker">Wild Ledger · Operator</span></div>
-      <h2 id="guideTitle">Ledger Trail</h2>
+      <h2 id="guideTitle">The Ledger Trail</h2>
       <p class="guide-lede">Wild Ledger checks your membership requests and gets you ready for your community. Tap X at any time to explore the actual checks.</p>
       <p class="guide-readonly">Read-only check. No XRP is spent.</p>
       <ol class="guide-route" id="guideRoute" aria-label="Live Ledger Trail steps">
-        <li id="guideStep1" data-number="1"><div><strong>Identify your community</strong><small id="guideStepText1">Waiting</small></div></li>
-        <li id="guideStep2" data-number="2"><div><strong>Confirm your authority</strong><small id="guideStepText2">Waiting</small></div></li>
-        <li id="guideStep3" data-number="3"><div><strong>Find membership requests</strong><small id="guideStepText3">Waiting</small></div></li>
-        <li id="guideStep4" data-number="4"><div><strong>Prove report readiness</strong><small id="guideStepText4">Waiting</small></div></li>
+        <li id="guideStep1" data-number="1"><span class="guide-activity" aria-hidden="true"></span><div><strong>Identify your community</strong><small id="guideStepText1">Waiting</small></div></li>
+        <li id="guideStep2" data-number="2"><span class="guide-activity" aria-hidden="true"></span><div><strong>Confirm your authority</strong><small id="guideStepText2">Waiting</small></div></li>
+        <li id="guideStep3" data-number="3"><span class="guide-activity" aria-hidden="true"></span><div><strong>Find membership requests</strong><small id="guideStepText3">Waiting</small></div></li>
+        <li id="guideStep4" data-number="4"><span class="guide-activity" aria-hidden="true"></span><div><strong>Prove report readiness</strong><small id="guideStepText4">Waiting</small></div></li>
       </ol>
       <div class="guide-status" id="guideStatus" role="status" aria-live="polite">Reading your Operator session…</div>
       <div class="guide-success" id="guideSuccess" role="status" aria-live="polite" hidden>
