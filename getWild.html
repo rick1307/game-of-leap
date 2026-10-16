@@ -717,14 +717,12 @@ async function beginWalletConnection() {
   qrPlaceholder.textContent = "Creating a fresh wallet connection QR code…";
   setStatus("Starting wallet connection…");
   clearAccessSession();
-  if (trailWasOpen) {
-    // Do not close/reopen the overlay while a QR refresh is underway.
-    resetLedgerTrail();
-    setTrailStep("wallet", "active", "Preparing a fresh Bifrost pairing QR code.");
-    setTrailStatus("Creating a fresh wallet connection QR code…", "busy");
-  } else {
-    hideLedgerTrail();
-  }
+  // Open the Trail at once, before the asynchronous wallet pairing URI arrives.
+  // Preserve the same overlay when refreshing an existing QR pairing.
+  if (trailWasOpen) resetLedgerTrail();
+  else showLedgerTrail();
+  setTrailStep("wallet", "active", "Preparing a fresh Bifrost pairing QR code.");
+  setTrailStatus("Creating a fresh wallet connection QR code…", "busy");
 
   try {
     if (!PROJECT_ID) throw new Error("WalletConnect project ID is not configured.");
@@ -748,7 +746,8 @@ async function beginWalletConnection() {
         qrPlaceholder.hidden = true;
         setStatus("Open Bifrost and approve the Wild Ledger wallet connection.");
 
-        showLedgerTrail();
+        // Keep the already-open Trail and its progress; do not reset on QR arrival.
+        if (!ledgerTrail.classList.contains("show")) showLedgerTrail();
         setTrailStep("wallet", "active", "Bifrost needs the XRPL wallet connection before Wild Ledger can read authority.");
         trailElement("wallet").classList.add("is-awaiting-wallet");
         showTrailAction(
