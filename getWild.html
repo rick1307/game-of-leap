@@ -97,6 +97,24 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
 .trail-step.done .trail-copy span{color:rgba(189,242,200,.66)}
 .trail-step.active .trail-marker{border-color:rgba(244,189,88,.70);background:rgba(244,189,88,.12);color:#ffe2a7;box-shadow:0 0 0 6px rgba(244,189,88,.055)}
 .trail-step.active .trail-marker:before{content:"";position:absolute;inset:-7px;border:1px solid rgba(244,189,88,.22);border-radius:50%;animation:trailPulse 1.6s ease-out infinite}
+/* Identical active-state activity indicators to Onboarding Checkbook.
+   Both fit inside the EXISTING 28px checkpoint; no marker geometry or
+   outer active-circle pulse is modified. */
+.trail-step.active .trail-activity{
+  display:block;box-sizing:border-box;width:14px;height:14px;
+  border:2px solid transparent;border-top-color:#ffe2a7;border-right-color:#ffe2a7;
+  border-radius:50%;animation:getWildActivitySpin .9s linear infinite;
+}
+.trail-step.active.is-awaiting-wallet .trail-activity{
+  width:8px;height:8px;border:0;background:#ffe2a7;
+  box-shadow:0 0 0 0 rgba(255,226,167,.5);
+  animation:getWildWalletPulse 1.45s ease-in-out infinite;
+}
+@keyframes getWildActivitySpin{to{transform:rotate(360deg)}}
+@keyframes getWildWalletPulse{
+  0%,100%{transform:scale(.72);opacity:.58;box-shadow:0 0 0 0 rgba(255,226,167,.1)}
+  50%{transform:scale(1.13);opacity:1;box-shadow:0 0 0 3px rgba(255,226,167,.13)}
+}
 .trail-step.active .trail-copy strong{color:#ffe2a7}
 .trail-step.active .trail-copy span{color:rgba(255,226,167,.72)}
 .trail-step.failed .trail-marker{border-color:rgba(255,183,170,.58);background:rgba(239,118,93,.12);color:#ffb7aa}
@@ -120,7 +138,7 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
 .trail-complete-text{color:#bdf2c8;font-size:.8rem;font-weight:850}
 .trail-retry{width:100%;min-height:44px;margin-top:12px;border:1px solid rgba(255,183,170,.26);border-radius:12px;background:rgba(239,118,93,.08);color:#ffd0c8;font-weight:850}
 .trail-retry.qr-retry{min-height:58px;font-size:1.08rem;letter-spacing:.02em;border-color:rgba(255,183,170,.52);background:rgba(239,118,93,.14);color:#ffb7aa}
-@media(prefers-reduced-motion:reduce){body{animation:none}.ledger-trail,.ledger-trail-panel,body.wl-view-leaving{transition:none}.trail-step.active .trail-marker:before{animation:none}}
+@media(prefers-reduced-motion:reduce){body{animation:none}.ledger-trail,.ledger-trail-panel,body.wl-view-leaving{transition:none}.trail-step.active .trail-marker:before,.trail-step.active .trail-activity{animation:none}}
 
 </style>
 <link rel="stylesheet" href="wildLedgerBackend.css">
@@ -293,7 +311,13 @@ function setTrailStep(step, state, detail = "") {
   if (!row) return;
   row.className = `trail-step ${state}`;
   const marker = row.querySelector(".trail-marker");
-  marker.textContent = state === "done" ? "✓" : state === "failed" ? "×" : state === "active" ? "•" : "○";
+  marker.textContent = state === "done" ? "✓" : state === "failed" ? "×" : state === "active" ? "" : "○";
+  if (state === "active") {
+    const activity = document.createElement("span");
+    activity.className = "trail-activity";
+    activity.setAttribute("aria-hidden", "true");
+    marker.appendChild(activity);
+  }
   if (detail) row.querySelector(".trail-copy span").textContent = detail;
   if (state === "active") activeTrailStep = step;
 }
@@ -713,6 +737,7 @@ async function beginWalletConnection() {
 
         showLedgerTrail();
         setTrailStep("wallet", "active", "Bifrost needs the XRPL wallet connection before Wild Ledger can read authority.");
+        trailElement("wallet").classList.add("is-awaiting-wallet");
         showTrailAction(
           "GO TO BIFROST NOW",
           "Open Bifrost, approve the Wild Ledger wallet connection, then return here. Wild Ledger will check the connection and continue automatically.",
