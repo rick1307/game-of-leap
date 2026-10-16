@@ -137,7 +137,12 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
 .trail-complete-check{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(159,224,176,.48);border-radius:50%;background:rgba(159,224,176,.12);color:#bdf2c8;font-size:1rem;font-weight:950}
 .trail-complete-text{color:#bdf2c8;font-size:.8rem;font-weight:850}
 .trail-retry{width:100%;min-height:44px;margin-top:12px;border:1px solid rgba(255,183,170,.26);border-radius:12px;background:rgba(239,118,93,.08);color:#ffd0c8;font-weight:850}
-.trail-retry.qr-retry{min-height:58px;font-size:1.08rem;letter-spacing:.02em;border-color:rgba(255,183,170,.52);background:rgba(239,118,93,.14);color:#ffb7aa}
+/* QR pairing recovery stays within the existing wallet handoff panel. */
+.trail-action img[hidden]{display:none}
+.trail-qr-refresh{display:inline-flex;align-items:center;justify-content:center;min-height:38px;margin-top:12px;padding:8px 12px;border:1px solid rgba(244,189,88,.36);border-radius:9px;background:rgba(244,189,88,.06);color:#ffe2a7;font-size:.78rem;font-weight:750;cursor:pointer}
+.trail-qr-refresh[hidden]{display:none}
+.trail-qr-refresh:disabled{opacity:.6;cursor:default}
+.trail-qr-refresh:focus-visible{outline:2px solid #ffe2a7;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){body{animation:none}.ledger-trail,.ledger-trail-panel,body.wl-view-leaving{transition:none}.trail-step.active .trail-marker:before,.trail-step.active .trail-activity{animation:none}}
 
 </style>
@@ -208,6 +213,7 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
       <strong id="trailActionTitle">GO TO BIFROST NOW</strong>
       <p id="trailActionCopy"></p>
       <img id="trailQrImage" alt="Wallet connection QR code" hidden>
+      <button class="trail-qr-refresh" id="trailQrRefresh" type="button" hidden>Refresh QR code</button>
       <div class="trail-uri" id="trailUri" hidden></div>
       <div class="trail-choice-list" id="trailChoiceList" hidden></div>
     </div>
@@ -256,6 +262,7 @@ const trailAction = document.getElementById("trailAction");
 const trailActionTitle = document.getElementById("trailActionTitle");
 const trailActionCopy = document.getElementById("trailActionCopy");
 const trailQrImage = document.getElementById("trailQrImage");
+const trailQrRefresh = document.getElementById("trailQrRefresh");
 const trailUri = document.getElementById("trailUri");
 const trailChoiceList = document.getElementById("trailChoiceList");
 const trailComplete = document.getElementById("trailComplete");
@@ -289,7 +296,6 @@ function resetLedgerTrail() {
   ledgerTrailStatus.className = "trail-status";
   ledgerTrailStatus.textContent = "Starting the trail…";
   ledgerTrailRetry.textContent = "Follow the Trail Again";
-  ledgerTrailRetry.classList.remove("qr-retry");
   ledgerTrailRetry.hidden = true;
   trailRetryHandler = null;
   trailComplete.classList.remove("show");
@@ -328,6 +334,7 @@ function setTrailStatus(message, tone = "") {
 }
 
 function showTrailAction(title, copy, { qrDataUrl = "", uri = "" } = {}) {
+  trailQrRefresh.hidden = true;
   walletHandoffActive = Boolean(qrDataUrl || uri);
   walletHandoffUri = uri || "";
   trailActionTitle.textContent = title;
@@ -350,6 +357,7 @@ function showTrailAction(title, copy, { qrDataUrl = "", uri = "" } = {}) {
 }
 
 function showTrailChoices(matches) {
+  trailQrRefresh.hidden = true;
   walletHandoffActive = false;
   walletHandoffUri = "";
   trailActionTitle.textContent = "CHOOSE A COMMUNITY";
@@ -379,6 +387,7 @@ function showTrailChoices(matches) {
 }
 
 function hideTrailAction() {
+  trailQrRefresh.hidden = true;
   walletHandoffActive = false;
   walletHandoffUri = "";
   trailAction.classList.remove("show");
@@ -425,25 +434,20 @@ function failTrail(error, retryHandler = null) {
 }
 
 function failWalletConnection(error) {
-  const message = error?.message || String(error);
-  console.warn("Wild Ledger wallet connection failed:", message);
-
+  console.warn("Wild Ledger wallet connection failed:", error?.message || String(error));
+  // An expired or unsuccessful pairing is not a failed XRPL authority step.
+  // Keep the original trail and place the single recovery control beside the QR.
   hideTrailAction();
-  activeTrailStep = "wallet";
-  const row = trailElement("wallet");
-  if (row) {
-    row.className = "trail-step failed";
-    row.querySelector(".trail-marker").textContent = "×";
-    row.querySelector(".trail-copy strong").textContent = "Wallet Connection Failed";
-    row.querySelector(".trail-copy span").textContent = "Try QR code.";
-  }
-
-  // Keep the human message short; the technical error remains in the console.
-  setTrailStatus("Try QR code.", "error");
-  trailRetryHandler = beginWalletConnection;
-  ledgerTrailRetry.textContent = "TRY QR CODE";
-  ledgerTrailRetry.classList.add("qr-retry");
-  ledgerTrailRetry.hidden = false;
+  activeTrailStep = "";
+  setTrailStep("wallet", "pending", "Wallet connection not completed. Refresh the QR code to try again.");
+  setTrailStatus("Wallet connection not completed. Refresh the QR code to try again.");
+  trailActionTitle.textContent = "WALLET CONNECTION NOT COMPLETED";
+  trailActionCopy.textContent = "Refresh the QR code to try the Bifrost connection again.";
+  trailQrRefresh.hidden = false;
+  trailAction.classList.add("show");
+  // Preserve the other, non-wallet checkpoint retry path; no big wallet retry.
+  trailRetryHandler = null;
+  ledgerTrailRetry.hidden = true;
 }
 
 async function showTrailCompletion(text) {
@@ -702,6 +706,8 @@ async function beginWalletConnection() {
   viewIsLeaving = false;
   document.body.classList.remove("wl-view-leaving");
   refreshQr.disabled = true;
+  trailQrRefresh.disabled = true;
+  const trailWasOpen = ledgerTrail.classList.contains("show");
   communityChoices.hidden = true;
   communityChoiceList.replaceChildren();
   connectedBox.hidden = true;
@@ -711,7 +717,14 @@ async function beginWalletConnection() {
   qrPlaceholder.textContent = "Creating a fresh wallet connection QR code…";
   setStatus("Starting wallet connection…");
   clearAccessSession();
-  hideLedgerTrail();
+  if (trailWasOpen) {
+    // Do not close/reopen the overlay while a QR refresh is underway.
+    resetLedgerTrail();
+    setTrailStep("wallet", "active", "Preparing a fresh Bifrost pairing QR code.");
+    setTrailStatus("Creating a fresh wallet connection QR code…", "busy");
+  } else {
+    hideLedgerTrail();
+  }
 
   try {
     if (!PROJECT_ID) throw new Error("WalletConnect project ID is not configured.");
@@ -761,17 +774,26 @@ async function beginWalletConnection() {
     if (activeAccount) {
       qrPlaceholder.textContent = "Wallet connected. A ledger read needs another try.";
       failTrail(error, () => routeConnectedWallet(activeAccount));
+    } else if (!PROJECT_ID || !XRPL_SERVER) {
+      // Configuration errors cannot be repaired by refreshing a pairing QR.
+      qrPlaceholder.textContent = "Wallet connection is currently unavailable.";
+      setTrailStep("wallet", "failed", "Wallet connection is unavailable because Wild Ledger is not configured.");
+      setTrailStatus(error?.message || String(error), "error");
     } else {
-      qrPlaceholder.textContent = "Wallet connection failed. Try QR code.";
-      setStatus("Wallet connection failed. Try QR code.", "error");
+      qrPlaceholder.textContent = "Wallet connection not completed. Refresh the QR code to try again.";
+      setStatus("Wallet connection not completed. Refresh the QR code to try again.");
       failWalletConnection(error);
     }
   } finally {
-    if (run === connectRun && !viewIsLeaving) refreshQr.disabled = false;
+    if (run === connectRun && !viewIsLeaving) {
+      refreshQr.disabled = false;
+      trailQrRefresh.disabled = false;
+    }
   }
 }
 
 refreshQr.addEventListener("click", beginWalletConnection);
+trailQrRefresh.addEventListener("click", beginWalletConnection);
 ledgerTrailClose.addEventListener("click", hideLedgerTrail);
 
 ledgerTrailRetry.addEventListener("click", async () => {
