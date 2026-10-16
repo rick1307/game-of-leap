@@ -459,6 +459,10 @@ async function showTrailCompletion(text) {
 function fadeNavigate(url, { replace = false } = {}) {
   if (viewIsLeaving) return;
   viewIsLeaving = true;
+  // Move 13 diagnostic: remove the overlay's backdrop blur before navigation,
+  // while keeping the completed Ledger Trail and its panel fully visible.
+  ledgerTrail.style.backdropFilter = "none";
+  ledgerTrail.style.webkitBackdropFilter = "none";
   // Keep the completed Ledger Trail fully visible while waiting to navigate.
   // Do not dismiss the overlay or reveal Get Wild beneath it during handoff.
   const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
