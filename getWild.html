@@ -459,12 +459,9 @@ async function showTrailCompletion(text) {
 function fadeNavigate(url, { replace = false } = {}) {
   if (viewIsLeaving) return;
   viewIsLeaving = true;
-  // The Trail owns its exit. Never fade the entire browser document:
-  // iOS Safari can leave the next document unpainted until user interaction.
+  // Keep the completed Ledger Trail fully visible while waiting to navigate.
+  // Do not dismiss the overlay or reveal Get Wild beneath it during handoff.
   const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-  if (ledgerTrail.classList.contains("show")) {
-    ledgerTrail.classList.remove("show");
-  }
   setTimeout(() => {
     if (replace) location.replace(url);
     else location.href = url;
