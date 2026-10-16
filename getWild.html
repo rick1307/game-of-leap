@@ -72,7 +72,6 @@ footer{padding-top:34px;text-align:center;color:var(--muted);font-size:13px}
 
 /* Ledger Trail: human-facing execution state for wallet/XRPL routing. */
 body{animation:wildViewIn .34s ease both}
-body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
 @keyframes wildViewIn{from{opacity:0}to{opacity:1}}
 .ledger-trail{position:fixed;inset:0;width:100vw;height:100dvh;z-index:40;display:flex;align-items:center;justify-content:center;padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));background:rgba(0,12,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .34s ease,visibility 0s linear .34s}
 .ledger-trail.show{opacity:1;visibility:visible;pointer-events:auto;transition-delay:0s}
@@ -143,7 +142,7 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
 .trail-qr-refresh[hidden]{display:none}
 .trail-qr-refresh:disabled{opacity:.6;cursor:default}
 .trail-qr-refresh:focus-visible{outline:2px solid #ffe2a7;outline-offset:3px}
-@media(prefers-reduced-motion:reduce){body{animation:none}.ledger-trail,.ledger-trail-panel,body.wl-view-leaving{transition:none}.trail-step.active .trail-marker:before,.trail-step.active .trail-activity{animation:none}}
+@media(prefers-reduced-motion:reduce){body{animation:none}.ledger-trail,.ledger-trail-panel,.trail-step.active .trail-marker:before,.trail-step.active .trail-activity{animation:none}}
 
 </style>
 <link rel="stylesheet" href="wildLedgerBackend.css">
@@ -460,8 +459,12 @@ async function showTrailCompletion(text) {
 function fadeNavigate(url, { replace = false } = {}) {
   if (viewIsLeaving) return;
   viewIsLeaving = true;
-  document.body.classList.add("wl-view-leaving");
+  // The Trail owns its exit. Never fade the entire browser document:
+  // iOS Safari can leave the next document unpainted until user interaction.
   const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+  if (ledgerTrail.classList.contains("show")) {
+    ledgerTrail.classList.remove("show");
+  }
   setTimeout(() => {
     if (replace) location.replace(url);
     else location.href = url;
@@ -704,7 +707,6 @@ async function beginWalletConnection() {
   const run = ++connectRun;
   activeAccount = "";
   viewIsLeaving = false;
-  document.body.classList.remove("wl-view-leaving");
   refreshQr.disabled = true;
   trailQrRefresh.disabled = true;
   const trailWasOpen = ledgerTrail.classList.contains("show");
