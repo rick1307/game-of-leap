@@ -404,6 +404,23 @@
   .issuance-step .issuance-dot { position:relative; display:grid; place-items:center; width:28px; height:28px; margin-top:1px; border:1px solid rgba(236,249,247,.22); border-radius:50%; background:#082936; color:rgba(236,249,247,.4); font-size:.76rem; font-weight:950; z-index:1; }
   .issuance-step:not(:last-child) .issuance-dot::after { content:""; position:absolute; top:27px; left:50%; transform:translateX(-50%); width:2px; height:32px; background:linear-gradient(to bottom,rgba(121,213,194,.18),rgba(121,213,194,.05)); }
   .issuance-step.is-working .issuance-dot { border-color:rgba(244,189,88,.70); background:rgba(244,189,88,.12); color:#ffe2a7; animation:membershipTrailPulse 1.6s ease-out infinite; }
+  /* Activity stays INSIDE the existing 28px checkpoint: no circle, border,
+     connector, spacing, or geometry changes. System = arc; wallet = pulse. */
+  .issuance-step.is-working .issuance-dot::before {
+    content:""; display:block; box-sizing:border-box; width:14px; height:14px;
+    border:2px solid transparent; border-top-color:#ffe2a7; border-right-color:#ffe2a7;
+    border-radius:50%; animation:issuanceActivitySpin .9s linear infinite;
+  }
+  .issuance-step.is-working.is-awaiting-wallet .issuance-dot::before {
+    width:8px; height:8px; border:0; background:#ffe2a7;
+    box-shadow:0 0 0 0 rgba(255,226,167,.5);
+    animation:issuanceWalletPulse 1.45s ease-in-out infinite;
+  }
+  @keyframes issuanceActivitySpin { to { transform:rotate(360deg); } }
+  @keyframes issuanceWalletPulse {
+    0%,100% { transform:scale(.72); opacity:.58; box-shadow:0 0 0 0 rgba(255,226,167,.1); }
+    50% { transform:scale(1.13); opacity:1; box-shadow:0 0 0 3px rgba(255,226,167,.13); }
+  }
   .issuance-step.is-working strong { color:#ffe2a7; }
   .issuance-step.is-done .issuance-dot { border-color:rgba(159,224,176,.48); background:rgba(159,224,176,.12); color:#bdf2c8; }
   .issuance-step.is-done:not(:last-child) .issuance-dot::after { background:linear-gradient(to bottom,rgba(121,213,194,.75),rgba(121,213,194,.25)); }
@@ -429,7 +446,10 @@
   .issuance-error { color:#ffb7aa; }
   .issuance-complete { display:grid; grid-template-columns:36px minmax(0,1fr); gap:10px; align-items:center; margin-top:12px; color:#bdf2c8; font-size:.80rem; font-weight:850; }
   .issuance-complete-mark { display:grid; place-items:center; width:34px; height:34px; border:1px solid rgba(159,224,176,.48); border-radius:50%; background:rgba(159,224,176,.12); }
-  @media(prefers-reduced-motion:reduce) { .issuance-step.is-working .issuance-dot { animation:none; } }
+  @media(prefers-reduced-motion:reduce) {
+    .issuance-step.is-working .issuance-dot,
+    .issuance-step.is-working .issuance-dot::before { animation:none; }
+  }
 
   /* Existing Membership Requests report styles, unchanged. */
 
@@ -1584,11 +1604,11 @@ async function signedCheckHash(blob) {
   return Array.from(digest.slice(0,32),b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
 }
 
-function issueUpdate(stage, state, message) {
+function issueUpdate(stage, state, message, waitingForWallet=false) {
   issueStage[stage] = state;
   const item = document.querySelector(`#issuanceSteps [data-stage="${stage}"]`);
-  item.className = `issuance-step is-${state}`;
-  item.querySelector(".issuance-dot").textContent = state === "done" ? "✓" : state === "failed" ? "×" : state === "working" ? "•" : "○";
+  item.className = `issuance-step is-${state}${state === "working" && waitingForWallet ? " is-awaiting-wallet" : ""}`;
+  item.querySelector(".issuance-dot").textContent = state === "done" ? "✓" : state === "failed" ? "×" : state === "working" ? "" : "○";
   item.querySelector("small").textContent = message;
   $("issuanceStatus").textContent = message;
 }
@@ -1794,11 +1814,12 @@ async function connectIssueWallet() {
     $("issuanceQr").src=await QRCode.toDataURL(uri,{width:520,margin:2,errorCorrectionLevel:"M"});
     if (issue.cancelled) return;
     issueHandoff("Open Bifrost, approve this wallet connection, then return here. Wild Ledger will verify the connected wallet and continue automatically.",true);
-    $("issuanceStatus").textContent="Waiting for Bifrost connection. You can leave Safari and return to this Trail.";
+    issueUpdate(2,"working","Waiting for Bifrost connection. You can leave Safari and return to this Trail.",true);
   }});
   issue.pairingPending=false;
   assertIssueSession(); // A closed, unsigned Trail must never advance to signing.
   if (connection.account !== issue.selected.operatorWallet) throw new Error("The Bifrost account does not match the current Community Operating Wallet.");
+  issueUpdate(2,"working","Rechecking connected Operating Wallet authority and request eligibility…");
   await liveIssuePreflight();
   hideIssueHandoff();
   issueUpdate(2,"done",`Connected and checked ${connection.account}.`);
@@ -1811,10 +1832,12 @@ async function signIssueCheck() {
   if (issue.signer?.account !== issue.selected.operatorWallet) throw new Error("The signing wallet is no longer the authorized Operator.");
   assertCheck(issue.prepared);
   issueHandoff("Second handoff: review and sign the prepared 1-LEAP Check in Bifrost, then return here. Wild Ledger will submit only after Bifrost returns the signature.");
+  issueUpdate(3,"working","Waiting for your signature approval in Bifrost. No transaction has been submitted yet.",true);
   issue.signing=true;
   $("issuanceClose").disabled=true; // Do not abandon an in-flight Bifrost signature.
   const signed = await issue.signer.signTransaction(issue.prepared);
   hideIssueHandoff();
+  issueUpdate(3,"working","Verifying the exact Check signed by Bifrost…");
   const blob = String(signed?.signedBlob || "").toUpperCase();
   if (!/^[A-F0-9]{80,}$/.test(blob)) throw new Error("Bifrost did not return a valid signed transaction blob.");
   assertCheck(decode(blob),true);
