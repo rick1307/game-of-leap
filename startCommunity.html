@@ -547,6 +547,8 @@ const ledgerTrail=$("ledgerTrail"), trailWalletRow=ledgerTrail.querySelector('[d
   trailRequestRow=ledgerTrail.querySelector('[data-trail-step="request"]'),
   trailPrepareRow=ledgerTrail.querySelector('[data-trail-step="prepare"]'),
   trailApproveRow=ledgerTrail.querySelector('[data-trail-step="approve"]'),
+  trailVerifyRow=ledgerTrail.querySelector('[data-trail-step="verify"]'),
+  trailComplete=$("trailComplete"),trailCompleteText=$("trailCompleteText"),
   trailQrImage=$("trailQrImage"), trailQrRefresh=$("trailQrRefresh"),
   trailAction=$("trailAction"), trailActionTitle=$("trailActionTitle"), trailActionCopy=$("trailActionCopy"),
   trailStatus=$("ledgerTrailStatus");
@@ -568,7 +570,7 @@ function trailMessage(message,style=""){
 let trailRequestPresentation=null;
 // Move 5: the request reader alone decides whether a wallet may reach payment.
 // Keep payment preparation and signing on their existing functions; do not submit here.
-let trailRequestState="",trailPaymentRunning=false,trailPaymentPairingQr="";
+let trailRequestState="",trailPaymentRunning=false;
 function trailRequestStep(state,detail,message,style=""){
   trailRequestPresentation={message,style};
   trailRequestRow.className=`trail-step ${state}`;
@@ -607,21 +609,27 @@ function trailPaymentStep(row,state,detail,awaitingWallet=false){
 }
 function trailResetPaymentSteps(){
   trailRequestState="";
+  trailComplete.classList.remove("show");
   trailPaymentStep(trailPrepareRow,"","Waiting to prepare the current setup fee.");
   trailPaymentStep(trailApproveRow,"","Waiting for wallet approval if payment is needed.");
+  trailPaymentStep(trailVerifyRow,"","Waiting to confirm the validated payment result.");
 }
-function trailShowSignatureResult(){
-  if(!preparedPayment||!signedBlob)return false;
+function trailShowValidatedPayment(){
+  if(trailRequestState!=="NONE"||!preparedPayment||!signedBlob||!waitingBox.classList.contains("show"))return false;
   trailPaymentStep(trailPrepareRow,"done",`Prepared ${preparedPayment.feeXrp} XRP to the Owner Wallet.`);
-  trailPaymentStep(trailApproveRow,"done",`Bifrost signed ${preparedPayment.feeXrp} XRP. Not submitted.`);
+  trailPaymentStep(trailApproveRow,"done","Payment approved by Bifrost.");
+  trailPaymentStep(trailVerifyRow,"done","Payment validated on XRPL. Owner notified.");
   trailAction.classList.remove("show");
-  trailMessage("Payment signed, but not sent to XRPL. Submission and verification are the next move.");
+  trailQrImage.hidden=true;trailQrImage.removeAttribute("src");
+  trailCompleteText.textContent="Community request received. Waiting for Owner provisioning.";
+  trailComplete.classList.add("show");
+  trailMessage("Your XRP payment is confirmed on XRPL. Your community request has been received.");
   return true;
 }
 async function trailPrepareAndApprove(){
   if(!trailIsOpen()||trailPaymentRunning||trailRequestState!=="NONE"||
      !accountVerified||ownerWalletBlocked||!feeState?.current||!signer)return;
-  if(trailShowSignatureResult())return;
+  if(trailShowValidatedPayment())return;
   trailPaymentRunning=true;
   try{
     if(!preparedPayment){
@@ -635,54 +643,46 @@ async function trailPrepareAndApprove(){
       }
     }
     trailPaymentStep(trailPrepareRow,"done",`Prepared ${preparedPayment.feeXrp} XRP to the Owner Wallet.`);
-    // A closed Trail must not initiate a new wallet signature request.
     if(!trailIsOpen())return;
     if(!connectedAccount||signer.account!==connectedAccount){
       trailPaymentStep(trailApproveRow,"failed","Connected signer does not match the verified wallet.");
       trailMessage("Wallet identity could not be confirmed for signing.","error");
       return;
     }
-    // The first QR connected the wallet for the status check. Like the working
-    // Onboarding Checkbook, start a real WalletConnect pairing for the payment.
-    // Its fresh QR leads into Bifrost; the prepared transaction is sent to the
-    // verified wallet after it approves this pairing.
-    trailPaymentStep(trailApproveRow,"active","Connecting Bifrost for payment approval.",true);
-    trailMessage("Preparing the payment wallet QR…","busy");
-    trailPaymentPairingQr="";
-    const paymentConnection=await signer.connect({onUri:async uri=>{
-      const image=await QRCode.toDataURL(uri,{width:560,margin:2,errorCorrectionLevel:"M"});
-      trailPaymentPairingQr=image;
-      if(!trailIsOpen())return;
-      trailQrImage.src=image;trailQrImage.hidden=false;trailQrRefresh.hidden=true;
-      trailActionTitle.textContent="OPEN BIFROST FOR PAYMENT";
-      trailActionCopy.textContent=`Use this QR to connect Bifrost for the ${preparedPayment.feeXrp} XRP payment. The transaction approval will appear in Bifrost next.`;
-      trailAction.classList.add("show");
-      trailPaymentStep(trailApproveRow,"active","Waiting for Bifrost to connect for payment.",true);
-      trailMessage("Open Bifrost using the QR. No XRP has been sent.","busy");
-    }});
-    trailPaymentPairingQr="";
-    if(paymentConnection.account!==connectedAccount){
-      trailPaymentStep(trailApproveRow,"failed","This wallet is not the one that requested the community.");
-      trailMessage("Reconnect the same wallet used for the request before signing.","error");
-      return;
-    }
-    // Do not request a signature after the visitor has closed the Trail.
-    if(!trailIsOpen())return;
-    trailQrImage.hidden=true;trailQrImage.removeAttribute("src");trailQrRefresh.hidden=true;
-    trailActionTitle.textContent="APPROVE IN BIFROST";
-    trailActionCopy.textContent=`Review the actual ${preparedPayment.feeXrp} XRP payment to the Wild Ledger Owner Wallet in Bifrost. Approve or reject it there. Nothing is submitted to XRPL yet.`;
-    trailAction.classList.add("show");
-    trailPaymentStep(trailApproveRow,"active","Waiting for the XRP payment approval in Bifrost.",true);
-    trailMessage("Bifrost is showing the XRP payment for your decision.","busy");
-    await signPayment();
+    // Exactly like the working Onboarding Checkbook: pair ONCE, then request
+    // the signature over that same approved WalletConnect session.
+    // A second signer.connect() creates a different, unnecessary pairing.
     if(!signedBlob){
-      trailPaymentStep(trailApproveRow,"failed","Payment signature was not completed.");
-      trailMessage(paymentStatus.textContent||"Bifrost did not sign the payment. Close and reopen the Trail to retry.","error");
-      return;
+      trailQrImage.hidden=true;trailQrImage.removeAttribute("src");trailQrRefresh.hidden=true;
+      trailActionTitle.textContent="OPEN BIFROST TO REVIEW PAYMENT";
+      trailActionCopy.textContent=`Open Bifrost now. Review the ${preparedPayment.feeXrp} XRP payment to the Wild Ledger Owner Wallet. Approve it to sign and send the payment, or reject it to stop. Then return to Wild Ledger.`;
+      trailAction.classList.add("show");
+      trailPaymentStep(trailApproveRow,"active","Waiting for Bifrost to approve or reject the XRP payment.",true);
+      trailMessage("Open Bifrost now to review the payment. Wild Ledger is waiting for your choice.","busy");
+      await signPayment();
+      if(!signedBlob){
+        trailPaymentStep(trailApproveRow,"failed","The wallet did not sign the XRP payment.");
+        trailMessage(paymentStatus.textContent||"Payment not approved. No XRP was sent.","error");
+        return;
+      }
     }
-    trailShowSignatureResult();
+    trailAction.classList.remove("show");
+    trailPaymentStep(trailApproveRow,"done",`Bifrost signed ${preparedPayment.feeXrp} XRP.`);
+    trailPaymentStep(trailVerifyRow,"active","Submitting the signed payment and verifying it on XRPL.");
+    trailMessage("Bifrost approved. Submitting once and checking XRPL validation…","busy");
+    // Reuse the existing production submit/verification/Basin notification path.
+    // That function submits only a successfully signed transaction.
+    await submitPayment();
+    if(!trailShowValidatedPayment()){
+      trailPaymentStep(trailVerifyRow,"failed","Payment was not confirmed on XRPL.");
+      trailMessage(paymentStatus.textContent||"XRPL has not confirmed this payment.","error");
+    }
   }catch(error){
-    trailPaymentStep(trailApproveRow,"failed","Could not complete wallet approval.");
+    if(!signedBlob){
+      trailPaymentStep(trailApproveRow,"failed","Wallet approval was not completed.");
+    }else{
+      trailPaymentStep(trailVerifyRow,"failed","XRPL confirmation was not completed.");
+    }
     trailMessage(error?.message||String(error),"error");
   }finally{
     trailAction.classList.remove("show");
@@ -725,14 +725,18 @@ function beginWalletTrail(){
   if(connectedAccount){
     trailWalletResult(true,"Wallet connected. Your request status is shown in this Trail.");
     trailRestoreRequest();
-    if(trailPaymentRunning&&trailPaymentPairingQr){
-      trailQrImage.src=trailPaymentPairingQr;trailQrImage.hidden=false;
-      trailActionTitle.textContent="OPEN BIFROST FOR PAYMENT";
-      trailActionCopy.textContent=`Use this QR to connect Bifrost for the ${preparedPayment.feeXrp} XRP payment. The transaction approval will appear in Bifrost next.`;
-      trailAction.classList.add("show");
-      trailPaymentStep(trailApproveRow,"active","Waiting for Bifrost to connect for payment.",true);
-      trailMessage("Open Bifrost using the QR. No XRP has been sent.","busy");
-    }else if(!trailPaymentRunning)void trailPrepareAndApprove();
+    if(trailPaymentRunning){
+      if(!signedBlob){
+        trailActionTitle.textContent="OPEN BIFROST TO REVIEW PAYMENT";
+        trailActionCopy.textContent=`Open Bifrost now to review the ${preparedPayment?.feeXrp||"current"} XRP payment. Approve or reject it there, then return here.`;
+        trailAction.classList.add("show");
+        trailPaymentStep(trailApproveRow,"active","Waiting for Bifrost to approve or reject the XRP payment.",true);
+        trailMessage("Your existing Bifrost connection is handling the payment request.","busy");
+      }else{
+        trailPaymentStep(trailVerifyRow,"active","Checking the submitted payment on XRPL.");
+        trailMessage("Checking XRPL payment validation…","busy");
+      }
+    }else if(!trailShowValidatedPayment())void trailPrepareAndApprove();
     return;
   }
   if(connectButton.disabled){
