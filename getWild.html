@@ -690,7 +690,23 @@ async function routeConnectedWallet(account) {
 
   const matches = lastAccess.operatorMatches || [];
   if (matches.length === 0) {
-    throw new Error("This XRPL address is not the current Wild Ledger Owner Wallet or a current Community Operating Wallet.");
+    // A verified wallet with no Owner or Operator role is a newcomer, not an error.
+    setTrailStep("route", "done", "No Owner or Operator role found. New community path selected.");
+    setTrailStep("confirm", "done", "No existing community authority needs confirmation.");
+    setTrailStep("config", "done", "Community CONFIG is not needed to begin a new request.");
+    setTrailStep("session", "done", "No Owner or Operator session is needed.");
+    setTrailStep("ready", "active", "Preparing your welcome to Wild Ledger.");
+    showTrailAction(
+      "WELCOME TO WILD LEDGER!",
+      "Want to join the team? Start a community, distribute LEAP, and build something of your own. We're opening Start Community for you now."
+    );
+    setStatus("Welcome to Wild Ledger! Opening Start Community…", "good");
+    await wait(180);
+    setTrailStep("ready", "done", "Start Community is ready.");
+    setTrailStatus("Wallet connected. Opening Start Community.");
+    await showTrailCompletion("Ledger Trail complete");
+    fadeNavigate("startCommunity.html");
+    return;
   }
 
   if (matches.length === 1) {
