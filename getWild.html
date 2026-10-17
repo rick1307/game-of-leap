@@ -705,7 +705,7 @@ async function routeConnectedWallet(account) {
     setTrailStep("ready", "done", "Start Community is ready.");
     setTrailStatus("Wallet connected. Opening Start Community.");
     await showTrailCompletion("Ledger Trail complete");
-    fadeNavigate("startCommunity.html");
+    fadeNavigate("startCommunity.html?mode=apply");
     return;
   }
 
