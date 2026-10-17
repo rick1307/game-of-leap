@@ -440,6 +440,7 @@
 .trail-status.busy{color:#ffe2a7;border-color:rgba(244,189,88,.18)}
 .trail-status.error{color:#ffb7aa;border-color:rgba(239,118,93,.24)}
 .trail-status.blocked{color:#ffe2a7;border-color:rgba(244,189,88,.40)}
+.trail-status.success{color:#bdf2c8;border-color:rgba(159,224,176,.38);white-space:pre-line}
 /* Only shown when a connected wallet already operates a community. */
 .trail-getwild-link{display:flex;align-items:center;justify-content:center;margin-top:14px;padding:13px 16px;width:100%;border:2px solid #b5f5c5;border-radius:12px;background:#85e6a1;color:#092518;font:900 .83rem/1.35 system-ui,-apple-system,sans-serif;text-align:center;text-decoration:none;box-shadow:0 3px 0 rgba(0,0,0,.25)}
 .trail-getwild-link:hover,.trail-getwild-link:focus-visible{background:#a7f5bd;outline:2px solid #e7ffee;outline-offset:2px}
@@ -514,9 +515,9 @@
       <div class="trail-step" data-trail-step="approve"><div class="trail-marker">○</div><div class="trail-copy"><strong>Wallet approval</strong><span>Waiting for wallet approval if payment is needed.</span></div></div>
       <div class="trail-step" data-trail-step="verify"><div class="trail-marker">○</div><div class="trail-copy"><strong>Verify on XRPL</strong><span>Waiting to confirm the validated payment result.</span></div></div>
     </div>
+    <div class="trail-complete" id="trailComplete"><div class="trail-complete-check">✓</div><div class="trail-complete-text" id="trailCompleteText">Ledger Trail complete.</div></div>
     <p class="trail-status" id="ledgerTrailStatus">The Ledger Trail is not started yet.</p>
     <a class="trail-getwild-link" id="trailGetWildLink" href="getWild.html" hidden>Go to Get Wild →</a>
-    <div class="trail-complete" id="trailComplete"><div class="trail-complete-check">✓</div><div class="trail-complete-text" id="trailCompleteText">Ledger Trail complete.</div></div>
   </div>
 </div>
 
@@ -634,9 +635,10 @@ function trailShowValidatedPayment(){
   trailPaymentStep(trailVerifyRow,"done","Payment validated on XRPL. Owner notified.");
   trailAction.classList.remove("show");
   trailQrImage.hidden=true;trailQrImage.removeAttribute("src");
-  trailCompleteText.textContent="Community request received. Waiting for Owner provisioning.";
+  trailCompleteText.textContent="Community Request Received";
   trailComplete.classList.add("show");
-  trailMessage("Your XRP payment is confirmed on XRPL. Your community request has been received.");
+  trailMessage("Your XRP payment has been confirmed.\n\nWe're provisioning your new community. Within 24 hours, you should be able to sign in through Get Wild and access your community.","success");
+  trailGetWildLink.hidden=false;
   return true;
 }
 async function trailPrepareAndApprove(){
