@@ -4,20 +4,16 @@
   Canonical authority state is published as a validated no-op AccountSet:
     <COMMUNITY>-LEAP/AUTHORITY/OPERATING-WALLET=<XRPL-ADDRESS>
 
-  Existing-community migration rule:
-  - The documented pre-authority-state Community Operating Wallet may publish
-    exactly one initial statement naming itself.
-  - After that statement validates, the currently authorized Community
-    Operating Wallet may replace itself by publishing a later value.
-  - Latest valid value wins in canonical XRPL transaction order.
-  - No BEGIN/END records, successor acceptance, rotation IDs, or separate
-    wallet-history table are canonical protocol state.
-  - Emergency recovery is intentionally not implemented yet.
+  Sailing Frog's Leap / existing configured community:
+  - The configured Operating Wallet is the permanent community wallet.
+  - Its one-time initial self-statement must still validate before the
+    existing recognition workflows allow new official activity.
+  - Later statements cannot change that wallet.
+  - Preserve the initial-statement fields and authority-result shape used
+    by the existing membership, CONFIG, Check, and recognition readers.
 
-  community.operatingWallet is used only to identify the documented
-  pre-authority-state wallet for the one-time migration and historical reads.
-  Once the initial canonical statement exists, validated XRPL history is
-  authoritative.
+  Owner-provisioned community wallets are resolved separately by
+  communityAccess.js and will be simplified in Step 3B.
 */
 
 import { DirectXRPLClient, isClassicAddress } from "./xrplTransport.js";
@@ -186,10 +182,6 @@ function cacheKey({ namespace, legacyOperatingWallet, serverUrl }) {
   return `${serverUrl}|${namespace}|${legacyOperatingWallet || ""}`;
 }
 
-function statementOrder(statement) {
-  return { ledger: Number(statement.ledger), txIndex: Number.isFinite(statement.txIndex) ? Number(statement.txIndex) : null };
-}
-
 function intervalContains(interval, order) {
   if (!order || !Number.isFinite(order.ledger)) return false;
   if (interval.fromExclusive && !isAfter(order, interval.fromExclusive)) return false;
@@ -200,8 +192,7 @@ function intervalContains(interval, order) {
 export async function resolveCommunityAuthority({
   community,
   serverUrl,
-  force = false,
-  maxTransitions = 50
+  force = false
 }) {
   if (!community) throw new Error("Community configuration is required.");
   const namespace = String(community.leapNamespace || "").trim();
@@ -210,7 +201,7 @@ export async function resolveCommunityAuthority({
 
   const configuredOperatingWallet = String(community.operatingWallet || "").trim();
   const legacyWallet = isClassicAddress(configuredOperatingWallet) ? configuredOperatingWallet : "";
-  if (!legacyWallet) throw new Error("The existing pre-authority-state Community Operating Wallet is required for migration.");
+  if (!legacyWallet) throw new Error("The configured permanent Community Operating Wallet is required.");
 
   const key = cacheKey({ namespace, legacyOperatingWallet: legacyWallet, serverUrl });
   if (!force && CACHE.has(key)) return clone(CACHE.get(key));
@@ -264,79 +255,20 @@ export async function resolveCommunityAuthority({
       return clone(state);
     }
 
+    // Only the original wallet can operate this community. All of its valid
+    // history remains readable; a later replacement statement has no effect.
+    const currentAccount = legacyWallet;
     const accounts = [legacyWallet];
     const statements = [{ ...initialStatement, kind: "INITIAL" }];
     const transitions = [];
-    const intervals = [];
-
-    const initialOrder = statementOrder(initialStatement);
-    intervals.push({
+    const intervals = [{
       account: legacyWallet,
-      source: "pre-authority-state",
+      source: "xrpl",
       fromExclusive: null,
-      throughInclusive: initialOrder,
+      throughInclusive: null,
       fromLedger: 0,
-      throughLedger: initialStatement.ledger
-    });
-
-    let currentAccount = legacyWallet;
-    let activeFromExclusive = initialOrder;
-    let transitionCount = 0;
-
-    while (transitionCount < maxTransitions) {
-      const candidates = (await statementsFor(currentAccount)).filter(statement =>
-        statement.account === currentAccount && isAfter(statementOrder(statement), activeFromExclusive)
-      );
-
-      let rotation = null;
-      for (const candidate of candidates) {
-        statements.push({ ...candidate, kind: candidate.value === currentAccount ? "REAFFIRM" : "ROTATION" });
-        if (candidate.value !== currentAccount) {
-          rotation = candidate;
-          break;
-        }
-      }
-
-      if (!rotation) {
-        intervals.push({
-          account: currentAccount,
-          source: "xrpl",
-          fromExclusive: activeFromExclusive,
-          throughInclusive: null,
-          fromLedger: activeFromExclusive.ledger,
-          throughLedger: null
-        });
-        break;
-      }
-
-      const rotationOrder = statementOrder(rotation);
-      intervals.push({
-        account: currentAccount,
-        source: "xrpl",
-        fromExclusive: activeFromExclusive,
-        throughInclusive: rotationOrder,
-        fromLedger: activeFromExclusive.ledger,
-        throughLedger: rotation.ledger
-      });
-
-      transitions.push({
-        from: currentAccount,
-        to: rotation.value,
-        ledger: rotation.ledger,
-        txIndex: rotation.txIndex,
-        hash: rotation.hash,
-        memo: rotation.memo
-      });
-
-      currentAccount = rotation.value;
-      activeFromExclusive = rotationOrder;
-      if (!accounts.includes(currentAccount)) accounts.push(currentAccount);
-      transitionCount += 1;
-    }
-
-    if (transitionCount >= maxTransitions) {
-      throw new Error(`Authority state exceeded the ${maxTransitions}-rotation safety limit.`);
-    }
+      throughLedger: null
+    }];
 
     const state = {
       namespace,
