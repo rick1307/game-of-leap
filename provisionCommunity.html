@@ -194,6 +194,7 @@
   import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
   import { DirectXRPLClient, isClassicAddress, prepareNoOpAccountSet, submitSignedTransaction } from "./js/xrplTransport.js";
   import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
+  import { resolveWalletAccess } from "./js/communityAccess.js";
   import {
     PROTOCOL_INITIAL_OWNER_WALLET,
     resolveOwnerAuthority,
@@ -408,6 +409,15 @@
     }
   }
 
+  // A community can use only one permanent Operating Wallet, and that wallet
+  // cannot already belong to any other community (including Sailing Frog's Leap).
+  // Reuse the same validated-XRPL authority reader as Get Wild.
+  async function assertOperatingWalletAvailable(account) {
+    const access = await resolveWalletAccess({ account, serverUrl: SERVER, force: true });
+    const match = (access.operatorMatches || [])[0];
+    if (match) throw new Error(`Operating Wallet already belongs to Community ${match.communityId}. Choose a different wallet.`);
+  }
+
   async function verifyWallet() {
     walletVerified = false;
     clearPrepared();
@@ -425,8 +435,9 @@
       const response = await client.request("account_info", { account, ledger_index: "validated", strict: true }, 15000);
       const data = response?.result?.account_data;
       if (!data || data.Account !== account) throw new Error("XRPL did not return the requested account.");
+      await assertOperatingWalletAvailable(account);
       walletVerified = true;
-      tone(walletStatus, "good", "XRPL account exists and is validated.");
+      tone(walletStatus, "good", "XRPL account exists and is available for a new community.");
     } catch (error) {
       tone(walletStatus, "bad", error?.message || String(error));
     } finally {
@@ -512,6 +523,7 @@
     if (!signerAccount || signerAccount !== ownerState.currentAccount) throw new Error(`Connected signer is not the current Owner Wallet. Current Owner: ${ownerState.currentAccount}`);
     if (!id || reservedIds.has(id)) throw new Error(`Community ID ${id || "(blank)"} is already reserved.`);
     if (!walletVerified || !isClassicAddress(operatingWallet.value.trim())) throw new Error("Verify the Community Operating Wallet first.");
+    await assertOperatingWalletAvailable(operatingWallet.value.trim());
     return ownerState.currentAccount;
   }
 
@@ -573,6 +585,7 @@
       if (!ownerState?.authorityEstablished || ownerState.currentAccount !== preparedOwner) throw new Error("Owner authority changed after preparation. Prepare a new transaction.");
       if (reservedIds.has(preparedId)) throw new Error(`Community ID ${preparedId} was established before this transaction was submitted. Do not submit.`);
       if (operatingWallet.value.trim() !== preparedWallet || communityId.value.trim() !== preparedId) throw new Error("Community data changed after preparation. Prepare a new transaction.");
+      await assertOperatingWalletAvailable(preparedWallet);
 
       tone(submitStatus, "wait", "Submitting signed transaction directly to XRPL…");
       tone(validationStatus, "wait", "Waiting for validation…");
@@ -692,8 +705,9 @@
       setTrailStep("identity","active","Confirming the unused Community ID and first Operating Wallet.");
       if (reservedIds.has(id)) throw new Error(`Community ID ${id} is already reserved.`);
       await verifyOperatingWalletForTrail(wallet);
+      await assertOperatingWalletAvailable(wallet);
       walletVerified = true;
-      tone(walletStatus,"good","XRPL account exists and is validated.");
+      tone(walletStatus,"good","XRPL account exists and is available for a new community.");
       updateMemo();
       setTrailStep("identity","done",`${id} is available and the first Operating Wallet exists on XRPL.`);
 
@@ -723,6 +737,7 @@
       rebuildReservedIds();
       if (ownerState.currentAccount !== signerAccount) throw new Error("Owner authority changed after wallet connection.");
       if (reservedIds.has(id)) throw new Error(`Community ID ${id} became reserved before preparation.`);
+      await assertOperatingWalletAvailable(wallet);
       const memo = communityOperatingWalletMemo(id,wallet);
       const prep = await prepareNoOpAccountSet({ serverUrl:SERVER, account:signerAccount, memoText:memo, feeCushion:FEE_CUSHION });
       preparedTx=prep.preparedTx; preparedOwner=signerAccount; preparedId=id; preparedWallet=wallet; signedBlob="";
@@ -747,6 +762,7 @@
       if (ownerState.currentAccount !== preparedOwner) throw new Error("Owner authority changed after preparation. Nothing was submitted.");
       if (reservedIds.has(preparedId)) throw new Error(`Community ID ${preparedId} was established before this transaction was submitted.`);
       if (operatingWallet.value.trim() !== preparedWallet || communityId.value.trim() !== preparedId) throw new Error("Community data changed after preparation. Nothing was submitted.");
+      await assertOperatingWalletAvailable(preparedWallet);
       tone(submitStatus,"wait","Submitting signed transaction directly to XRPL…"); tone(validationStatus,"wait","Waiting for validation…");
       setTrailStatus("Submitting to XRPL and waiting for validated consensus…","busy");
       const result = await submitSignedTransaction({ serverUrl:SERVER, signedBlob, onSubmitted:({txHash,submitResponse})=>{
