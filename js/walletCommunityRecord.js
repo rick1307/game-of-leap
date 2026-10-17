@@ -557,21 +557,11 @@ function compactOperatorJourney(status) {
         hash: String(status.community.hash || "")
       }
     : null;
-  const transferredCommunity = status?.transferredCommunity
-    ? {
-        communityId: String(status.transferredCommunity.communityId || "").trim().toUpperCase(),
-        namespace: String(status.transferredCommunity.namespace || ""),
-        firstOperatingWallet: String(status.transferredCommunity.firstOperatingWallet || ""),
-        ledger: Number(status.transferredCommunity.ledger) || null,
-        hash: String(status.transferredCommunity.hash || "")
-      }
-    : null;
 
   return {
     state,
     request,
     community,
-    transferredCommunity,
     currentCommunityCount: Array.isArray(status?.currentlyOperatedCommunities)
       ? status.currentlyOperatedCommunities.length
       : 0,
@@ -623,7 +613,7 @@ export async function buildWildLedgerCommunityRecord({
   const warnings = [...(Array.isArray(discovery?.warnings) ? discovery.warnings : [])];
   if (walletData.linesError) warnings.push(`LEAP balance: ${walletData.linesError}`);
 
-  let operatorJourney = { state: "UNKNOWN", request: null, community: null, transferredCommunity: null, currentCommunityCount: 0, initialCommunityCount: 0 };
+  let operatorJourney = { state: "UNKNOWN", request: null, community: null, currentCommunityCount: 0, initialCommunityCount: 0 };
   try {
     publish("reading-community-request");
     operatorJourney = compactOperatorJourney(
