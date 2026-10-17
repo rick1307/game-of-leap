@@ -9,238 +9,39 @@
   No app username, password, Access ID, or private wallet material is used.
 */
 
-import { DirectXRPLClient, isClassicAddress } from "./xrplTransport.js";
+import { isClassicAddress } from "./xrplTransport.js";
 import { resolveOwnerAuthority } from "./ownerAuthority.js";
-import {
-  resolveCommunityAuthority,
-  isCanonicalNoOpAccountSet,
-  operatingWalletMemo
-} from "./communityAuthority.js";
+import { resolveCommunityAuthority } from "./communityAuthority.js";
 
-function normalizeTx(entry) {
-  return entry?.tx_json || entry?.tx || entry?.transaction || entry || {};
-}
-
-function transactionSucceeded(entry) {
-  if (entry?.validated === false) return false;
-  const meta = entry?.meta || entry?.metaData || entry?.metadata || {};
-  const result = meta?.TransactionResult ?? meta?.transaction_result;
-  return !result || result === "tesSUCCESS";
-}
-
-function ledgerIndex(entry, tx = normalizeTx(entry)) {
-  const value = entry?.ledger_index ?? entry?.ledgerIndex ?? tx?.ledger_index ?? tx?.ledgerIndex ?? tx?.inLedger;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
-function transactionIndex(entry) {
-  const meta = entry?.meta || entry?.metaData || entry?.metadata || {};
-  const value = entry?.tx_index ?? entry?.transaction_index ?? meta?.TransactionIndex ?? meta?.transaction_index;
-  const number = Number(value);
-  return Number.isFinite(number) ? number : null;
-}
-
-function transactionHash(entry, tx = normalizeTx(entry)) {
-  return String(entry?.hash || entry?.tx_hash || tx?.hash || "");
-}
-
-function orderFromEntry(entry, tx = normalizeTx(entry)) {
-  const ledger = ledgerIndex(entry, tx);
-  if (!Number.isFinite(ledger)) return null;
-  return { ledger, txIndex: transactionIndex(entry) };
-}
-
-function compareOrder(a, b) {
-  if (a.ledger !== b.ledger) return a.ledger - b.ledger;
-  const ai = Number.isFinite(a.txIndex) ? a.txIndex : -1;
-  const bi = Number.isFinite(b.txIndex) ? b.txIndex : -1;
-  return ai - bi;
-}
-
-function isAfter(a, b) {
-  return compareOrder(a, b) > 0;
-}
-
-function hexToText(value) {
-  const hex = String(value || "");
-  if (!hex || !/^[A-Fa-f0-9]+$/.test(hex) || hex.length % 2 !== 0) return "";
-  try {
-    const bytes = new Uint8Array(hex.match(/.{2}/g).map(pair => parseInt(pair, 16)));
-    return new TextDecoder("utf-8", { fatal: false }).decode(bytes).replace(/\0+$/g, "");
-  } catch (_) {
-    return "";
-  }
-}
-
-function decodedMemoTexts(tx) {
-  const out = [];
-  for (const wrapper of Array.isArray(tx?.Memos) ? tx.Memos : []) {
-    const memo = wrapper?.Memo || {};
-    for (const field of [memo.MemoData, memo.MemoType, memo.MemoFormat]) {
-      if (field === undefined || field === null || field === "") continue;
-      const text = hexToText(field).trim();
-      if (text) out.push(text);
-    }
-  }
-  return out;
-}
-
-async function readAccountHistory(client, account) {
-  let marker;
-  const rows = [];
-  do {
-    const fields = {
-      account,
-      ledger_index_min: -1,
-      ledger_index_max: -1,
-      binary: false,
-      forward: true,
-      limit: 400
-    };
-    if (marker !== undefined) fields.marker = marker;
-    const response = await client.request("account_tx", fields, 30000);
-    const result = response.result || {};
-    rows.push(...(Array.isArray(result.transactions) ? result.transactions : []));
-    marker = result.marker;
-  } while (marker !== undefined && marker !== null);
-  return rows;
-}
-
-function authorityStatementFromEntry(entry, namespace) {
-  const tx = normalizeTx(entry);
-  if (!transactionSucceeded(entry) || !isCanonicalNoOpAccountSet(tx) || !isClassicAddress(tx.Account)) return null;
-  const texts = decodedMemoTexts(tx);
-  if (texts.length !== 1) return null;
-  const prefix = `${namespace}/AUTHORITY/OPERATING-WALLET=`;
-  const text = texts[0];
-  if (!text.startsWith(prefix)) return null;
-  const value = text.slice(prefix.length);
-  if (!isClassicAddress(value) || text !== operatingWalletMemo(namespace, value)) return null;
-  const order = orderFromEntry(entry, tx);
-  if (!order) return null;
-  return {
-    account: String(tx.Account),
-    value,
-    ledger: order.ledger,
-    txIndex: order.txIndex,
-    hash: transactionHash(entry, tx),
-    memo: text
-  };
-}
-
-function sortOrdered(rows, label) {
-  const sorted = [...rows].sort((a, b) => compareOrder(a, b));
-  for (let index = 1; index < sorted.length; index += 1) {
-    const prior = sorted[index - 1];
-    const current = sorted[index];
-    if (prior.ledger === current.ledger && (!Number.isFinite(prior.txIndex) || !Number.isFinite(current.txIndex))) {
-      throw new Error(`${label} needs XRPL transaction ordering for ledger ${current.ledger}, but TransactionIndex was unavailable.`);
-    }
-  }
-  return sorted;
-}
-
-async function resolveProvisionedCommunityAuthority(client, provision, maxTransitions = 50) {
+function resolveProvisionedCommunityAuthority(provision) {
   const communityId = String(provision?.communityId || "").trim().toUpperCase();
   const namespace = String(provision?.namespace || `${communityId}-LEAP`).trim();
   const firstWallet = String(provision?.operatingWallet || "").trim();
   if (!communityId || !namespace || !isClassicAddress(firstWallet)) throw new Error("Owner provisioning record is incomplete.");
 
-  const establishmentOrder = {
-    ledger: Number(provision.ledger),
-    txIndex: Number.isFinite(Number(provision.txIndex)) ? Number(provision.txIndex) : null
-  };
-  if (!Number.isFinite(establishmentOrder.ledger)) throw new Error(`${communityId} provisioning ledger is unavailable.`);
-
-  let currentAccount = firstWallet;
-  let activeFromExclusive = establishmentOrder;
-  let intervalStart = establishmentOrder;
-  const accounts = [firstWallet];
-  const statements = [];
-  const transitions = [];
-  const intervals = [];
-  const seen = new Set([firstWallet]);
-  const cache = new Map();
-  let transitionCount = 0;
-
-  async function statementsFor(account) {
-    if (cache.has(account)) return cache.get(account);
-    const rows = await readAccountHistory(client, account);
-    const parsed = sortOrdered(
-      rows.map(row => authorityStatementFromEntry(row, namespace)).filter(Boolean),
-      `${communityId} authority history`
-    );
-    cache.set(account, parsed);
-    return parsed;
-  }
-
-  while (transitionCount < maxTransitions) {
-    const candidates = (await statementsFor(currentAccount)).filter(statement =>
-      statement.account === currentAccount && isAfter(statement, activeFromExclusive)
-    );
-
-    let rotation = null;
-    for (const candidate of candidates) {
-      statements.push({ ...candidate, kind: candidate.value === currentAccount ? "REAFFIRM" : "ROTATION" });
-      activeFromExclusive = { ledger: candidate.ledger, txIndex: candidate.txIndex };
-      if (candidate.value !== currentAccount) {
-        rotation = candidate;
-        break;
-      }
-    }
-
-    if (!rotation) {
-      intervals.push({
-        account: currentAccount,
-        source: "owner-provisioned",
-        fromExclusive: intervalStart,
-        throughInclusive: null,
-        fromLedger: intervalStart.ledger,
-        throughLedger: null
-      });
-      break;
-    }
-
-    const rotationOrder = { ledger: rotation.ledger, txIndex: rotation.txIndex };
-    intervals.push({
-      account: currentAccount,
-      source: "owner-provisioned",
-      fromExclusive: intervalStart,
-      throughInclusive: rotationOrder,
-      fromLedger: intervalStart.ledger,
-      throughLedger: rotation.ledger
-    });
-    transitions.push({
-      from: currentAccount,
-      to: rotation.value,
-      ledger: rotation.ledger,
-      txIndex: rotation.txIndex,
-      hash: rotation.hash,
-      memo: rotation.memo
-    });
-
-    if (seen.has(rotation.value)) throw new Error(`${communityId} authority history contains a rotation loop.`);
-    currentAccount = rotation.value;
-    seen.add(currentAccount);
-    accounts.push(currentAccount);
-    intervalStart = rotationOrder;
-    activeFromExclusive = rotationOrder;
-    transitionCount += 1;
-  }
-
-  if (transitionCount >= maxTransitions) throw new Error(`${communityId} authority state exceeded the ${maxTransitions}-rotation safety limit.`);
+  const ledger = Number(provision.ledger);
+  if (!Number.isFinite(ledger)) throw new Error(`${communityId} provisioning ledger is unavailable.`);
+  const txIndex = provision.txIndex !== null && provision.txIndex !== undefined && Number.isFinite(Number(provision.txIndex))
+    ? Number(provision.txIndex) : null;
+  const establishmentOrder = { ledger, txIndex };
 
   return {
     communityId,
     namespace,
     authorityEstablished: true,
-    currentAccount,
-    canonicalCurrentAccount: currentAccount,
-    accounts,
-    statements,
-    transitions,
-    intervals,
+    currentAccount: firstWallet,
+    canonicalCurrentAccount: firstWallet,
+    accounts: [firstWallet],
+    statements: [],
+    transitions: [],
+    intervals: [{
+      account: firstWallet,
+      source: "owner-provisioned",
+      fromExclusive: establishmentOrder,
+      throughInclusive: null,
+      fromLedger: ledger,
+      throughLedger: null
+    }],
     establishment: {
       ownerWallet: String(provision.ownerWallet || ""),
       firstWallet,
@@ -318,25 +119,19 @@ export async function resolveWalletAccess({ account, serverUrl, force = false } 
   const evaluated = [];
   const provisionedIds = new Set();
 
-  const client = new DirectXRPLClient(serverUrl);
-  try {
-    await client.connect();
-    for (const provision of ownerState.provisionedCommunities || []) {
-      const communityId = String(provision?.communityId || "").trim().toUpperCase();
-      if (!communityId) continue;
-      provisionedIds.add(communityId);
-      const authority = await resolveProvisionedCommunityAuthority(client, provision);
-      const record = accessRecord({
-        communityId,
-        configured: configuredById.get(communityId) || null,
-        authority,
-        source: "Owner provisioning + community authority history"
-      });
-      evaluated.push(record);
-      if (record.currentAccount === target) operatorMatches.push(record);
-    }
-  } finally {
-    client.close();
+  for (const provision of ownerState.provisionedCommunities || []) {
+    const communityId = String(provision?.communityId || "").trim().toUpperCase();
+    if (!communityId) continue;
+    provisionedIds.add(communityId);
+    const authority = resolveProvisionedCommunityAuthority(provision);
+    const record = accessRecord({
+      communityId,
+      configured: configuredById.get(communityId) || null,
+      authority,
+      source: "Owner provisioning"
+    });
+    evaluated.push(record);
+    if (record.currentAccount === target) operatorMatches.push(record);
   }
 
   for (const community of Object.values(registry)) {

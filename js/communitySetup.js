@@ -405,85 +405,19 @@ function requestPaymentFromEntry(entry, expectedAccount = "") {
 }
 
 
-function communityOperatingWalletMemo(communityId, account) {
-  const id = String(communityId || "").trim().toUpperCase();
-  const wallet = String(account || "").trim();
-  if (!/^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(id) || !isClassicAddress(wallet)) return "";
-  return `${id}-LEAP/AUTHORITY/OPERATING-WALLET=${wallet}`;
-}
-
-function parseCommunityAuthorityRecord(entry, communityId, expectedAccount = "") {
-  const tx = normalizeTx(entry);
-  if (!transactionSucceeded(entry) || !isCanonicalNoOpAccountSet(tx) || !isClassicAddress(tx.Account)) return null;
-  if (expectedAccount && tx.Account !== expectedAccount) return null;
-  const texts = decodedMemoTexts(tx);
-  if (texts.length !== 1) return null;
-  const prefix = `${communityId}-LEAP/AUTHORITY/OPERATING-WALLET=`;
-  const memo = texts[0];
-  if (!memo.startsWith(prefix)) return null;
-  const value = memo.slice(prefix.length);
-  if (!isClassicAddress(value) || memo !== communityOperatingWalletMemo(communityId, value)) return null;
-  const ledger = ledgerIndex(entry, tx);
-  if (!Number.isFinite(ledger)) return null;
-  return {
-    account: String(tx.Account), value, ledger, txIndex: transactionIndex(entry),
-    hash: transactionHash(entry, tx), memo
-  };
-}
-
-async function resolveProvisionedCommunityCurrentWallet({ serverUrl, provision, historyCache = new Map(), maxTransitions = 50 }) {
-  const communityId = String(provision?.communityId || "").trim().toUpperCase();
-  let currentAccount = String(provision?.operatingWallet || "").trim();
-  if (!communityId || !isClassicAddress(currentAccount)) throw new Error("Provisioning record is incomplete.");
-  let activeFrom = orderOf(provision);
-  const transitions = [];
-  const seen = new Set([currentAccount]);
-
-  async function history(account) {
-    if (historyCache.has(account)) return historyCache.get(account);
-    const client = new DirectXRPLClient(serverUrl);
-    try {
-      await client.connect();
-      const rows = await readAccountHistory(client, account);
-      historyCache.set(account, rows);
-      return rows;
-    } finally { client.close(); }
-  }
-
-  for (let count = 0; count < maxTransitions; count += 1) {
-    const statements = sortOrdered(
-      (await history(currentAccount))
-        .map(row => parseCommunityAuthorityRecord(row, communityId, currentAccount))
-        .filter(Boolean)
-        .filter(record => isAfter(orderOf(record), activeFrom)),
-      `Community ${communityId} authority history`
-    );
-    let rotation = null;
-    for (const statement of statements) {
-      activeFrom = orderOf(statement);
-      if (statement.value !== currentAccount) { rotation = statement; break; }
-    }
-    if (!rotation) return { communityId, currentAccount, transitions, provision: { ...provision } };
-    transitions.push({ from: currentAccount, to: rotation.value, ledger: rotation.ledger, txIndex: rotation.txIndex, hash: rotation.hash, memo: rotation.memo });
-    if (seen.has(rotation.value)) throw new Error(`Community ${communityId} authority history contains a rotation loop.`);
-    currentAccount = rotation.value;
-    seen.add(currentAccount);
-  }
-  throw new Error(`Community ${communityId} authority state exceeded the ${maxTransitions}-rotation safety limit.`);
-}
-
 export async function findProvisionedCommunityAuthority({ serverUrl, ownerState, wallet = "" } = {}) {
   const server = String(serverUrl || "").trim();
   if (!server) throw new Error("XRPL WebSocket URL is required.");
   const target = String(wallet || "").trim();
   if (target && !isClassicAddress(target)) throw new Error("A valid XRPL classic account is required.");
+
   const provisions = Array.isArray(ownerState?.provisionedCommunities) ? ownerState.provisionedCommunities : [];
-  const historyCache = new Map();
-  const communities = [];
-  for (const provision of provisions) {
-    const resolved = await resolveProvisionedCommunityCurrentWallet({ serverUrl: server, provision, historyCache });
-    communities.push(resolved);
-  }
+  const communities = provisions.map(provision => {
+    const communityId = String(provision?.communityId || "").trim().toUpperCase();
+    const currentAccount = String(provision?.operatingWallet || "").trim();
+    if (!communityId || !isClassicAddress(currentAccount)) throw new Error("Provisioning record is incomplete.");
+    return { communityId, currentAccount, transitions: [], provision: { ...provision } };
+  });
   const matches = target ? communities.filter(item => item.currentAccount === target) : communities;
   return { communities, matches };
 }
@@ -534,11 +468,9 @@ export async function readCommunityRequestStatus({ serverUrl, account, force = f
 
   const firstRequest = validRequests[0] || null;
   const firstCurrent = currentCommunities[0] || null;
-  const firstInitial = initialProvisions[0] || null;
 
   let state = "NONE";
   if (firstCurrent) state = "READY";
-  else if (firstInitial) state = "TRANSFERRED";
   else if (firstRequest) state = "WAITING";
 
   return {
@@ -557,13 +489,6 @@ export async function readCommunityRequestStatus({ serverUrl, account, force = f
       firstOperatingWallet: firstCurrent.provision.operatingWallet,
       ledger: firstCurrent.provision.ledger,
       hash: firstCurrent.provision.hash
-    } : null,
-    transferredCommunity: !firstCurrent && firstInitial ? {
-      communityId: firstInitial.communityId,
-      namespace: firstInitial.namespace,
-      firstOperatingWallet: firstInitial.operatingWallet,
-      ledger: firstInitial.ledger,
-      hash: firstInitial.hash
     } : null
   };
 }
@@ -576,7 +501,6 @@ export async function prepareCommunityRequestPayment({ serverUrl, account, feeCu
 
   const status = await readCommunityRequestStatus({ serverUrl: server, account: wallet, force: true });
   if (status.state === "READY") throw new Error(`This wallet already operates community ${status.community.communityId}.`);
-  if (status.state === "TRANSFERRED") throw new Error(`This wallet was previously provisioned for community ${status.transferredCommunity.communityId}; its Operating Wallet authority has since moved.`);
   if (status.state === "WAITING") throw new Error("A valid community request payment from this wallet is already waiting for provisioning.");
   if (!status.feeState?.current) throw new Error("Wild Ledger has not published a community setup fee on XRPL yet.");
 
