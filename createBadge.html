@@ -435,7 +435,7 @@
         authority = await resolveCommunityAuthority({ community, serverUrl:xrplServer, force:forceAuthority });
         if (authority.initialStatementNeeded) throw new Error("LEAP Protocol 1.0 requires the community's initial canonical OPERATING-WALLET statement before creating new recognition. Publish that statement first.");
         operatingWallet = authority.currentAccount;
-        setStatus(authorityStatus, `${operatingWallet} — canonical XRPL authority; ${authority.transitions.length} routine rotation${authority.transitions.length === 1 ? "" : "s"} resolved.`, "good");
+        setStatus(authorityStatus, `${operatingWallet} — Community Operating Wallet verified.`, "good");
         await client.connect();
         for (const account of authority.accounts) await scanAccount(client, account, "lifecycle");
         for (const distributor of legacyDistributors) if (distributor && !authority.accounts.includes(distributor)) await scanAccount(client, distributor, "legacy");
@@ -500,14 +500,14 @@
       operatingWallet = latestAuthority.currentAccount;
       setStatus(
         authorityStatus,
-        `${operatingWallet} — canonical XRPL authority; ${authority.transitions.length} routine rotation${authority.transitions.length === 1 ? "" : "s"} resolved.`,
+        `${operatingWallet} — Community Operating Wallet verified.`,
         "good"
       );
 
       if (operatingWallet !== preparedAccount) {
         clearPreparedTransaction();
         throw new Error(
-          `The Community Operating Wallet changed before ${stage}. Recheck validated XRPL history and prepare a new transaction using ${operatingWallet}.`
+          `The prepared transaction does not match this community's Operating Wallet. Recheck validated XRPL history and prepare a new transaction using ${operatingWallet}.`
         );
       }
 
