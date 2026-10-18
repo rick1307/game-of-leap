@@ -565,6 +565,17 @@
   .ledger-value { font-variant-numeric:tabular-nums; font-weight:780; }
   .issue-first-leap { display:block; margin-top:0; min-height:40px; padding:9px 13px; border:1px solid rgba(121,213,194,.58); border-radius:12px; background:rgba(121,213,194,.16); color:#dbfff4; font-size:.79rem; font-weight:850; cursor:pointer; text-align:center; }
   .issue-first-leap:hover,.issue-first-leap:focus-visible { border-color:#bdf2c8; background:rgba(121,213,194,.27); outline-offset:2px; }
+  /* Move 4: each still-outstanding Check gets its own cancellation affordance.
+     Disabled until a separate, signed and verified cancellation Trail exists. */
+  .cancel-onboarding-check {
+    display:block; width:100%; max-width:170px; min-height:38px; margin-top:9px;
+    padding:7px 9px; border:1px solid rgba(239,118,93,.48); border-radius:10px;
+    color:#ffddd4; background:rgba(239,118,93,.10);
+    font:inherit; font-size:.76rem; font-weight:850; line-height:1.25;
+    text-align:center; white-space:normal;
+  }
+  .cancel-onboarding-check:disabled { opacity:.78; cursor:not-allowed; }
+  .cancel-check-note { display:block; margin-top:5px; color:var(--muted); font-size:.68rem; line-height:1.35; }
   .report-foot { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-top:17px; }
   .report-foot .notice { margin:0; font-size:.78rem; }
   /* Keep the three lifecycle stages side by side even on an iPhone in portrait. */
@@ -578,6 +589,8 @@
     .request-verified { font-size:.64rem; margin-top:5px; }
     .membership-status { padding:5px 5px; font-size:.65rem; border-radius:9px; }
     .issue-first-leap { width:100%; padding:7px 4px; font-size:.69rem; white-space:normal; line-height:1.35; }
+    .cancel-onboarding-check { min-height:36px; padding:7px 3px; font-size:.67rem; }
+    .cancel-check-note { font-size:.61rem; }
     .lifecycle-muted { font-size:.64rem; }
   }
 
@@ -2191,12 +2204,29 @@ function makeRequestRow(request) {
   }
   tr.append(createCell("Issued", issued));
 
+  const cashedCell = document.createElement("div");
   const cashed = document.createElement("span");
   cashed.className = "membership-status" + (check?.status === "cashed" ? " fulfilled" : "");
   cashed.textContent = check?.status === "cashed" ? "✓ Cashed" :
     check?.status === "issued" ? "Awaiting cashing" :
     check?.status === "canceled" ? "Canceled" : "—";
-  tr.append(createCell("Cashed", cashed));
+  cashedCell.append(cashed);
+  // A cancel action belongs to this specific issued, outstanding XRPL Check ID.
+  // Move 4 is presentation only: never enable cancellation before its own Ledger Trail.
+  if (check?.status === "issued" && check.id) {
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "cancel-onboarding-check";
+    cancel.textContent = "Cancel Check";
+    cancel.dataset.checkId = check.id;
+    cancel.disabled = true;
+    cancel.title = "Available after the Cancel Check Ledger Trail is built.";
+    const note = document.createElement("span");
+    note.className = "cancel-check-note";
+    note.textContent = "Not active yet";
+    cashedCell.append(cancel, note);
+  }
+  tr.append(createCell("Cashed", cashedCell));
 
   // Full verification evidence stays in the four live Ledger Trail step cards
   // accessible through X, and in the validated report data. The completed
