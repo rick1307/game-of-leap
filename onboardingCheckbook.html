@@ -529,6 +529,8 @@
   .lifecycle-announcement-copy { display:flex; flex-direction:column; gap:5px; min-width:0; }
   .lifecycle-announcement-title { color:var(--announcement-text); font-size:.91rem; font-weight:850; line-height:1.3; }
   .lifecycle-announcement-totals { color:var(--ink); font-size:.81rem; line-height:1.45; font-variant-numeric:tabular-nums; }
+  .lifecycle-announcement-reserve { color:var(--muted); font-size:.79rem; line-height:1.45; font-variant-numeric:tabular-nums; }
+  .lifecycle-announcement-reserve strong { color:var(--ink); font-weight:800; }
   .request-status { color:var(--muted); line-height:1.5; font-size:.82rem; margin:0 0 17px; }
   .request-status.error { color:#ffb7aa; }
   .lifecycle-muted { display:block; color:var(--muted); font-size:.73rem; margin-top:5px; }
@@ -928,6 +930,7 @@
   <div class="lifecycle-announcement-copy">
     <strong class="lifecycle-announcement-title" id="requestCountTitle">All caught up</strong>
     <span class="lifecycle-announcement-totals" id="requestCountTotals">0 to issue · 0 outstanding · 0 cashed</span>
+    <span class="lifecycle-announcement-reserve">XRP reserved for open Checks: <strong id="requestReserveAmount">Checking XRPL…</strong></span>
   </div>
 </div>
 <p aria-live="polite" class="request-status" id="requestStatus" role="status" hidden>Opening verified membership requests…</p>
@@ -2462,6 +2465,63 @@ function showMatchingPayments(requests, checks) {
   $("requestStatus").textContent = `${checks.length} individual issued ${checks.length === 1 ? "Check" : "Checks"}: ${issuedCount} outstanding, ${cashedCount} cashed, ${checks.length-issuedCount-cashedCount} canceled; ${waitingCount} to issue. Based on validated XRPL transaction history.`;
 }
 
+
+// Step 6.5: read the CURRENT incremental XRPL reserve and the validated
+// Check objects actually held by the original issuing wallets. This is the
+// reserve for onboarding Checks in this report, NOT the wallet's total reserve.
+// The history-based announcement and all signing logic remain unchanged.
+let reserveReadToken = 0;
+async function showCurrentOnboardingReserve(checks, operatorWallet) {
+  const token = ++reserveReadToken;
+  const amount = $("requestReserveAmount");
+  amount.textContent = "Checking XRPL…";
+  const outstanding = checks.filter(c => c.status === "issued");
+  // The validated historical report contains no outstanding onboarding Checks.
+  if (!outstanding.length) { amount.textContent = "0 XRP"; return; }
+  const wallets = [...new Set(outstanding.map(c => c.issuingWallet))];
+  if (wallets.some(wallet => !isClassicAddress(wallet)) || !isClassicAddress(operatorWallet)) {
+    amount.textContent = "Unavailable";
+    return;
+  }
+  const client = new DirectXRPLClient(xrplServer);
+  try {
+    await client.connect();
+    const response = await client.request("server_info", {}, 20000);
+    const ledger = response?.result?.info?.validated_ledger;
+    const increment = Number(ledger?.reserve_inc_xrp);
+    if (!ledger || ledger.reserve_inc_xrp == null || !Number.isFinite(increment) || increment <= 0 ||
+        !Number.isSafeInteger(Math.round(increment * 1_000_000))) {
+      throw new Error("XRPL did not provide a validated owner reserve increment.");
+    }
+    const expectedById = new Map(outstanding.map(check => [check.id, check]));
+    const liveIds = new Set();
+    for (const wallet of wallets) {
+      let marker;
+      do {
+        const fields = {account:wallet,ledger_index:"validated",type:"check",limit:400};
+        if (marker !== undefined) fields.marker = marker;
+        const page = await client.request("account_objects", fields, 30000);
+        const result = page?.result;
+        if (result?.validated !== true || !Array.isArray(result.account_objects) || result.account !== wallet)
+          throw new Error("XRPL did not return validated Check objects for the issuing wallet.");
+        for (const obj of result.account_objects) {
+          const id = String(obj?.index || "").toUpperCase();
+          const check = expectedById.get(id);
+          if (obj?.LedgerEntryType === "Check" && check && obj.Account === check.issuingWallet &&
+              obj.Destination === check.applicant && wallet === check.issuingWallet) liveIds.add(id);
+        }
+        marker = result.marker;
+      } while (marker !== undefined && marker !== null);
+    }
+    if (token !== reserveReadToken || $("operatorWallet").textContent !== operatorWallet) return;
+    const drops = Math.round(increment * 1_000_000) * liveIds.size;
+    amount.textContent = `${formatXrp(String(drops))} XRP`;
+  } catch (_) {
+    // Never assume a 0.2 XRP rate or advertise an unverified amount.
+    if (token === reserveReadToken) amount.textContent = "Unavailable";
+  } finally { client.close(); }
+}
+
 function showGate(message, url, label) {
   $("authorizedContent").hidden = true;
   $("reportGate").hidden = false;
@@ -2491,6 +2551,7 @@ function openReport() {
   document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
   $("authorizedContent").hidden = false;
   showMatchingPayments(data.requests, data.checks);
+  void showCurrentOnboardingReserve(data.checks, session.wallet);
   const stamp = new Date(data.verifiedAt);
   $("verificationNote").textContent = `Results verified by the Ledger Trail ${stamp.toLocaleString()}. This report is a snapshot, not a live search.`;
 }
