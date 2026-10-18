@@ -21,7 +21,7 @@ main{max-width:900px;margin:0 auto;padding:40px 20px 72px}.eyebrow{color:var(--a
 <p>But before you get started, understand a few things.</p>
 <p><strong>Not your keys. Not your community.</strong></p>
 <p>Your Operating Wallet controls your community. Protect it. If you lose access to that wallet, you lose the ability to operate your community. Wild Ledger doesn't hold your keys, and nobody is coming to rescue you.</p>
-<p>If you still control your wallet, you can use the established process to transfer operating authority. If you've lost your keys, that's on you.</p>
+<p>Your Community ID and Community Operating Wallet address are permanently bound together. Operating authority cannot be transferred to a different XRPL wallet address, even while you still control the original wallet. Protect access to that permanent wallet.</p>
 <p><strong>We'd like to know less about you.</strong></p>
 <p>We don't need to know who you are, where you live, or what you had for breakfast. We need a wallet address and the ledger evidence necessary to make the system work.</p>
 <p>Your business is your business.</p>
@@ -108,7 +108,7 @@ main{max-width:900px;margin:0 auto;padding:40px 20px 72px}.eyebrow{color:var(--a
 <summary><span class="num">3</span>LEAP Inventory &amp; Replenishment</summary>
 <div class="body">
 <p><strong>Spread LEAP to earn more operating inventory.</strong> A new community begins with 1,000 LEAP of operating inventory.</p>
-<p>Wild Ledger measures qualifying outward distribution with <strong>Spread Score</strong>. Each qualifying outside wallet can contribute no more than <strong>20 lifetime Spread Score points</strong> to a community. That cap does not reset because the community changes Operating Wallets.</p>
+<p>Wild Ledger measures qualifying outward distribution with <strong>Spread Score</strong>. Each qualifying outside wallet can contribute no more than <strong>20 lifetime Spread Score points</strong> to a community. This cap belongs to the community's permanent ledger history and cannot be reset.</p>
 <p>When the community reaches <strong>500 Spread Score points</strong>, it qualifies for another <strong>1,000 LEAP</strong> of operating inventory.</p>
 <p>Real outward distribution counts. Controlled wallets, circular movement, and manufactured spread do not. Returns reduce net spread rather than creating new reach.</p>
 <p><strong>Recognition and Spread Score answer different questions.</strong> Recognition asks, “What did this member earn?” Spread Score asks, “How broadly did this community distribute LEAP?” A transaction can affect both, but the records do not mean the same thing.</p>
@@ -117,7 +117,7 @@ main{max-width:900px;margin:0 auto;padding:40px 20px 72px}.eyebrow{color:var(--a
 <div class="body">
 <p>For each qualifying outside wallet, count the community's net qualifying outward LEAP, capped at 20 lifetime points for that wallet. Add those wallet contributions to produce the community's Spread Score.</p>
 <p>Example: 10 qualifying outside wallets that each receive 20 net qualifying LEAP contribute 200 Spread Score points. Twenty-five such wallets can contribute 500 points. Sending more than 20 qualifying LEAP to one wallet may be useful recognition or distribution, but that wallet cannot contribute more than 20 lifetime Spread Score points.</p>
-<p>The ledger is the history. Changing the Community Operating Wallet does not restart the community's Spread Score or erase prior qualifying distribution.</p>
+<p>The ledger is the history. The community's Spread Score and prior qualifying distribution remain in its permanent XRPL record. Neither can be reset by using a different wallet address.</p>
 </div>
 </details>
 <button class="status-btn" type="button" disabled>View Replenishment Status</button>
@@ -125,15 +125,21 @@ main{max-width:900px;margin:0 auto;padding:40px 20px 72px}.eyebrow{color:var(--a
 </details>
 
 <details class="card">
-<img class="card-art" src="notYourKeys.jpg" alt="Not your keys, not your community"><summary><span class="num">4</span>Authority &amp; Wallet Changes</summary>
+<img class="card-art" src="notYourKeys.jpg" alt="Not your keys, not your community"><summary><span class="num">4</span>Operating Wallet Authority &amp; Security</summary>
 <div class="body">
-<p><strong>The Community Operating Wallet is the community's operating authority.</strong> The wallet app is only the signing interface. Bifrost, Xaman, Tangem, or another compatible wallet does not become the authority merely because it is used to sign.</p>
-<p>The Operating Wallet can distribute recognition and publish the community's canonical protocol state. Wild Ledger verifies which wallet was authorized at the ledger position being interpreted.</p>
-<p><strong>Routine replacement is self-service.</strong> Once a community has an established Operating Wallet, the currently authorized Operating Wallet may publish a new Operating Wallet. From that validated transaction forward, the new value is authoritative.</p>
-<p>The ledger itself preserves the history. Changing authority does not erase earlier recognition, allocation, Spread Score, or other valid community history. Historical duties tied to the old wallet remain historical facts; the new wallet becomes the forward operating authority.</p>
-<p><strong>Change authority while the current wallet can still sign.</strong> Wild Ledger does not custody private keys and cannot recover a lost wallet.</p>
-<p>The Wild Ledger Owner Wallet and a Community Operating Wallet have different authority. Owner authority does not become community authority and cannot simply seize an established community's operating role.</p>
-<p>Hiding a community changes directory visibility. It does not erase the community or alter its ledger history.</p>
+<p><strong>Your Community ID and your Community Operating Wallet are permanently bound together.</strong></p>
+<p>When a Wild Ledger community is established, its Community ID becomes permanently associated with one XRPL Operating Wallet address. That relationship lasts for the lifetime of the community.</p>
+<p>The Operating Wallet cannot be replaced, rotated, reassigned, or transferred to another XRPL wallet address. Neither the community Operator nor the Wild Ledger Owner Wallet can change that relationship after establishment.</p>
+<p><strong>Your wallet address is the authority. Your wallet application is simply how you exercise it.</strong></p>
+<p>You may use a compatible wallet application, such as Bifrost, to access and sign transactions for your authorized Operating Wallet. Changing wallet applications does not change your community's authority, provided you continue using the same XRPL account.</p>
+<p>Likewise, changing who controls the original wallet does not change the wallet's protocol identity.</p>
+<p><strong>Protect your Operating Wallet.</strong></p>
+<p>Wild Ledger does not possess your private keys or recovery credentials. If your Operating Wallet becomes inaccessible, Wild Ledger cannot recover it by assigning a replacement wallet. A lost or compromised wallet does not free the Community ID for reuse.</p>
+<p>Your community and its history remain recorded on XRPL, but the authority to operate that community cannot be moved to another wallet address under the current LEAP Protocol.</p>
+<p><strong>The ledger preserves your history.</strong></p>
+<p>Previously validated community recognition, LEAP allocations, Spread Score, membership history, and other legitimate activity remain part of the community's permanent XRPL record.</p>
+<p>Hiding a community changes its public visibility, not its existence or operating authority.</p>
+<p><strong>Your community. Your wallet. Your responsibility.</strong></p>
 </div>
 </details>
 
@@ -183,9 +189,9 @@ main{max-width:900px;margin:0 auto;padding:40px 20px 72px}.eyebrow{color:var(--a
 <details class="card">
 <summary>Protocol Statements &amp; Community State</summary>
 <div class="body">
-<p>Not every community action transfers LEAP. The Community Operating Wallet can publish canonical state through successful validated XRPL transactions whose public memo carries the protocol statement.</p>
-<p>Recognition lifecycle, authority state, CONFIG, and other protocol state are interpreted from validated ledger evidence according to their applicable rules. A state statement changes what Wild Ledger should understand about the community; it does not automatically mean that a member earned recognition or that LEAP moved.</p>
-<p>When a state value changes, validated ledger order determines which valid value is current. Wild Ledger does not need a parallel private history database to remember the sequence.</p>
+<p>Not every community action transfers LEAP. After a community is established, its permanent Community Operating Wallet may publish canonical community-state statements through successful validated XRPL transactions whose public memos carry the applicable protocol statements.</p>
+<p>Establishing a Community Operating Wallet is a one-time, permanent authority event: the permanent Wild Ledger Owner Wallet establishes the first Operating Wallet for a new Community ID, while the protocol also recognizes the one-time historical migration path for an already-established community. Neither kind of establishment permits later wallet replacement. The Owner Wallet is itself permanent.</p>
+<p>Recognition lifecycle, CONFIG, and other legitimately updateable protocol state are interpreted from validated ledger evidence under their applicable rules. For state that is allowed to change, validated ledger order determines which valid value is current. These statements do not automatically mean that a member earned recognition or that LEAP moved; permanent wallet bindings are not updateable state values.</p>
 </div>
 </details>
 
