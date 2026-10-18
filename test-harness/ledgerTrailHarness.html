@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Ledger Trail Visual Harness — Wild Ledger</title>
+<link rel="stylesheet" href="../ledgerTrail.css"/>
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+html,body{min-height:100%}
+body{margin:0;background:#061924;color:#ebf9f7;font:400 16px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.harness-wrap{max-width:850px;padding:clamp(20px,4vw,46px);margin:0 auto}
+.harness-tag{color:#80cec6;font-size:.72rem;letter-spacing:.15em;font-weight:850;text-transform:uppercase}
+h1{font-size:clamp(1.8rem,6vw,2.8rem);line-height:1.12;letter-spacing:-.05em;margin:.5rem 0 .9rem}
+.harness-intro{max-width:700px;color:#b5caca;margin:0 0 22px}
+.harness-info{border:1px solid #27514e;background:#0a2730;border-radius:15px;padding:13px 16px;color:#c6dfd8;font-size:.9rem;margin:16px 0 24px}
+.harness-info strong{color:#f5d69a}
+.harness-titlelabel{display:block;color:#d9edea;font-size:.82rem;font-weight:800;margin:0 0 7px}
+.harness-input{width:min(500px,100%);color:#eafbfa;background:#12333d;border:1px solid #4b7875;border-radius:11px;padding:12px 14px;font:650 1rem/1.3 inherit;margin-bottom:19px}
+.harness-input:focus{outline:2px solid #efc980;outline-offset:2px}
+.harness-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.harness-card{min-height:107px;border:1px solid #30565a;border-radius:16px;background:linear-gradient(155deg,#12343d,#092530);color:#eaf6f4;text-align:left;padding:14px 15px;cursor:pointer;font:inherit;display:flex;flex-direction:column;align-items:flex-start;gap:4px}
+.harness-card:hover,.harness-card:focus-visible{border-color:#e7c77e;background:linear-gradient(155deg,#15434a,#0b303b);outline:none}
+.harness-card:active{transform:scale(.993)}
+.harness-card strong{color:#f1f8f5;font-size:.95rem}
+.harness-card span{color:#adcac6;font-size:.77rem;line-height:1.35}
+.harness-scenario{font-size:.68rem;color:#e8ca8b;letter-spacing:.1em;font-weight:800;text-transform:uppercase}
+.harness-note{font-size:.85rem;color:#b9d1cb;margin-top:21px}
+.harness-metrics{font-size:.88rem;background:#0b2a31;border:1px solid #2b5554;border-radius:12px;padding:12px 14px;margin:15px 0 0;min-height:45px;color:#cfede7}
+.harness-metrics strong{color:#f5d69a}
+.harness-footer{font-size:.75rem;color:#8ab2ae;margin-top:27px}
+@media(max-width:520px){.harness-grid{grid-template-columns:1fr}.harness-card{min-height:82px}.harness-wrap{padding:25px 19px 40px}}
+</style>
+</head><body>
+<div class="harness-wrap">
+  <div class="harness-tag">Wild Ledger • Developer Test Harness</div>
+  <h1>Ledger Trail Visual Tests</h1>
+  <p class="harness-intro">Inspect the shared Trail one state at a time. Tap any test below to open the real module. Tap its <strong>X in the upper-left</strong> to return here and choose another state.</p>
+  <div class="harness-info"><strong>Safe test:</strong> No wallet connection, no network calls, and no XRP transactions. This page only shows the module’s graphics. The QR code is test text—not a Bifrost pairing request. Test buttons appear on this page, <em>never inside</em> the Ledger Trail.</div>
+  <label class="harness-titlelabel" for="trailTitle">White Trail title — change it to test programmability</label>
+  <input class="harness-input" id="trailTitle" type="text" maxlength="90" value="Join a Community" autocomplete="off" spellcheck="false"/>
+  <div class="harness-grid">
+    <button type="button" class="harness-card" data-scene="working"><span class="harness-scenario">01 • System working</span><strong>Spinner</strong><span>Authority is being verified. No pretend progress.</span></button>
+    <button type="button" class="harness-card" data-scene="waiting"><span class="harness-scenario">02 • Human’s turn</span><strong>Pulsar + test QR</strong><span>Waiting for wallet approval; QR is sample-only.</span></button>
+    <button type="button" class="harness-card" data-scene="confirmed"><span class="harness-scenario">03 • Success along the Trail</span><strong>Regular checkmarks</strong><span>See the same small ✓ on each completed checkpoint.</span></button>
+    <button type="button" class="harness-card" data-scene="processing"><span class="harness-scenario">04 • Work resumes</span><strong>Spinner after human approval</strong><span>Completed wallet checkpoint and active system work.</span></button>
+    <button type="button" class="harness-card" data-scene="failure"><span class="harness-scenario">05 • Problem appearance</span><strong>Error state</strong><span>Just the problem; no Retry button in the Trail.</span></button>
+    <button type="button" class="harness-card" data-scene="completed"><span class="harness-scenario">06 • Final checkpoint</span><strong>Completed: 500 ms</strong><span>Ordinary ✓, then automatic close after half a second.</span></button>
+  </div>
+  <p class="harness-note">The fixed heading <strong>WILD LEDGER · LEDGER TRAIL</strong>, X, checkpoint sizing, connecting lines, and animations come from the shared module and stylesheet. There are no fake waits between states.</p>
+  <div class="harness-metrics" id="result" role="status" aria-live="polite">Choose a state above to inspect it.</div>
+  <p class="harness-footer">Move 4 test harness. The production module owns presentation only; the calling page owns XRPL operations, wallet events, and any automatic recovery.</p>
+</div>
+
+<script type="module">
+import {createLedgerTrail} from '../js/ledgerTrail.js';
+const DEMO_QR="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMMAAADDAQAAAAAXBJgHAAACFklEQVR4nO2YMW7cMBBF36wW0HYUkAPQN8gJIvkiOUR6OStbAXKsrHwS6gBBqI4LyPwp5KTywo2XSeHfEOAv/sfMcGZAEy9j3l0g4J15e0ZmZp3d2Xm37OfzLfdm1pRzgLKTUutWr0kr4EYpO4WS0bk3WIaZdqlD6iKz3V5F52Xst8Ni43n8iD8/XkfnVQdqwOwXuFNpB8910EU8nVboVL4OFrOD/DglNd9DUvNktruGziVoQ4TUxZ7Uuu2iWAxQditA7+spViF18RgSBbOAsht8PWkgdbH3daYShR1QCYu9T6aVeoqgqWgWFKugk5OSxSoAvS+cBcXeJzgGWjf4zVDpShxVn9yAMlVIFo9KVtDBHps/fF4OSNa6n/v0yX+x+vTmOq+8hT/lqNUn3EBdthIzVaB1oySNAiqlrqCDHbhzp4flbGa2zsru7qZ+uIbOJUgRMI2B1q3Umd4XjQHKW0MGLB4DnRSKzsZtMtFpRZMGj8Uq0P6DuRCPgRaoT24sPheeG7ISHEOt2PuiDjbG/Wj6uc5uD5Pf1tWSHYneYxGfcJIylO5IkqTMUeBWT+uKv4UM0DoFWjdQn9xYdjbuwEkJvnk9UIXlKz2FN9XsBlJLT61YhQRQdEP5y1QB3MChBVy+ns4lxrT3qHm60aSVpWQWdsBRsJztvFskHpdRWCzqYDE7qKmUOpmBG+br6FyAvf8j/QfMbxZ5dR0puYgiAAAAAElFTkSuQmCC";
+
+const STEP_DEFINITIONS = [
+  {id:'discovery',title:'Find community',detail:'Waiting to begin…'},
+  {id:'authority',title:'Verify community authority',detail:'Waiting to begin…'},
+  {id:'wallet',title:'Connect Bifrost wallet',detail:'Waiting to begin…'},
+  {id:'transaction',title:'Confirm on XRPL',detail:'Waiting to begin…'},
+  {id:'completed',title:'Completed',detail:'Waiting to begin…'}
+];
+const titleInput=document.querySelector('#trailTitle');
+const result=document.querySelector('#result');
+let activeTrail=null;
+let lastMetrics={scene:null,startedAt:null,finishedAt:null,elapsedMs:null,closedByHuman:false};
+function report(text){result.textContent=text;}
+function closeCurrent(){if(activeTrail){activeTrail.destroy();activeTrail=null;}}
+function makeTrail(){
+  closeCurrent();
+  const title=titleInput.value.trim()||'Join a Community';
+  const trail=createLedgerTrail({
+    title,
+    description:'Follow the Ledger Trail while Wild Ledger verifies each checkpoint.',
+    steps:STEP_DEFINITIONS,
+    onClose:()=>{
+      lastMetrics.closedByHuman=true;
+      report('Closed using X (or Escape). No operation was retried or submitted.');
+    }
+  });
+  activeTrail=trail;
+  trail.open();
+  return trail;
+}
+function show(scene){
+  if(!['working','waiting','confirmed','processing','failure','completed'].includes(scene))throw new Error('Unknown demo state');
+  lastMetrics={scene,startedAt:null,finishedAt:null,elapsedMs:null,closedByHuman:false};
+  const t=makeTrail();
+  switch(scene){
+    case 'working':
+      t.setStep('discovery','working','Checking XRPL for community records…');
+      t.setStatus('Verifying on XRPL…','busy');
+      break;
+    case 'waiting':
+      t.setStep('discovery','done','Community found.');
+      t.setStep('authority','done','Authority confirmed on XRPL.');
+      t.setStep('wallet','waiting','Waiting for the human to approve Bifrost.');
+      t.showPrompt({heading:'Connect your wallet',detail:'Test QR only. No real wallet session is created.',qrDataUrl:DEMO_QR});
+      t.setStatus('Waiting for human action.');
+      break;
+    case 'confirmed':
+      t.setStep('discovery','done','Community found.');
+      t.setStep('authority','done','Authority verified.');
+      t.setStep('wallet','done','Wallet approved.');
+      t.setStatus('Three checkpoints complete.');
+      break;
+    case 'processing':
+      t.setStep('discovery','done','Community found.');
+      t.setStep('authority','done','Authority verified.');
+      t.setStep('wallet','done','Wallet approved.');
+      t.setStep('transaction','working','Confirming on XRPL…');
+      t.setStatus('Wild Ledger is working…','busy');
+      break;
+    case 'failure':
+      t.setStep('discovery','done','Community found.');
+      t.setStep('authority','failed','Unable to verify authority in this demonstration.');
+      t.setStatus('An error occurred. A real page decides how to recover automatically.','error');
+      break;
+    case 'completed':
+      for(const id of ['discovery','authority','wallet','transaction'])t.setStep(id,'done','Verified.');
+      t.setStep('completed','working','Wrapping up…');
+      lastMetrics.startedAt=performance.now();
+      // Exactly the real module’s final completion behavior. No other waits.
+      t.finish({onFinished:()=>{
+        lastMetrics.finishedAt=performance.now();
+        lastMetrics.elapsedMs=Math.round(lastMetrics.finishedAt-lastMetrics.startedAt);
+        t.close();
+        report('Completed: the regular final ✓ was held for '+lastMetrics.elapsedMs+' ms and the Trail closed automatically.');
+      }});
+      break;
+  }
+  if(scene!=='completed')report('Viewing: '+scene+'. Close the Trail using its upper-left X to choose another test.');
+}
+document.querySelectorAll('[data-scene]').forEach(button=>button.addEventListener('click',()=>show(button.dataset.scene)));
+window.ledgerTrailHarness=Object.freeze({show,get trail(){return activeTrail},get metrics(){return {...lastMetrics}},get result(){return result.textContent}});
+
+</script></body></html>
