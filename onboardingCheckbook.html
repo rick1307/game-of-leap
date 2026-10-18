@@ -533,57 +533,63 @@
   .lifecycle-announcement-reserve strong { color:var(--ink); font-weight:800; }
   .request-status { color:var(--muted); line-height:1.5; font-size:.82rem; margin:0 0 17px; }
   .request-status.error { color:#ffb7aa; }
-  .lifecycle-muted { display:block; color:var(--muted); font-size:.73rem; margin-top:5px; }
+  /* One symbol per completed/pending lifecycle stage; only actual actions
+     have buttons, backgrounds, or borders. Legend explains symbols once. */
   .table-wrap { width:100%; overflow-x:auto; }
   .requests-table { width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; text-align:left; font-size:.85rem; }
-  .requests-table th:nth-child(1) { width:40%; }
-  .requests-table th:nth-child(2) { width:34%; }
-  .requests-table th:nth-child(3) { width:26%; }
-  .requests-table caption.label { color:var(--ink); font-size:.84rem; font-weight:850; }
-  .requests-table th { padding:12px 10px; font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.075em; font-weight:850; border-bottom:1px solid rgba(121,213,194,.29); }
-  .requests-table td { padding:16px 10px; vertical-align:middle; border-bottom:1px solid var(--line); line-height:1.45; overflow-wrap:anywhere; }
+  .requests-table th:nth-child(1) { width:37%; }
+  .requests-table th:nth-child(2) { width:20%; }
+  .requests-table th:nth-child(3) { width:17%; }
+  .requests-table th:nth-child(4) { width:26%; }
+  .requests-table th { padding:12px 7px; font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.075em; font-weight:850; border-bottom:1px solid rgba(121,213,194,.29); }
+  .requests-table td { padding:16px 7px; vertical-align:middle; border-bottom:1px solid var(--line); line-height:1.45; overflow-wrap:anywhere; }
+  .requests-table th:not(:first-child), .requests-table td:not(:first-child) { text-align:center; }
   .requests-table tbody tr:last-child td { border-bottom:0; }
   .requests-table tbody tr:hover { background:rgba(121,213,194,.045); }
-  .row-number { color:var(--muted); font-size:.8rem; }
   .applicant-main { font-weight:850; font-variant-ligatures:none; overflow-wrap:anywhere; }
-  .request-verified { display:block; color:#bdf2c8; font-size:.72rem; font-weight:800; margin-top:5px; }
-  .onboarding-check-id { margin-top:8px; color:var(--muted); font-size:.68rem; }
-  .onboarding-check-id summary { cursor:pointer; overflow-wrap:anywhere; }
-  .onboarding-check-id code { display:block; margin-top:5px; color:var(--ink); font-size:.65rem; overflow-wrap:anywhere; user-select:text; }
-  .membership-status { display:inline-block; padding:7px 11px; border-radius:999px; border:1px solid rgba(244,189,88,.43); background:rgba(244,189,88,.09); color:#ffe6af; font-size:.76rem; font-weight:850; }
-  .membership-status.fulfilled { border-color:rgba(121,213,194,.44); color:#bdf2c8; background:rgba(121,213,194,.09); }
+  .checkbook-symbol { display:inline-block; min-width:1.25em; padding:0; border:0; background:none; font:900 1.65rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-align:center; vertical-align:middle; cursor:default; }
+  .checkbook-symbol.is-complete { color:#bdf2c8; }
+  .checkbook-symbol.is-pending { color:#ffe2a7; }
+  .checkbook-symbol.is-canceled { color:#ff9d8a; }
+  .checkbook-symbol.is-na { color:var(--muted); font-size:1.2rem; font-weight:500; }
+  .checkbook-legend { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 16px; padding:13px 3px 0; border-top:1px solid var(--line); }
+  .checkbook-legend-item { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:.71rem; white-space:nowrap; }
+  .checkbook-legend .checkbook-symbol { font-size:1.06rem; }
+  .checkbook-legend .checkbook-symbol.is-na { font-size:.95rem; }
   .paid-value { font-weight:800; white-space:nowrap; }
   .paid-unit { color:var(--muted); font-size:.75rem; }
   .ledger-value { font-variant-numeric:tabular-nums; font-weight:780; }
-  .issue-first-leap { display:block; margin-top:0; min-height:40px; padding:9px 13px; border:1px solid rgba(121,213,194,.58); border-radius:12px; background:rgba(121,213,194,.16); color:#dbfff4; font-size:.79rem; font-weight:850; cursor:pointer; text-align:center; }
+  .issue-first-leap { display:inline-block; width:100%; margin:0; min-height:40px; padding:9px 7px; border:1px solid rgba(121,213,194,.58); border-radius:12px; background:rgba(121,213,194,.16); color:#dbfff4; font-size:.79rem; font-weight:850; cursor:pointer; text-align:center; }
   .issue-first-leap:hover,.issue-first-leap:focus-visible { border-color:#bdf2c8; background:rgba(121,213,194,.27); outline-offset:2px; }
   /* Move 4: each still-outstanding Check gets its own cancellation affordance.
      Disabled until a separate, signed and verified cancellation Trail exists. */
   .cancel-onboarding-check {
-    display:block; width:100%; max-width:170px; min-height:38px; margin-top:9px;
+    display:inline-block; width:100%; max-width:170px; min-height:38px; margin:0;
     padding:7px 9px; border:1px solid rgba(239,118,93,.48); border-radius:10px;
-    color:#ffddd4; background:rgba(239,118,93,.10);
+    color:#ffddd4; background:rgba(239,118,93,.10); cursor:pointer;
     font:inherit; font-size:.76rem; font-weight:850; line-height:1.25;
     text-align:center; white-space:normal;
   }
   .cancel-onboarding-check:disabled { opacity:.78; cursor:not-allowed; }
-  .cancel-check-note { display:block; margin-top:5px; color:var(--muted); font-size:.68rem; line-height:1.35; }
   .report-foot { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-top:17px; }
   .report-foot .notice { margin:0; font-size:.78rem; }
-  /* Keep the three lifecycle stages side by side even on an iPhone in portrait. */
+  /* Four columns remain visible on iPhone portrait: statuses stay borderless. */
   @media(max-width:700px) {
     .table-wrap { overflow-x:visible; }
     .requests-table { width:100%; table-layout:fixed; font-size:.74rem; }
-    .requests-table caption { text-align:center; margin-bottom:10px; }
-    .requests-table th { padding:10px 4px; font-size:.62rem; letter-spacing:.025em; }
-    .requests-table td { padding:13px 4px; vertical-align:middle; }
-    .applicant-main { font-size:.7rem; line-height:1.35; }
-    .request-verified { font-size:.64rem; margin-top:5px; }
-    .membership-status { padding:5px 5px; font-size:.65rem; border-radius:9px; }
-    .issue-first-leap { width:100%; padding:7px 4px; font-size:.69rem; white-space:normal; line-height:1.35; }
-    .cancel-onboarding-check { min-height:36px; padding:7px 3px; font-size:.67rem; }
-    .cancel-check-note { font-size:.61rem; }
-    .lifecycle-muted { font-size:.64rem; }
+    .requests-table th { padding:10px 2px; font-size:.59rem; letter-spacing:.012em; }
+    .requests-table td { padding:13px 2px; vertical-align:middle; }
+    .applicant-main { font-size:.68rem; line-height:1.35; }
+    .checkbook-symbol { font-size:1.55rem; }
+    .issue-first-leap { width:100%; padding:7px 2px; font-size:.67rem; white-space:normal; line-height:1.2; }
+    .cancel-onboarding-check { min-height:36px; padding:7px 2px; font-size:.64rem; }
+    .checkbook-legend { gap:6px 12px; }
+    .checkbook-legend-item { font-size:.67rem; }
+  }
+  @media(max-width:360px) {
+    .requests-table th { font-size:.53rem; letter-spacing:0; }
+    .issue-first-leap { font-size:.60rem; overflow-wrap:normal; word-break:normal; }
+    .cancel-onboarding-check { font-size:.60rem; overflow-wrap:normal; word-break:normal; }
   }
 
 
@@ -2322,90 +2328,91 @@ window.addEventListener("wildLedgerMembershipRequestsVerified", () => {
   if (row) beginCheckIssuance(row,true);
 });
 
+// An inert symbol: unlike Issue Check and Cancel Check it must never be
+// mistaken for a button. Accessible name describes the actual XRPL state.
+function checkbookSymbol(state, label) {
+  const symbol = document.createElement("span");
+  symbol.className = `checkbook-symbol is-${state}`;
+  symbol.textContent = state === "complete" ? "✓" : state === "na" ? "—" : "×";
+  symbol.setAttribute("role", "img");
+  symbol.setAttribute("aria-label", label);
+  return symbol;
+}
 function makeRequestRow(request) {
   const tr = document.createElement("tr");
   if (request.onboardingCheck?.id) tr.dataset.checkId = request.onboardingCheck.id;
-  const applicant = document.createElement("div");
   const address = document.createElement("div");
   address.className = "applicant-main";
   address.title = request.applicant;
   address.textContent = shortWallet(request.applicant);
-  applicant.append(address);
-  const requested = document.createElement("span");
-  requested.className = "request-verified";
-  requested.textContent = "✓ Requested";
-  applicant.append(requested);
-  tr.append(createCell("Requested", applicant));
+  tr.append(createCell("Requested", address));
 
   const check = request.onboardingCheck;
   const issued = document.createElement("div");
-  if (check?.status === "unissued") {
-    if (request.recognition.status === "awaiting") {
-      const issue = document.createElement("button");
-      issue.type = "button";
-      issue.className = "issue-first-leap";
-      issue.textContent = "Issue First LEAP";
-      issue.setAttribute("aria-label", `Issue First LEAP to ${request.applicant}`);
-      issue.addEventListener("click", () => beginCheckIssuance(request));
-      issued.append(issue);
-    } else {
-      const note = document.createElement("span");
-      note.className = "lifecycle-muted";
-      note.textContent = "Not needed · LEAP received";
-      issued.append(note);
-    }
+  if (check?.status === "unissued" && request.recognition?.status === "awaiting") {
+    const issue = document.createElement("button");
+    issue.type = "button";
+    issue.className = "issue-first-leap";
+    issue.textContent = "Issue Check";
+    issue.setAttribute("aria-label", `Issue First LEAP Check to ${request.applicant}`);
+    issue.addEventListener("click", () => beginCheckIssuance(request));
+    issued.append(issue);
+  } else if (["issued", "cashed", "canceled"].includes(check?.status)) {
+    issued.append(checkbookSymbol("complete", "Issued"));
   } else {
-    const mark = document.createElement("span");
-    mark.className = "membership-status fulfilled";
-    mark.textContent = "✓ Issued";
-    issued.append(mark);
-    if (check.id) {
-      const disclosure = document.createElement("details");
-      disclosure.className = "onboarding-check-id";
-      const summary = document.createElement("summary");
-      summary.textContent = `ID ${check.id.slice(0, 6)}…${check.id.slice(-6)}`;
-      const full = document.createElement("code");
-      full.textContent = check.id;
-      disclosure.append(summary, full);
-      issued.append(disclosure);
-    }
-    if (check.status === "canceled") {
-      const note = document.createElement("div");
-      note.className = "lifecycle-muted";
-      note.textContent = "Subsequently canceled";
-      issued.append(note);
-    }
+    issued.append(checkbookSymbol("na", "Issuance not needed"));
   }
   tr.append(createCell("Issued", issued));
 
   const cashedCell = document.createElement("div");
-  const cashed = document.createElement("span");
-  cashed.className = "membership-status" + (check?.status === "cashed" ? " fulfilled" : "");
-  cashed.textContent = check?.status === "cashed" ? "✓ Cashed" :
-    check?.status === "issued" ? "Awaiting cashing" :
-    check?.status === "canceled" ? "Canceled" : "—";
-  cashedCell.append(cashed);
-  // Each outstanding Check opens its own Get Wild-style cancellation Ledger Trail.
-  // The button is attached to this specific outstanding Check ID.
+  if (check?.status === "cashed") {
+    cashedCell.append(checkbookSymbol("complete", "Cashed"));
+  } else if (check?.status === "issued") {
+    cashedCell.append(checkbookSymbol("pending", "Awaiting cashing"));
+  } else if (check?.status === "canceled") {
+    cashedCell.append(checkbookSymbol("canceled", "Canceled"));
+  } else {
+    cashedCell.append(checkbookSymbol("na", "Not applicable"));
+  }
+  tr.append(createCell("Cashed", cashedCell));
+
+  const actions = document.createElement("div");
+  // Cancellation only exists for a validated, outstanding Check with its own
+  // ID; the existing signed cancellation Ledger Trail remains unchanged.
   if (check?.status === "issued" && check.id) {
     const cancel = document.createElement("button");
     cancel.type = "button";
     cancel.className = "cancel-onboarding-check";
     cancel.textContent = "Cancel Check";
     cancel.dataset.checkId = check.id;
-    cancel.setAttribute("aria-label", `Open Cancel Check Ledger Trail for Check ${check.id}`);
-    cancel.title = "Open the Cancel Check Ledger Trail for this Check ID.";
-    const note = document.createElement("span");
-    note.className = "cancel-check-note";
-    note.textContent = "Opens cancellation Ledger Trail";
-    cashedCell.append(cancel, note);
+    cancel.setAttribute("aria-label", `Cancel outstanding Check for ${request.applicant}`);
+    actions.append(cancel);
   }
-  tr.append(createCell("Cashed", cashedCell));
-
-  // Full verification evidence stays in the four live Ledger Trail step cards
-  // accessible through X, and in the validated report data. The completed
-  // Operator table contains only the three lifecycle stages.
+  tr.append(createCell("Action", actions));
   return tr;
+}
+function makeCheckbookLegend() {
+  const legend = document.createElement("div");
+  legend.className = "checkbook-legend";
+  legend.setAttribute("aria-label", "Lifecycle symbol legend");
+  for (const [state, symbol, text] of [
+    ["complete", "✓", "Complete"],
+    ["pending", "×", "Pending"],
+    ["canceled", "×", "Canceled"],
+    ["na", "—", "Not applicable"]
+  ]) {
+    const item = document.createElement("span");
+    item.className = "checkbook-legend-item";
+    const mark = document.createElement("span");
+    mark.className = `checkbook-symbol is-${state}`;
+    mark.textContent = symbol;
+    mark.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.textContent = text;
+    item.append(mark, label);
+    legend.append(item);
+  }
+  return legend;
 }
 function showMatchingPayments(requests, checks) {
   const list = $("requestList");
@@ -2447,21 +2454,19 @@ function showMatchingPayments(requests, checks) {
   container.className = "table-wrap";
   const table = document.createElement("table");
   table.className = "requests-table";
-  const caption = document.createElement("caption");
-  caption.className = "label";
-  caption.textContent = "One entry per Check · unissued opportunities included";
+  table.setAttribute("aria-label", "Onboarding Check lifecycle");
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
-  for (const text of ["Requested", "Issued", "Cashed"]) {
+  for (const text of ["Requested", "Issued", "Cashed", "Action"]) {
     const th = document.createElement("th"); th.scope = "col"; th.textContent = text;
     headRow.append(th);
   }
   head.append(headRow);
   const body = document.createElement("tbody");
   for (const {row} of visibleRows) body.append(makeRequestRow(row));
-  table.append(caption, head, body);
+  table.append(head, body);
   container.append(table);
-  list.append(container);
+  list.append(container, makeCheckbookLegend());
   $("requestStatus").textContent = `${checks.length} individual issued ${checks.length === 1 ? "Check" : "Checks"}: ${issuedCount} outstanding, ${cashedCount} cashed, ${checks.length-issuedCount-cashedCount} canceled; ${waitingCount} to issue. Based on validated XRPL transaction history.`;
 }
 
