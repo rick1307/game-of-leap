@@ -507,29 +507,18 @@
 .join-payment-facts span{font-size:.78rem;color:var(--muted)}
 .join-payment-facts strong{font-size:.9rem;color:var(--navy)}
 .join-wrap{overflow-wrap:anywhere;word-break:break-word}
-.join-ledger-overlay{position:fixed;inset:0;z-index:12000;overflow-y:auto;overscroll-behavior:contain;background:rgba(3,22,29,.90);padding:12px;display:grid;place-items:center}
-.join-ledger-panel{width:min(650px,100%);max-height:none;padding:20px;border-radius:20px;border:1px solid rgba(144,223,209,.5);background:#092d39;color:#f3fcfb;box-shadow:0 12px 55px rgba(0,0,0,.4);font-family:var(--community-ui-font)}
-.join-ledger-panel h2{margin:5px 0 9px;color:#f3fcfb;font-size:clamp(1.35rem,4vw,1.85rem)}
-.join-ledger-panel p{color:#d9efee;line-height:1.55;margin:7px 0}
-.join-ledger-panel .join-ledger-eyebrow{font-size:.68rem;letter-spacing:.13em;font-weight:800;color:#99e7d7;text-transform:uppercase}
-.join-ledger-steps{padding:0;list-style:none;display:grid;gap:7px;margin:15px 0}
-.join-ledger-steps li{padding:10px 12px;border:1px solid rgba(255,255,255,.18);border-radius:11px;display:flex;align-items:center;gap:10px;font-size:.88rem}
-.join-ledger-steps li[data-state="done"]{border-color:#82e39f;color:#d4ffe3}
-.join-ledger-steps li[data-state="working"]{border-color:#f3b64a;color:#fff0c5}
-.join-ledger-steps .join-dot{font-size:1.2rem;flex:0 0 22px;text-align:center}
-.join-ledger-review{padding:12px;background:#123e4b;border-radius:11px;overflow-wrap:anywhere;font-size:.83rem;line-height:1.55}
-.join-ledger-review div+div{margin-top:6px}
-.join-ledger-review b{color:#d5fcf0}
-.join-ledger-confirm{display:flex;gap:10px;align-items:flex-start;margin:15px 0;font-size:.88rem;line-height:1.5}
-.join-ledger-confirm input{flex:0 0 19px;width:19px;height:19px;margin:2px 0 0}
-.join-ledger-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:15px}
-.join-ledger-actions button{padding:12px 15px;min-height:45px;flex:1;border:1px solid rgba(155,229,217,.4);border-radius:10px;background:#1c7c7b;color:white;font-weight:800;cursor:pointer}
-.join-ledger-actions button.secondary{background:transparent}
-.join-ledger-actions button:disabled{opacity:.5;cursor:not-allowed}
-.join-ledger-status{margin-top:12px;min-height:30px;color:#e9fffa;font-size:.87rem;overflow-wrap:anywhere}
-.join-ledger-error{color:#ffc4b9}
-@media(max-width:390px){.join-ledger-panel{padding:14px}.join-ledger-steps li{font-size:.8rem}}
+/* Move 6: the Trail shell/checkpoints come exclusively from ledgerTrail.css.
+   Only this Join page's explicit XRP payment review and consent live here. */
+.ledger-trail .join-ledger-approval{margin-top:14px;font-family:var(--community-ui-font);font-size:.78rem}
+.ledger-trail .join-ledger-review{padding:12px;border:1px solid rgba(121,213,194,.18);border-radius:11px;background:rgba(2,24,34,.40);overflow-wrap:anywhere;line-height:1.5;color:#edf8f5}
+.ledger-trail .join-ledger-review div+div{margin-top:7px}
+.ledger-trail .join-ledger-review b{color:#bdf2c8}
+.ledger-trail .join-ledger-confirm{display:flex;gap:9px;align-items:flex-start;margin:14px 0 4px;line-height:1.5;color:#f5fbfa}
+.ledger-trail .join-ledger-confirm input{flex:0 0 19px;width:19px;height:19px;margin:3px 0 0;accent-color:#79d5c2}
+.ledger-trail #joinSignAndSend{width:100%;margin-top:12px;background:#207d79;color:white}
+.ledger-trail .join-ledger-approval [hidden]{display:none!important}
 </style>
+<link rel="stylesheet" href="ledgerTrail.css">
 <link rel="stylesheet" href="communityTypography.css">
   <link rel="stylesheet" href="communitySurface.css">
   <link rel="stylesheet" href="wildLedgerControls.css">
@@ -577,6 +566,7 @@
       <div><span>Operating Wallet</span><strong id="joinOperatingWallet" class="join-wrap">—</strong></div>
     </div>
     <button class="button" id="firstLeapSubmit" type="button" disabled>Request My First LEAP</button>
+    <p class="join-wallet-status" id="joinPaymentStatus" aria-live="polite" role="status" hidden></p>
   </div>
 </div><div aria-live="polite" class="request-result" id="firstLeapSuccess" role="status" hidden>
   <div class="result-mark">✓</div>
@@ -682,33 +672,20 @@
 </div>
 </footer>
 
-<div class="join-ledger-overlay" id="joinLedgerOverlay" role="dialog" aria-modal="true" aria-labelledby="joinLedgerTitle" hidden>
-  <section class="join-ledger-panel">
-    <div class="join-ledger-eyebrow">Wild Ledger · Membership Request Ledger Trail</div>
-    <h2 id="joinLedgerTitle">Request your First LEAP</h2>
-    <p id="joinLedgerIntro">Wild Ledger will verify the community, prepare the exact XRP payment, and ask Bifrost for your approval.</p>
-    <ol class="join-ledger-steps" id="joinLedgerSteps">
-      <li data-stage="0" data-state="waiting"><span class="join-dot">○</span><span>Verify community and current price</span></li>
-      <li data-stage="1" data-state="waiting"><span class="join-dot">○</span><span>Prepare and check XRP payment</span></li>
-      <li data-stage="2" data-state="waiting"><span class="join-dot">○</span><span>Approve exact transaction in Bifrost</span></li>
-      <li data-stage="3" data-state="waiting"><span class="join-dot">○</span><span>Submit signed payment and verify XRPL consensus</span></li>
-    </ol>
-    <div class="join-ledger-review" id="joinLedgerReview" hidden>
-      <div><b>Applicant: </b><span id="joinReviewApplicant"></span></div>
-      <div><b>Community: </b><span id="joinReviewCommunity"></span></div>
-      <div><b>Recipient: </b><span id="joinReviewRecipient"></span></div>
-      <div><b>Request payment: </b><span id="joinReviewAmount"></span></div>
-      <div><b>XRPL fee: </b><span id="joinReviewFee"></span></div>
-      <div><b>Total: </b><span id="joinReviewTotal"></span></div>
-      <div><b>Memo: </b><span id="joinReviewMemo"></span></div>
-    </div>
-    <label class="join-ledger-confirm" id="joinConfirmRow" hidden><input type="checkbox" id="joinApprove"><span>I approve sending the displayed XRP to this Community's verified Operating Wallet. This requests membership; it does not award LEAP.</span></label>
-    <div class="join-ledger-status" id="joinLedgerStatus" role="status" aria-live="polite"></div>
-    <div class="join-ledger-actions">
-      <button type="button" class="secondary" id="joinCloseTrail">Close</button>
-      <button type="button" id="joinSignAndSend" hidden disabled>Approve in Bifrost</button>
-    </div>
-  </section>
+<!-- Page-owned XRP Payment review; the shared module displays this only at the
+     verified human-approval checkpoint. No second overlay or alternate checkmarks. -->
+<div id="joinLedgerApproval" class="join-ledger-approval" hidden>
+  <div class="join-ledger-review" id="joinLedgerReview" hidden>
+    <div><b>Applicant: </b><span id="joinReviewApplicant" class="join-wrap"></span></div>
+    <div><b>Community: </b><span id="joinReviewCommunity"></span></div>
+    <div><b>Recipient: </b><span id="joinReviewRecipient" class="join-wrap"></span></div>
+    <div><b>Request payment: </b><span id="joinReviewAmount"></span></div>
+    <div><b>XRPL fee: </b><span id="joinReviewFee"></span></div>
+    <div><b>Total: </b><span id="joinReviewTotal"></span></div>
+    <div><b>Memo: </b><span id="joinReviewMemo" class="join-wrap"></span></div>
+  </div>
+  <label class="join-ledger-confirm" id="joinConfirmRow" hidden><input type="checkbox" id="joinApprove"><span>I approve sending the displayed XRP to this Community's verified Operating Wallet. This requests membership; it does not award LEAP.</span></label>
+  <button type="button" id="joinSignAndSend" hidden disabled>Approve in Bifrost</button>
 </div>
 
 <script src="js/communityConfig.js"></script>
@@ -822,6 +799,7 @@
   </script>
 <script type="module">
 import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
+import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { decode } from "https://esm.sh/ripple-binary-codec@2.11.0?bundle";
 import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
 import { discoverWildLedgerCommunities } from "./js/communityDiscovery.js";
@@ -845,27 +823,66 @@ const signedBlobPattern = /^(?:[A-F0-9]{2}){40,}$/;
 let selected = null, context = null, signer = null, applicant = "", prepared = null;
 let connectRun = 0, preparing = false, signing = false, reconciling = false, terminal = false;
 let pending = null;
-const stepEls = [...document.querySelectorAll('#joinLedgerSteps li')];
-
-function message(element, text, error=false) {
-  $(element).textContent = text;
-  $(element).classList.toggle('join-ledger-error',error);
-  if (element === 'joinWalletStatus' || element === 'joinCommunityStatus') $(element).classList.toggle('error',error);
+// Seven real checkpoints, in chronological order. No invented progress or delays.
+const joinStages = ['community','wallet','recheck','payment','review','signature','consensus'];
+const trail = createLedgerTrail({
+  title:'Request Your First LEAP',
+  description:'Follow your verified membership request from community discovery through XRPL confirmation.',
+  steps:[
+    {id:'community',title:'Verify Community',detail:'Reading the canonical authority and Join Request Price on XRPL.'},
+    {id:'wallet',title:'Connect Bifrost',detail:'Waiting for verified community details.'},
+    {id:'recheck',title:'Recheck Authority and Price',detail:'Confirming current values before preparing a payment.'},
+    {id:'payment',title:'Prepare XRP Payment',detail:'Waiting for wallet connection.'},
+    {id:'review',title:'Review and Approve Payment',detail:'You will see the exact recipient, amount, fee, and memo.'},
+    {id:'signature',title:'Authorize in Bifrost',detail:'No XRP is sent until you approve the exact transaction.'},
+    {id:'consensus',title:'Verify XRPL Confirmation',detail:'Checking the saved signed payment against XRPL.'}
+  ],
+  onClose:()=>{
+    // Work continues and signed evidence remains protected when the human exits.
+    document.body.style.overflow='';
+    $('firstLeapSubmit')?.focus();
+  }
+});
+// These controls concern an actual XRP payment, NOT shared Trail navigation.
+const approvalPanel = $('joinLedgerApproval');
+trail.element.querySelector('.trail-action').appendChild(approvalPanel);
+function message(element,text,error=false) {
+  if(element==='joinLedgerStatus') {
+    trail.setStatus(text,error?'error':'');
+    const pageStatus=$('joinPaymentStatus');
+    pageStatus.hidden=false;
+    pageStatus.textContent=text;
+    pageStatus.classList.toggle('error',error);
+    return;
+  }
+  $(element).textContent=text;
+  if(element==='joinWalletStatus'||element==='joinCommunityStatus') $(element).classList.toggle('error',error);
 }
 function stage(number,state,text) {
-  const el=stepEls[number];
-  el.dataset.state=state;
-  el.querySelector('.join-dot').textContent=state==='done'?'✓':state==='failed'?'×':state==='working'?'◌':'○';
-  if (text) el.querySelector('span:last-child').textContent=text;
+  trail.setStep(joinStages[number],state,text);
+}
+function setOverlay(open) {
+  if(open)trail.open({resetSteps:false});
+  else trail.close();
+  document.body.style.overflow=open?'hidden':'';
+}
+function hidePaymentApproval() {
+  approvalPanel.hidden=true;
+  $('joinConfirmRow').hidden=true;
+  $('joinSignAndSend').hidden=true;
+}
+function showWalletPrompt(qrDataUrl) {
+  hidePaymentApproval();
+  trail.showPrompt({
+    heading:'Connect Bifrost',
+    detail:'Open Bifrost and approve the wallet connection. Your address comes directly from your wallet.',
+    qrDataUrl
+  });
 }
 function displayXrp(drops) {
   const amount=BigInt(drops), whole=amount/1000000n;
   const fraction=String(amount%1000000n).padStart(6,'0').replace(/0+$/,'');
   return `${whole}${fraction?'.'+fraction:''} XRP`;
-}
-function setOverlay(open) {
-  $('joinLedgerOverlay').hidden=!open;
-  document.body.style.overflow=open?'hidden':'';
 }
 function showProof(hash, ledger) {
   $('firstLeapRequestForm').hidden=true;
@@ -964,9 +981,20 @@ async function beginConnect() {
   const run=++connectRun;
   emptyQR('Creating QR…');
   $('firstLeapSubmit').disabled=true;
+  const needsCommunityCheck=!context;
+  if(needsCommunityCheck){
+    stage(0,'working','Rechecking the Community and current published price…');
+    stage(1,'pending','Waiting for Community verification.');
+  }else stage(1,'working','Creating a secure Bifrost wallet connection…');
+  trail.hidePrompt();
   message('joinWalletStatus','Connecting to Bifrost…');
   try {
-    if(!context) await readCommunity();
+    if(!context){
+      await readCommunity();
+      if(run!==connectRun)return;
+      stage(0,'done','Verified Community authority and current Join Request Price');
+      stage(1,'working','Creating a secure Bifrost wallet connection…');
+    }
     if(run!==connectRun)return;
     if(signer) {try{await signer.disconnect();}catch(_){}}
     signer=new WalletConnectXrplSigner({projectId,metadata:metadata()});
@@ -974,18 +1002,28 @@ async function beginConnect() {
       const qr=await QRCode.toDataURL(uri,{width:300,margin:1,errorCorrectionLevel:'M'});
       if(run!==connectRun)return;
       $('joinQrImage').src=qr;$('joinQrImage').hidden=false;$('joinQrPlaceholder').hidden=true;
+      stage(1,'waiting','Scan the QR and approve the connection in Bifrost.');
+      showWalletPrompt(qr);
       message('joinWalletStatus','Open Bifrost and approve the wallet connection.');
     }});
     if(run!==connectRun)return;
     applicant=String(connection.account||'').trim();
     if(!isClassicAddress(applicant))throw new Error('Bifrost did not return a valid XRPL address.');
     emptyQR('Connected');
+    stage(1,'done',`Bifrost wallet connected: ${applicant}`);
+    trail.hidePrompt();
     message('joinWalletStatus',`Bifrost connected: ${applicant}`);
     $('firstLeapSubmit').disabled=false;
+    // The transaction is prepared but never signed/sent without separate consent.
+    if(trail.element.classList.contains('show')) void prepareTrail();
   }catch(error){
     if(run!==connectRun)return;
-    emptyQR('Try again');
+    emptyQR('Unavailable');
+    if(!context)stage(0,'failed','Unable to verify the Community on XRPL.');
+    else stage(1,'failed','Bifrost connection could not be completed.');
+    trail.hidePrompt();
     message('joinWalletStatus',error.message||String(error),true);
+    message('joinLedgerStatus',error.message||String(error),true);
   }
 }
 function displayReview(obj) {
@@ -999,34 +1037,37 @@ function displayReview(obj) {
   $('joinReviewMemo').textContent=obj.memo;
 }
 function stateForAwaitingApproval() {
+  trail.showPrompt({
+    heading:'Review Your XRP Payment',
+    detail:'Check the exact amount, recipient, network fee, and membership-request memo before authorizing any payment.'
+  });
+  approvalPanel.hidden=false;
+  $('joinLedgerReview').hidden=false;
   $('joinConfirmRow').hidden=false;
   $('joinApprove').checked=false;
   $('joinSignAndSend').hidden=false;
   $('joinSignAndSend').disabled=true;
-  $('joinCloseTrail').disabled=false;
 }
 function lockAfterSignature() {
-  $('joinConfirmRow').hidden=true;
-  $('joinSignAndSend').hidden=true;
-  $('joinCloseTrail').disabled=true;
+  hidePaymentApproval();
   $('firstLeapSubmit').disabled=true;
   $('refreshJoinQr').disabled=true;
 }
 async function prepareTrail() {
   if(preparing||signing||pending||!applicant||!context)return;
   preparing=true;setOverlay(true);
-  $('joinSignAndSend').hidden=true;$('joinConfirmRow').hidden=true;
-  stage(0,'working','Rechecking validated community authority and published price…');
+  hidePaymentApproval();trail.hidePrompt();
+  stage(2,'working','Rechecking validated Community authority and published price…');
   message('joinLedgerStatus','Reading XRPL. No payment has been sent.');
   try {
     const current=await resolveContext(selected);
-    stage(0,'done','Verified current Community authority and Join Request Price');
+    stage(2,'done','Verified current Community authority and Join Request Price');
     if(current.destination!==context.destination||current.drops!==context.drops){
       context=current;
       $('joinPrice').textContent=displayXrp(current.drops);
       $('joinOperatingWallet').textContent=current.destination;
     }
-    stage(1,'working','Preparing and simulating the exact XRP Payment…');
+    stage(3,'working','Preparing and simulating the exact XRP Payment…');
     const tx={TransactionType:'Payment',Account:applicant,Destination:current.destination,Amount:current.drops,
       Memos:[{Memo:{MemoData:textToHex(current.memo)}}]};
     const simulation=await prepareTransaction({serverUrl,txJson:tx,feeCushion});
@@ -1037,13 +1078,13 @@ async function prepareTrail() {
       throw new Error('XRPL returned an unusable transaction fee, Sequence, or LastLedgerSequence.');
     prepared={...current,account:applicant,tx:simulation.preparedTx,fee};
     displayReview(prepared);
-    stage(1,'done','XRPL simulation passed; exact payment ready for your review');
-    stage(2,'working','Review the payment and approve in Bifrost');
+    stage(3,'done','XRPL simulation passed; exact payment ready for your review');
+    stage(4,'waiting','Review the amount and consent to the XRP payment.');
     stateForAwaitingApproval();
     message('joinLedgerStatus','Review the XRP amount, network fee, recipient and memo. Nothing has been signed or sent.');
   }catch(error){
-    stage(1,'failed','Unable to prepare payment');
-    message('joinLedgerStatus',`${error.message||String(error)} Close the Trail and try again.`,true);
+    stage(3,'failed','Unable to prepare payment');
+    message('joinLedgerStatus',error.message||String(error),true);
   }finally{preparing=false;}
 }
 function validPending(record) {
@@ -1055,14 +1096,20 @@ function validPending(record) {
 async function signAndSend() {
   if(signing||!prepared||!signer||!$('joinApprove').checked||pending)return;
   signing=true;
-  $('joinSignAndSend').disabled=true;$('joinCloseTrail').disabled=true;
+  $('joinSignAndSend').disabled=true;
+  stage(4,'done','XRP payment review and consent completed');
+  stage(2,'working','Verifying that the approved payment details remain current…');
   try {
     const fresh=await resolveContext(selected);
     if(fresh.destination!==prepared.destination||fresh.drops!==prepared.drops) {
       // Nothing is signed yet. Reprepare only after showing the new amount to the visitor.
       throw new Error('The published price or Operating Wallet changed. Close and reopen the Ledger Trail to review the new payment.');
     }
-    stage(2,'working','Approve this exact transaction in Bifrost…');
+    hidePaymentApproval();
+    trail.showPrompt({heading:'Approve in Bifrost',detail:'Approve the exact XRP Payment in your wallet. Wild Ledger is waiting for your decision.'});
+    stage(4,'done','Exact amount and recipient approved for wallet signing');
+    stage(2,'done','Authority and payment details still match the review.');
+    stage(5,'waiting','Approve the exact transaction in Bifrost.');
     message('joinLedgerStatus','Waiting for Bifrost approval. No XRP has been submitted.');
     const response=await signer.signTransaction(prepared.tx);
     const blob=String(response?.signedBlob||'').toUpperCase();
@@ -1074,16 +1121,17 @@ async function signAndSend() {
     // Never submit an irreversible Payment if recovery evidence cannot be persisted.
     store(pendingKey,nextPending);
     pending=nextPending;
-    stage(2,'done','Bifrost signed the exact approved transaction');
+    stage(5,'done','Bifrost signed the exact approved transaction');
+    trail.hidePrompt();
     lockAfterSignature();
     await reconcileSignedPayment();
   }catch(error){
     if(!pending){
-      stage(2,'failed','Bifrost approval did not complete');
+      stage(5,'failed','Bifrost approval did not complete');
       message('joinLedgerStatus',`${error.message||String(error)} No payment was submitted.`,true);
-      $('joinCloseTrail').disabled=false;
-      // A fresh signature is allowed only if nothing was returned and saved.
-      $('joinSignAndSend').disabled=false;
+      // Preserve the explicit approval gate; no generic Retry button.
+      stage(4,'waiting','Review the unchanged payment before another approval.');
+      stateForAwaitingApproval();
     }else{
       message('joinLedgerStatus','Signed transaction is preserved. Rechecking XRPL automatically; no new Bifrost approval.',true);
       void reconcileSignedPayment();
@@ -1126,19 +1174,24 @@ async function submitSameSignedBlob(record) {
 }
 async function reconcileSignedPayment() {
   if(!pending||reconciling)return;
-  reconciling=true;setOverlay(true);lockAfterSignature();
-  stage(0,'done','Community and payment were verified before signing');
-  stage(1,'done','Exact transaction simulated and prepared');
-  stage(2,'done','Original Bifrost-signed transaction preserved');
-  stage(3,'working','Checking the original transaction hash on XRPL…');
+  reconciling=true;lockAfterSignature();trail.hidePrompt();
+  // These are facts established by the persisted signed transaction, verified
+  // below before any new payment can ever be attempted.
+  stage(6,'working','Checking the original transaction hash on XRPL…');
   try {
     if(!validPending(pending)||await signedHash(pending.signedBlob)!==pending.hash)
       throw new Error('Saved signed-payment evidence is inconsistent. Do not send another payment.');
     assertSignedTransaction(pending.signedBlob,{...pending,tx:pending.preparedTx});
+    stage(0,'done','Canonical Community verification completed before signing');
+    stage(1,'done','Bifrost wallet connected before signing');
+    stage(2,'done','Current authority and price verified before signing');
+    stage(3,'done','Signed payment prepared and simulated');
+    stage(4,'done','Approved XRP payment review completed');
+    stage(5,'done','Original Bifrost signature preserved');
     displayReview({...pending,tx:pending.preparedTx});
   }catch(error){
     terminal=true;
-    stage(3,'failed','Saved signed transaction could not be verified');
+    stage(6,'failed','Saved signed transaction could not be verified');
     message('joinLedgerStatus',`${error.message||String(error)} Keep this tab open and obtain assistance.`,true);
     reconciling=false;return;
   }
@@ -1155,14 +1208,13 @@ async function reconcileSignedPayment() {
       }
       if(ledgerResult?.validated===true){
         const ledger=confirmedResult(ledgerResult,pending);
-        stage(3,'done','Validated XRPL Payment and canonical memo confirmed');
+        stage(6,'done','Validated XRPL Payment and canonical memo confirmed');
         store(confirmedKey,{hash:pending.hash,ledger,account:pending.account});
         sessionStorage.removeItem(pendingKey);
         showProof(pending.hash,ledger);
         message('joinLedgerStatus','Membership request verified. The Community Operator can now review it.');
         pending=null;terminal=true;
-        $('joinCloseTrail').disabled=false;
-        setTimeout(()=>{setOverlay(false);$('communityHomeLink')?.focus();},1100);
+        trail.finish({message:'Completed',onFinished:()=>{setOverlay(false);$('communityHomeLink')?.focus();}});
         break;
       }
       if(ledgerResult?.validated===false){
@@ -1183,7 +1235,7 @@ async function reconcileSignedPayment() {
       const msg=String(error.message||error);
       if(/wrong signed hash|unexpected|not match|Validated transaction returned|complete validated ledger position/i.test(msg)){
         terminal=true;
-        stage(3,'failed','XRPL returned evidence that must be inspected');
+        stage(6,'failed','XRPL returned evidence that must be inspected');
         message('joinLedgerStatus',`${msg} No new payment will be requested.`,true);
         break;
       }
@@ -1194,16 +1246,10 @@ async function reconcileSignedPayment() {
   }
   reconciling=false;
 }
-function closeTrail(){
-  if(pending||signing||reconciling||preparing)return;
-  setOverlay(false);
-  $('firstLeapSubmit').focus();
-}
 $('refreshJoinQr').addEventListener('click',()=>{if(!pending){context=null;void beginConnect();}});
 $('firstLeapSubmit').addEventListener('click',()=>{if(!pending)void prepareTrail();});
 $('joinApprove').addEventListener('change',()=>{$('joinSignAndSend').disabled=!$('joinApprove').checked||signing||!!pending;});
 $('joinSignAndSend').addEventListener('click',()=>void signAndSend());
-$('joinCloseTrail').addEventListener('click',closeTrail);
 
 async function boot() {
   try {
@@ -1220,17 +1266,24 @@ async function boot() {
       // Fail closed when evidence is malformed. Do not display a fresh payment action.
       pending=record;
       setOverlay(true);
+      stage(6,'working','Resuming verification of the original saved signed transaction…');
       lockAfterSignature();
       void reconcileSignedPayment();
       return;
     }
+    setOverlay(true);
+    stage(0,'working','Discovering the Community and checking validated XRPL authority…');
+    message('joinLedgerStatus','Verifying the Community and published Join Request Price on XRPL.');
     await readCommunity();
+    stage(0,'done','Verified Community authority and current Join Request Price');
     void beginConnect();
   }catch(error){
     $('refreshJoinQr').disabled=false;
     emptyQR('Unavailable');
     message('joinCommunityStatus',error.message||String(error),true);
     message('joinWalletStatus','No payment can be sent until the community is verified.',true);
+    stage(0,'failed','Unable to verify the Community on XRPL.');
+    message('joinLedgerStatus',error.message||String(error),true);
   }
 }
 void boot();

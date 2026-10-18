@@ -3,8 +3,8 @@
   Sourced from the approved Get Wild Ledger Trail in the
   2026-10-18 22:28:12 repository snapshot.
 
-  This file is not linked by any page yet. Move 3 will connect it to a reusable
-  presentation module; existing Get Wild markup, scripts and styles stay intact.
+  Linked by Join in Move 6; original Get Wild markup, scripts and styles
+  remain untouched as the approved visual reference.
 
   CHECKPOINTS: the same 28px markers and checkmarks, spinner and wallet pulsar.
   INTENTIONAL EXCLUSIONS: original page fade-in, legacy oversized completion
@@ -18,7 +18,7 @@
 
 /* Get Wild's inherited box-sizing and typography, scoped to the Trail. */
 .ledger-trail,.ledger-trail *,.ledger-trail *::before,.ledger-trail *::after{box-sizing:border-box}
-.ledger-trail{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.ledger-trail{font-family:"Times New Roman",serif}
 .ledger-trail button{width:100%;min-height:50px;margin-top:16px;border:0;border-radius:13px;padding:12px 16px;background:#243b35;color:#fff;font:850 15px/1 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;letter-spacing:.035em;cursor:pointer}
 .ledger-trail button:hover{filter:brightness(1.07)}
 .ledger-trail button:disabled{opacity:.48;cursor:default;filter:none}
@@ -28,13 +28,14 @@
 .ledger-trail.show{opacity:1;visibility:visible;pointer-events:auto;transition-delay:0s}
 .ledger-trail .ledger-trail-panel{position:relative;width:min(470px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:24px 22px 22px;border:1px solid rgba(121,213,194,.24);border-radius:26px;background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99));color:#f5fbfa;box-shadow:0 34px 90px rgba(0,0,0,.58);opacity:0;transform:translateY(10px) scale(.985);transition:opacity .34s ease,transform .38s cubic-bezier(.2,.8,.2,1)}
 .ledger-trail.show .ledger-trail-panel{opacity:1;transform:none}
+.ledger-trail .ledger-trail-panel:focus{outline:none}
 .ledger-trail .ledger-trail-panel:before{content:"";display:block;height:3px;margin:-24px -22px 21px;background:linear-gradient(90deg,#29b8b1,#79d5c2,#f4bd58,#ef765d)}
 .ledger-trail .trail-topline{display:flex;align-items:center;gap:10px;margin:0 0 6px}
 .ledger-trail .trail-close{flex:0 0 28px;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;margin:0!important;padding:0!important;display:grid!important;place-items:center;border:1px solid rgba(236,249,247,.20)!important;border-radius:50%!important;background:rgba(255,255,255,.035)!important;color:rgba(245,251,250,.72)!important;font:500 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;cursor:pointer;-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent;box-shadow:none!important;transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease}
 .ledger-trail .trail-close:hover, .ledger-trail .trail-close:focus-visible{background:rgba(255,255,255,.08)!important;border-color:rgba(121,213,194,.42)!important;color:#fff!important;outline:none}
 .ledger-trail .trail-close:active{transform:scale(.94)}
 .ledger-trail .trail-kicker{padding-left:0;color:#f4bd58;font-size:.64rem;font-weight:950;letter-spacing:.16em;text-transform:uppercase}
-.ledger-trail h2{margin:7px 0 6px;font-size:clamp(1.8rem,8vw,2.8rem);letter-spacing:-.045em}
+.ledger-trail h2{margin:7px 0 6px;color:#f5fbfa;font-size:clamp(1.8rem,8vw,2.8rem);letter-spacing:-.045em}
 .ledger-trail .trail-lede{margin:0 0 20px;color:rgba(236,249,247,.64);font-size:.78rem;line-height:1.5}
 .ledger-trail .trail-route{display:grid;gap:0;margin:4px 0 18px}
 .ledger-trail .trail-step{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);gap:11px;min-height:58px;align-items:start}
@@ -71,7 +72,9 @@
 .ledger-trail .trail-status.busy{color:#ffe2a7;border-color:rgba(244,189,88,.18)}
 .ledger-trail .trail-status.error{color:#ffb7aa;border-color:rgba(239,118,93,.24)}
 .ledger-trail .trail-action{display:none;margin:0 0 18px;padding:16px;border:1px solid rgba(244,189,88,.30);border-radius:17px;background:linear-gradient(145deg,rgba(244,189,88,.10),rgba(41,184,177,.06));box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
-.ledger-trail .trail-action.show{display:block}
+/* Get Wild reserves 12px below the prompt through its hidden choice-list block.
+   Match that approved vertical geometry without adding unused choice controls. */
+.ledger-trail .trail-action.show{display:block;padding-bottom:28px}
 .ledger-trail .trail-action strong{display:block;color:#ffe2a7;font-size:1.12rem;letter-spacing:.01em}
 .ledger-trail .trail-action p{margin:6px 0 0;color:rgba(255,244,214,.80);font-size:.76rem;line-height:1.45}
 .ledger-trail .trail-action img{display:block;width:min(220px,72vw);margin:14px auto 0;padding:7px;border-radius:13px;background:white}
