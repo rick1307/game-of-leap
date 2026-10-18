@@ -804,8 +804,7 @@
   </div>
 
 
-  <!-- Move 5: Get Wild Ledger Trail presentation copied as-is for Check cancellation.
-       Read-only preflight only; Bifrost signing and CheckCancel submission are NOT wired. -->
+  <!-- Get Wild visual design: cancellation Trail, now with Bifrost signing and XRPL submission. -->
   <div class="ledger-trail cancel-ledger-trail" id="cancelLedgerTrail" role="dialog" aria-modal="true" aria-labelledby="cancelLedgerTrailTitle" aria-live="polite">
     <div class="ledger-trail-panel">
       <div class="trail-topline">
@@ -2384,7 +2383,7 @@ function makeRequestRow(request) {
     check?.status === "canceled" ? "Canceled" : "—";
   cashedCell.append(cashed);
   // Each outstanding Check opens its own Get Wild-style cancellation Ledger Trail.
-  // Move 5 is a read-only preflight: no signing, submission, or cancellation.
+  // The button is attached to this specific outstanding Check ID.
   if (check?.status === "issued" && check.id) {
     const cancel = document.createElement("button");
     cancel.type = "button";
@@ -2392,10 +2391,10 @@ function makeRequestRow(request) {
     cancel.textContent = "Cancel Check";
     cancel.dataset.checkId = check.id;
     cancel.setAttribute("aria-label", `Open Cancel Check Ledger Trail for Check ${check.id}`);
-    cancel.title = "Open the Cancel Check Ledger Trail (read-only preflight).";
+    cancel.title = "Open the Cancel Check Ledger Trail for this Check ID.";
     const note = document.createElement("span");
     note.className = "cancel-check-note";
-    note.textContent = "Opens Ledger Trail · signing not active yet";
+    note.textContent = "Opens cancellation Ledger Trail";
     cashedCell.append(cancel, note);
   }
   tr.append(createCell("Cashed", cashedCell));
@@ -2496,9 +2495,11 @@ function openReport() {
   $("verificationNote").textContent = `Results verified by the Ledger Trail ${stamp.toLocaleString()}. This report is a snapshot, not a live search.`;
 }
 
-// Move 5 · Cancel Check: Get Wild's exact Ledger Trail presentation and state
-// vocabulary, with a read-only preflight for this specific XRPL Check ID.
-// No wallet signing, transaction preparation, submission, or reserve mutation.
+// Move 6 · Cancel one exact outstanding XRPL Check. Match Get Wild's existing
+// Trail presentation; re-use the established Bifrost sign-only / direct XRPL
+// submission path. Move 7 will independently reconcile the resulting Check
+// object and refresh the Checkbook inside this Trail.
+const CANCEL_PENDING_KEY = "wildLedger.firstLeapSignedCancel";
 const cancelTrailNode = $("cancelLedgerTrail");
 const cancelTrailStatusNode = $("cancelLedgerTrailStatus");
 const cancelTrailRetryNode = $("cancelLedgerTrailRetry");
@@ -2516,14 +2517,13 @@ const cancelTrailDefaults = [
 let cancelTrailRun = 0;
 let cancelTrailSelectedId = "";
 let cancelTrailPreviousFocus = null;
+const cancelTx = {selected:null, prepared:null, signer:null, signing:false, signedBlob:"", txHash:"", confirmed:false};
 
-function cancelTrailElement(step) {
-  return cancelTrailNode.querySelector(`[data-cancel-step="${step}"]`);
-}
-function cancelTrailSetStep(step, state, detail = "") {
+function cancelTrailElement(step) { return cancelTrailNode.querySelector(`[data-cancel-step="${step}"]`); }
+function cancelTrailSetStep(step, state, detail = "", waitingForWallet = false) {
   const row = cancelTrailElement(step);
   if (!row) return;
-  row.className = `trail-step ${state}`;
+  row.className = `trail-step ${state}${waitingForWallet ? " is-awaiting-wallet" : ""}`;
   const marker = row.querySelector(".trail-marker");
   marker.textContent = state === "done" ? "✓" : state === "failed" ? "×" : state === "active" ? "" : "○";
   if (state === "active") {
@@ -2538,36 +2538,61 @@ function cancelTrailSetStatus(message, tone = "") {
   cancelTrailStatusNode.className = `trail-status${tone ? ` ${tone}` : ""}`;
   cancelTrailStatusNode.textContent = message;
 }
+function cancelTrailHideHandoff() {
+  $("cancelTrailAction").classList.remove("show");
+  $("cancelTrailQrImage").hidden = true;
+  $("cancelTrailQrImage").removeAttribute("src");
+  $("cancelTrailQrRefresh").hidden = true;
+  $("cancelTrailUri").hidden = true;
+  $("cancelTrailUri").textContent = "";
+}
+function cancelTrailHandoff(message, hasQr = false) {
+  $("cancelTrailActionTitle").textContent = "GO TO BIFROST NOW";
+  $("cancelTrailActionCopy").textContent = message;
+  $("cancelTrailAction").classList.add("show");
+  $("cancelTrailQrImage").hidden = !hasQr;
+  $("cancelTrailQrRefresh").hidden = true;
+}
 function cancelTrailReset() {
-  for (let i=0; i<cancelTrailKeys.length; i++) {
-    const row=cancelTrailElement(cancelTrailKeys[i]);
-    row.querySelector(".trail-copy span").textContent=cancelTrailDefaults[i];
-    cancelTrailSetStep(cancelTrailKeys[i],"pending");
+  for (let i = 0; i < cancelTrailKeys.length; i++) {
+    cancelTrailElement(cancelTrailKeys[i]).querySelector(".trail-copy span").textContent = cancelTrailDefaults[i];
+    cancelTrailSetStep(cancelTrailKeys[i], "pending");
   }
   $("cancelTrailComplete").classList.remove("show");
-  $("cancelTrailAction").classList.remove("show");
+  cancelTrailHideHandoff();
   cancelTrailRetryNode.hidden = true;
+  cancelTrailCloseNode.disabled = false;
   cancelTrailSetStatus("Starting the trail…");
-}
-function cancelTrailClose() {
-  ++cancelTrailRun; // Ignore the result of any old in-flight read-only operation.
-  cancelTrailNode.classList.remove("show");
-  cancelTrailSelectedId = "";
-  if (cancelTrailPreviousFocus?.isConnected) cancelTrailPreviousFocus.focus();
-  cancelTrailPreviousFocus = null;
 }
 function cancelTrailEnsureOpen(run) {
   if (run !== cancelTrailRun || !cancelTrailNode.classList.contains("show"))
     throw new Error("Cancel Check Ledger Trail was closed.");
 }
+function cancelTrailClose() {
+  // Bifrost may still return a signed response: never permit closing until the
+  // response has been saved so an interruption cannot lead to another signing.
+  if (cancelTx.signing) return;
+  ++cancelTrailRun;
+  cancelTrailNode.classList.remove("show");
+  cancelTrailSelectedId = "";
+  cancelTrailHideHandoff();
+  if (cancelTx.signer) { void cancelTx.signer.disconnect().catch(()=>{}); cancelTx.signer=null; }
+  if (cancelTrailPreviousFocus?.isConnected) cancelTrailPreviousFocus.focus();
+  cancelTrailPreviousFocus = null;
+}
+function cancelTrailCurrentSession() {
+  const s = readOperatorSession();
+  if (!s || !cancelTx.selected || s.communityId !== cancelTx.selected.communityId ||
+      s.wallet !== cancelTx.selected.operatorWallet)
+    throw new Error("The current Operator session changed. Return through Get Wild; no cancellation was submitted.");
+  return s;
+}
 async function cancelTrailReadCheck(checkId) {
-  const cfg=window.WILD_LEDGER_CONFIG || {};
-  const server=String(cfg.xrplWebSocket || "").trim();
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
   if (!server) throw new Error("XRPL server unavailable. No cancellation can proceed.");
   const client=new DirectXRPLClient(server);
   try {
     await client.connect();
-    // This reads the currently validated Check ledger object, not a row cache.
     const response=await client.request("ledger_entry",{check:checkId,ledger_index:"validated",binary:false},30000);
     if (response?.result?.validated === false) throw new Error("XRPL did not return validated Check evidence.");
     const node=response?.result?.node;
@@ -2575,76 +2600,301 @@ async function cancelTrailReadCheck(checkId) {
     return node;
   } finally { client.close(); }
 }
-async function cancelTrailPreflight(checkId,run) {
+function cancelTrailAssertCheckNode(node) {
+  const cfg=window.WILD_LEDGER_CONFIG || {};
+  const amount=node.SendMax;
+  if (node.Account!==cancelTx.selected.operatorWallet || node.Destination!==cancelTx.selected.applicant ||
+      !amount || amount.issuer!==String(cfg.leapIssuer || "") ||
+      String(amount.currency || "").toUpperCase()!==String(cfg.leapCurrency || "").toUpperCase() ||
+      !/^1(?:\.0+)?$/.test(String(amount.value || "")) || node.Expiration!==undefined)
+    throw new Error("This XRPL Check does not match the selected 1-LEAP onboarding Check.");
+}
+async function cancelTrailCheckAuthority() {
+  cancelTrailCurrentSession();
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  if (!server) throw new Error("No XRPL server is configured.");
+  const access=await resolveWalletAccess({account:cancelTx.selected.operatorWallet,serverUrl:server,force:true});
+  cancelTrailCurrentSession();
+  if (!(access?.operatorMatches || []).some(item=>
+    String(item.communityId || "").trim().toUpperCase()===cancelTx.selected.communityId &&
+    String(item.currentAccount || "").trim()===cancelTx.selected.operatorWallet &&
+    item.authorityEstablished===true))
+    throw new Error("Validated XRPL history does not confirm current Community Operating Wallet authority.");
+}
+async function cancelTrailFreshProof() {
+  await cancelTrailCheckAuthority();
+  const node=await cancelTrailReadCheck(cancelTx.selected.checkId);
+  cancelTrailCurrentSession();
+  cancelTrailAssertCheckNode(node);
+  return node;
+}
+function cancelTrailAssertTx(tx, prepared = null) {
+  if (tx?.TransactionType!=="CheckCancel" || tx.Account!==cancelTx.selected?.operatorWallet ||
+      String(tx.CheckID || "").toUpperCase()!==cancelTx.selected?.checkId)
+    throw new Error("Bifrost's transaction does not cancel the selected Check from the authorized Operating Wallet.");
+  const permitted=new Set(["TransactionType","Account","CheckID","Fee","Sequence","TicketSequence",
+    "LastLedgerSequence","NetworkID","Flags","SourceTag","SigningPubKey","TxnSignature","Signers"]);
+  for (const name of Object.keys(tx)) if (!permitted.has(name))
+    throw new Error(`Unexpected CheckCancel transaction field: ${name}.`);
+  if (prepared) {
+    const normalized = value => value && typeof value==="object" ?
+      (Array.isArray(value) ? value.map(normalized) : Object.fromEntries(
+        Object.keys(value).sort().map(k=>[k,normalized(value[k])]))) : value;
+    const signatures=new Set(["SigningPubKey","TxnSignature","Signers"]);
+    for (const [key,value] of Object.entries(prepared)) {
+      if (!signatures.has(key) && JSON.stringify(normalized(tx[key]))!==JSON.stringify(normalized(value)))
+        throw new Error(`Bifrost changed the prepared cancellation field ${key}.`);
+    }
+    for (const [key,value] of Object.entries(tx)) {
+      if (!signatures.has(key) && !(key in prepared) && !(key==="Flags" && Number(value)===0))
+        throw new Error(`Bifrost added an unapproved cancellation field ${key}.`);
+    }
+  }
+}
+function cancelTrailSavedRaw() { return sessionStorage.getItem(CANCEL_PENDING_KEY); }
+function cancelTrailReadSaved() {
+  const raw=cancelTrailSavedRaw();
+  if (!raw) return null;
+  let saved;
+  try { saved=JSON.parse(raw); } catch (_) { throw new Error("Saved CheckCancel evidence is unreadable. Do not sign another cancellation."); }
+  if (saved?.version!==1 || !/^[A-Fa-f0-9]{64}$/.test(saved.checkId || "") ||
+      !isClassicAddress(saved.operatorWallet || "") || !isClassicAddress(saved.applicant || "") ||
+      !/^[A-Fa-f0-9]{80,}$/.test(saved.signedBlob || "") ||
+      !/^[A-Fa-f0-9]{64}$/.test(saved.txHash || "") || !saved.prepared ||
+      !String(saved.communityId || "").trim())
+    throw new Error("Saved CheckCancel evidence is incomplete. Do not request another signature.");
+  return saved;
+}
+function cancelTrailPersistSigned() {
+  const s=cancelTx.selected;
+  // Must succeed before sending anything. A reload can then reconcile exactly
+  // these signed bytes without asking Bifrost for another signature.
+  sessionStorage.setItem(CANCEL_PENDING_KEY,JSON.stringify({version:1,...s,
+    prepared:cancelTx.prepared,signedBlob:cancelTx.signedBlob,txHash:cancelTx.txHash}));
+}
+async function cancelTrailCheckSigned() {
+  const blob=cancelTx.signedBlob;
+  if (!/^[A-F0-9]{80,}$/.test(blob) || !/^[A-F0-9]{64}$/.test(cancelTx.txHash))
+    throw new Error("A valid signed CheckCancel transaction was not retained.");
+  const tx=decode(blob);
+  cancelTrailAssertTx(tx,cancelTx.prepared);
+  if (!(tx.TxnSignature || (Array.isArray(tx.Signers) && tx.Signers.length)))
+    throw new Error("The saved cancellation has no XRPL signature.");
+  if (await signedCheckHash(blob)!==cancelTx.txHash)
+    throw new Error("The signed CheckCancel bytes no longer match their transaction hash.");
+}
+async function cancelTrailFindValidated() {
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  const client=new DirectXRPLClient(server);
+  try {
+    await client.connect();
+    const reply=await client.request("tx",{transaction:cancelTx.txHash,binary:false},20000);
+    return reply?.result?.validated===true ? reply.result : null;
+  } catch(error) {
+    if (/not found|txnNotFound/i.test(String(error?.message || error))) return null;
+    throw error;
+  } finally { client.close(); }
+}
+function cancelTrailValidatedResult(tx) {
+  if (tx?.validated!==true) throw new Error("The CheckCancel transaction is not validated yet.");
+  // `tx` RPC responses may attach their own hash/date to tx_json. These
+  // response-only fields are not transaction fields and were not Bifrost-signed.
+  const ledgerTx={...(tx.tx_json || tx.tx || tx.transaction || tx)};
+  delete ledgerTx.hash;
+  delete ledgerTx.date;
+  delete ledgerTx.ledger_index;
+  delete ledgerTx.inLedger;
+  cancelTrailAssertTx(ledgerTx,cancelTx.prepared);
+  if ((tx.meta || tx.metaData)?.TransactionResult!=="tesSUCCESS")
+    throw new Error("The CheckCancel transaction was validated unsuccessfully. It must not be signed again.");
+  const recordedHash=String(tx.hash || tx.tx_json?.hash || "").toUpperCase();
+  if (recordedHash && recordedHash!==cancelTx.txHash) throw new Error("XRPL returned a different validated cancellation hash.");
+  return tx.ledger_index;
+}
+function cancelTrailMarkSubmitted(ledger) {
+  // Move 6 proves the exact transaction was validated. Move 7 still needs to
+  // independently confirm the Check ledger object is gone and refresh rows.
+  cancelTx.confirmed=true;
+  sessionStorage.removeItem(CANCEL_PENDING_KEY);
+  cancelTrailHideHandoff();
+  cancelTrailSetStep("sign","done",`CheckCancel validated in XRPL ledger ${ledger}.`);
+  cancelTrailSetStatus(`CheckCancel validated: ${cancelTx.txHash}. Independent Check-object verification and Checkbook refresh remain for Move 7.`);
+  cancelTrailRetryNode.hidden=true;
+}
+async function cancelTrailSubmitSameSigned(run) {
+  await cancelTrailCheckSigned();
+  cancelTrailSetStep("sign","active","Looking up the original signed CheckCancel on XRPL…");
+  cancelTrailSetStatus("Reconciling the exact signed cancellation; no new signature will be requested…","busy");
+  const existing=await cancelTrailFindValidated();
+  if (existing) {
+    const ledger=cancelTrailValidatedResult(existing);
+    cancelTrailMarkSubmitted(ledger);
+    return;
+  }
+  // A missing Check object may mean the original cancellation validated but
+  // transaction lookup has not caught up. Never blindly submit in this case.
+  await cancelTrailFreshProof();
+  await cancelTrailCheckSigned();
+  cancelTrailEnsureOpen(run);
+  cancelTrailSetStep("sign","active","Submitting the exact Bifrost-signed CheckCancel; awaiting validated XRPL consensus…");
+  cancelTrailSetStatus(`Submitting signed CheckCancel ${cancelTx.txHash}. Do not approve another signature.`,"busy");
+  const result=await submitSignedTransaction({serverUrl:String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || ""),
+    signedBlob:cancelTx.signedBlob,onSubmitted:({txHash})=>{
+      if (String(txHash || "").toUpperCase()!==cancelTx.txHash)
+        throw new Error("XRPL returned a different transaction hash from the signed CheckCancel.");
+    }});
+  if (String(result.txHash || "").toUpperCase()!==cancelTx.txHash || result.finalResult!=="tesSUCCESS")
+    throw new Error(`The original signed CheckCancel did not validate as expected (${result.finalResult}).`);
+  const validated=await cancelTrailFindValidated();
+  if (!validated) throw new Error("XRPL reported a successful submission but independent validated transaction lookup is not yet available.");
+  const ledger=cancelTrailValidatedResult(validated);
+  cancelTrailMarkSubmitted(ledger);
+}
+async function cancelTrailPrepare(run) {
+  cancelTrailSetStep("prepare","active","Simulating CheckCancel and preparing the transaction for Bifrost…");
+  cancelTrailSetStatus("Preparing an XRPL CheckCancel for this exact Check ID…","busy");
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  if (!server || !String(window.WILD_LEDGER_CONFIG?.walletConnectProjectId || "").trim())
+    throw new Error("XRPL or WalletConnect configuration is unavailable.");
+  const result=await prepareTransaction({serverUrl:server,txJson:{
+    TransactionType:"CheckCancel",Account:cancelTx.selected.operatorWallet,CheckID:cancelTx.selected.checkId
+  }});
+  cancelTrailEnsureOpen(run);
+  cancelTrailCurrentSession();
+  cancelTrailAssertTx(result.preparedTx);
+  cancelTx.prepared=result.preparedTx;
+  cancelTrailSetStep("prepare","done",`Simulated tesSUCCESS · network fee ${cancelTx.prepared.Fee} drops.`);
+}
+async function cancelTrailConnectAndSign(run) {
+  cancelTrailSetStep("wallet","active","Waiting for Bifrost to connect the current Operating Wallet…",true);
+  cancelTrailSetStatus("Connect the authorized Operating Wallet in Bifrost…","busy");
+  cancelTrailHandoff("Approve the Operating Wallet connection in Bifrost, then return here. No cancellation has been submitted.");
+  cancelTx.signer=new WalletConnectXrplSigner({projectId:String(window.WILD_LEDGER_CONFIG?.walletConnectProjectId || "").trim(),
+    metadata:{name:"Wild Ledger Onboarding Checkbook",description:"Sign one selected XRPL CheckCancel",url:location.origin,icons:[`${location.origin}/favicon.ico`]}});
+  const connection=await cancelTx.signer.connect({onUri:async uri=>{
+    cancelTrailEnsureOpen(run);
+    const qr=await QRCode.toDataURL(uri,{width:520,margin:2,errorCorrectionLevel:"M"});
+    cancelTrailEnsureOpen(run);
+    $("cancelTrailQrImage").src=qr;
+    cancelTrailHandoff("Open Bifrost, approve this wallet connection, then return to the Trail.",true);
+  }});
+  cancelTrailEnsureOpen(run);
+  cancelTrailCurrentSession();
+  if (connection.account!==cancelTx.selected.operatorWallet)
+    throw new Error("The connected Bifrost account is not this community's current Operating Wallet.");
+  await cancelTrailFreshProof();
+  cancelTrailEnsureOpen(run);
+  cancelTrailHideHandoff();
+  cancelTrailSetStep("wallet","done",`Bifrost connected the verified Operating Wallet ${connection.account}.`);
+  cancelTrailSetStep("sign","active","Review and sign this exact CheckCancel in Bifrost. Nothing has been submitted yet.",true);
+  cancelTrailSetStatus("Waiting for your Bifrost approval of CheckCancel…","busy");
+  cancelTrailHandoff("Review and sign the prepared CheckCancel in Bifrost, then return here. Wild Ledger will submit only after checking the signature.");
+  cancelTrailAssertTx(cancelTx.prepared);
+  cancelTx.signing=true;
+  cancelTrailCloseNode.disabled=true;
+  try {
+    const signed=await cancelTx.signer.signTransaction(cancelTx.prepared);
+    cancelTrailEnsureOpen(run);
+    cancelTrailHideHandoff();
+    cancelTx.signedBlob=String(signed?.signedBlob || "").toUpperCase();
+    if (!/^[A-F0-9]{80,}$/.test(cancelTx.signedBlob))
+      throw new Error("Bifrost did not return a signed XRPL transaction blob.");
+    cancelTrailAssertTx(decode(cancelTx.signedBlob),cancelTx.prepared);
+    cancelTx.txHash=await signedCheckHash(cancelTx.signedBlob);
+    await cancelTrailCheckSigned();
+    cancelTrailPersistSigned();
+  } finally {
+    // Keep the X disabled until signed bytes are safely persisted, or until
+    // an unsuccessful signing attempt has fully finished.
+    cancelTx.signing=false;
+    cancelTrailCloseNode.disabled=false;
+  }
+  cancelTrailSetStep("sign","active","Bifrost signature verified and saved; submitting the exact signed CheckCancel…");
+  await cancelTrailSubmitSameSigned(run);
+}
+async function cancelTrailPreflight(checkId,run,recover=false) {
   let active="identify";
   try {
-    cancelTrailSetStep(active,"active","Checking the Checkbook record and Operator session…");
+    cancelTrailSetStep(active,"active","Checking the Check ID and current Operator session…");
     cancelTrailSetStatus("Identifying the selected Check…","busy");
     const session=readOperatorSession();
     const report=session && checkedHandoff(session);
+    const saved=cancelTrailReadSaved();
+    if (saved && (!session || saved.communityId!==session.communityId || saved.operatorWallet!==session.wallet))
+      throw new Error("An unresolved signed CheckCancel belongs to another Operator session. Do not sign a new cancellation.");
+    if (saved && !recover && saved.checkId!==checkId)
+      throw new Error("A different signed CheckCancel is unresolved. Reconcile it before starting another cancellation.");
     const check=report?.checks?.find(row=>row.id===checkId);
-    if (!session || !report || !check || check.status!=="issued" ||
-        check.issuingWallet!==session.wallet || !isClassicAddress(check.applicant))
-      throw new Error("This Check is not a verified outstanding Check issued by your current Operating Wallet. Reopen the Checkbook through Get Wild.");
+    if (!session || !report || (!check && !saved) || (check &&
+        (check.issuingWallet!==session.wallet || !isClassicAddress(check.applicant))) ||
+        (!saved && check?.status!=="issued"))
+      throw new Error("This Check is not a verified outstanding Check issued by your current Operating Wallet. Reopen through Get Wild.");
+    cancelTx.selected={communityId:session.communityId,operatorWallet:session.wallet,
+      applicant:saved?.applicant || check.applicant,checkId};
+    if (saved && (saved.checkId!==checkId || (check && check.applicant!==saved.applicant)))
+      throw new Error("Saved cancellation evidence differs from the selected Check. No new signature will be requested.");
     cancelTrailEnsureOpen(run);
-    cancelTrailSetStep("identify","done",`Check ID ${check.id.slice(0,12)}…${check.id.slice(-8)} · recipient ${check.applicant}`);
-
+    cancelTrailSetStep("identify","done",`Check ID ${checkId.slice(0,12)}…${checkId.slice(-8)} · recipient ${cancelTx.selected.applicant}`);
     active="authority";
     cancelTrailSetStep(active,"active","Reading validated authority for this community…");
     cancelTrailSetStatus("Confirming Operator authority against XRPL…","busy");
-    const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
-    if (!server) throw new Error("Current XRPL authority cannot be checked: no server configured.");
-    const access=await resolveWalletAccess({account:session.wallet,serverUrl:server,force:true});
+    await cancelTrailCheckAuthority();
     cancelTrailEnsureOpen(run);
-    const matched=(access?.operatorMatches || []).find(item=>
-      String(item.communityId || "").trim().toUpperCase()===session.communityId &&
-      String(item.currentAccount || "").trim()===session.wallet && item.authorityEstablished===true);
-    if (!matched || readOperatorSession()?.wallet!==session.wallet ||
-        readOperatorSession()?.communityId!==session.communityId)
-      throw new Error("Validated current Operating Wallet authority could not be confirmed. No cancellation can proceed.");
     cancelTrailSetStep("authority","done",`${session.communityId} · authorized Operating Wallet ${session.wallet}`);
 
-    active="outstanding";
-    cancelTrailSetStep(active,"active","Checking the selected Check ID in the current validated ledger…");
-    cancelTrailSetStatus("Looking up the outstanding Check object on XRPL…","busy");
-    let node;
-    try { node=await cancelTrailReadCheck(checkId); }
-    catch (error) {
-      if (/entryNotFound|not found|not exist/i.test(String(error?.message || error)))
-        throw new Error("That Check is no longer outstanding on XRPL. Refresh the Checkbook to view its latest status.");
-      throw error;
+    if (saved) {
+      cancelTx.prepared=saved.prepared;
+      cancelTx.signedBlob=String(saved.signedBlob).toUpperCase();
+      cancelTx.txHash=String(saved.txHash).toUpperCase();
+      await cancelTrailCheckSigned();
+      cancelTrailEnsureOpen(run);
+      cancelTrailSetStep("outstanding","done","Original Check ID and validated issuance record identified.");
+      cancelTrailSetStep("prepare","done","Previously prepared cancellation recovered from this tab.");
+      cancelTrailSetStep("wallet","done","Bifrost signature already obtained; no new approval.");
+      active="sign";
+      await cancelTrailSubmitSameSigned(run);
+      return;
     }
+
+    active="outstanding";
+    cancelTrailSetStep(active,"active","Checking the selected Check ID in the validated ledger…");
+    cancelTrailSetStatus("Looking up the outstanding Check object on XRPL…","busy");
+    const node=await cancelTrailReadCheck(checkId);
     cancelTrailEnsureOpen(run);
-    const cfg=window.WILD_LEDGER_CONFIG || {};
-    const amount=node.SendMax;
-    if (node.Account!==session.wallet || node.Destination!==check.applicant ||
-        !amount || amount.issuer!==String(cfg.leapIssuer || "") ||
-        String(amount.currency || "").toUpperCase()!==String(cfg.leapCurrency || "").toUpperCase() ||
-        !/^1(?:\.0+)?$/.test(String(amount.value || "")) || node.Expiration!==undefined)
-      throw new Error("The current XRPL Check does not match this verified 1-LEAP onboarding Check. No cancellation can proceed.");
-    cancelTrailSetStep("outstanding","done","XRPL confirms this specific 1-LEAP Check still exists and is outstanding.");
-    // Steps 4–7 are intentionally PENDING until the later implementation.
-    // Completing checks is NOT the same as claiming a CheckCancel transaction.
-    cancelTrailSetStatus("Read-only checks passed. CheckCancel signing and submission are not active yet. No transaction was sent.");
+    cancelTrailAssertCheckNode(node);
+    cancelTrailSetStep("outstanding","done","XRPL confirms this exact 1-LEAP Check is outstanding.");
+    active="prepare";
+    await cancelTrailPrepare(run);
+    active="wallet";
+    await cancelTrailConnectAndSign(run);
   } catch (error) {
     if (run!==cancelTrailRun) return;
-    cancelTrailSetStep(active,"failed",String(error?.message || error));
-    cancelTrailSetStatus(String(error?.message || error),"error");
+    cancelTrailHideHandoff();
+    cancelTrailCloseNode.disabled=false;
+    cancelTx.signing=false;
+    const hasSignature=!!cancelTrailSavedRaw();
+    const visibleStage=cancelTrailElement("sign").className.includes("active") ? "sign" : active;
+    cancelTrailSetStep(hasSignature ? "sign" : visibleStage,"failed",String(error?.message || error));
+    cancelTrailSetStatus(hasSignature ?
+      `${String(error?.message || error)} The original signed CheckCancel is retained. Retry will reconcile identical signed bytes without asking Bifrost to sign again.` :
+      String(error?.message || error),"error");
+    cancelTrailRetryNode.textContent=hasSignature ? "Retry signed cancellation" : "Follow the Trail Again";
     cancelTrailRetryNode.hidden=false;
   }
 }
-function cancelTrailOpen(checkId) {
+function cancelTrailOpen(checkId,recover=false) {
   if (!/^[0-9A-F]{64}$/.test(checkId) || cancelTrailNode.classList.contains("show")) return;
   cancelTrailSelectedId=checkId;
   cancelTrailPreviousFocus=document.activeElement;
+  if (cancelTx.signer) { void cancelTx.signer.disconnect().catch(()=>{}); cancelTx.signer=null; }
+  cancelTx.selected=null;cancelTx.prepared=null;cancelTx.signedBlob="";cancelTx.txHash="";
+  cancelTx.confirmed=false;cancelTx.signing=false;
   const run=++cancelTrailRun;
   cancelTrailReset();
   cancelTrailNode.classList.add("show");
   cancelTrailCloseNode.focus();
-  void cancelTrailPreflight(checkId,run);
+  void cancelTrailPreflight(checkId,run,recover);
 }
-// The existing Checkbook dynamically creates rows. Delegate clicks so each
-// button refers to the unique Check ID it shows, not the applicant wallet.
 document.addEventListener("click",event=>{
   const button=event.target.closest?.("button.cancel-onboarding-check");
   if (!button || button.disabled || !$("authorizedContent").contains(button)) return;
@@ -2652,13 +2902,25 @@ document.addEventListener("click",event=>{
 });
 cancelTrailCloseNode.addEventListener("click",cancelTrailClose);
 cancelTrailRetryNode.addEventListener("click",()=>{
-  if (!cancelTrailSelectedId) return;
+  if (!cancelTrailSelectedId || cancelTx.signing) return;
   const run=++cancelTrailRun;
+  if (cancelTx.signer) { void cancelTx.signer.disconnect().catch(()=>{}); cancelTx.signer=null; }
   cancelTrailReset();
-  void cancelTrailPreflight(cancelTrailSelectedId,run);
+  void cancelTrailPreflight(cancelTrailSelectedId,run,!!cancelTrailSavedRaw());
 });
 cancelTrailNode.addEventListener("keydown",event=>{
-  if (event.key==="Escape") { event.preventDefault(); cancelTrailClose(); }
+  if (event.key==="Escape" && !cancelTx.signing) { event.preventDefault(); cancelTrailClose(); }
+});
+// Mobile Safari may reload on return from Bifrost. Reopen a signed cancellation
+// only after the ordinary Checkbook's XRPL authority/history checks complete.
+window.addEventListener("wildLedgerMembershipRequestsVerified",()=>{
+  if (cancelTrailNode.classList.contains("show")) return;
+  let saved=null;
+  try { saved=cancelTrailReadSaved(); } catch (_) { return; }
+  if (!saved) return;
+  const session=readOperatorSession();
+  if (session && saved.communityId===session.communityId && saved.operatorWallet===session.wallet)
+    cancelTrailOpen(String(saved.checkId).toUpperCase(),true);
 });
 
 // The verification machinery above owns this operation. Do not open the
