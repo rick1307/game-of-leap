@@ -571,6 +571,20 @@
     text-align:center; white-space:normal;
   }
   .cancel-onboarding-check:disabled { opacity:.78; cursor:not-allowed; }
+  /* Historical Checks are read-only: pagination is the only interactive control. */
+  .cashed-history-table { width:100%; border-collapse:collapse; text-align:left; font-size:.85rem; }
+  .cashed-history-table th { padding:12px 7px; font-size:.70rem; color:var(--muted); text-transform:uppercase; letter-spacing:.075em; font-weight:850; border-bottom:1px solid rgba(121,213,194,.29); }
+  .cashed-history-table td { padding:14px 7px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  .cashed-history-table tr:last-child td { border-bottom:0; }
+  .cashed-history-table th:last-child, .cashed-history-table td:last-child { width:110px; text-align:center; }
+  .cashed-history-navigation { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:13px; border-top:1px solid var(--line); }
+  .cashed-history-navigation[hidden] { display:none!important; }
+  .cashed-history-range, .cashed-history-page { color:var(--muted); font-size:.78rem; font-variant-numeric:tabular-nums; }
+  .cashed-history-controls { display:flex; align-items:center; gap:10px; }
+  .cashed-history-controls button { border:1px solid rgba(121,213,194,.44); border-radius:9px; background:rgba(121,213,194,.09); color:var(--ink); padding:8px 11px; font:inherit; font-size:.76rem; font-weight:750; cursor:pointer; }
+  .cashed-history-controls button:disabled { opacity:.4; cursor:default; }
+  .cashed-history-controls button:focus-visible { outline:2px solid var(--sea-glass); outline-offset:3px; }
+  .cashed-history-empty { padding:11px 0 2px; color:var(--muted); font-size:.82rem; }
   .report-foot { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-top:17px; }
   .report-foot .notice { margin:0; font-size:.78rem; }
   /* Four columns remain visible on iPhone portrait: statuses stay borderless. */
@@ -585,6 +599,10 @@
     .cancel-onboarding-check { min-height:36px; padding:7px 2px; font-size:.64rem; }
     .checkbook-legend { gap:6px 12px; }
     .checkbook-legend-item { font-size:.67rem; }
+    .cashed-history-table { font-size:.74rem; }
+    .cashed-history-table th { font-size:.59rem; letter-spacing:.012em; }
+    .cashed-history-table .applicant-main { font-size:.73rem; }
+    .cashed-history-navigation { justify-content:center; }
   }
   @media(max-width:360px) {
     .requests-table th { font-size:.53rem; letter-spacing:0; }
@@ -934,12 +952,24 @@
 <div class="lifecycle-announcement" data-state="clear" hidden id="requestCount" role="status" aria-live="polite" aria-atomic="true">
   <div class="lifecycle-announcement-copy">
     <strong class="lifecycle-announcement-title" id="requestCountTitle">All caught up</strong>
-    <span class="lifecycle-announcement-totals" id="requestCountTotals">0 to issue · 0 outstanding · 0 cashed</span>
+    <span class="lifecycle-announcement-totals" id="requestCountTotals">0 to issue · 0 outstanding</span>
     <span class="lifecycle-announcement-reserve">XRP reserved for open Checks: <strong id="requestReserveAmount">Checking XRPL…</strong></span>
   </div>
 </div>
 <p aria-live="polite" class="request-status" id="requestStatus" role="status" hidden>Opening verified membership requests…</p>
 <div hidden="" id="requestList"></div>
+</section>
+<section aria-label="Past Cashed Checks" class="panel" id="cashedHistoryCard">
+  <h2>Past Cashed Checks</h2>
+  <div id="cashedHistoryList"></div>
+  <nav id="cashedHistoryNav" class="cashed-history-navigation" aria-label="Past Cashed Checks pages" hidden>
+    <span id="cashedHistoryRange" class="cashed-history-range" aria-live="polite"></span>
+    <div class="cashed-history-controls">
+      <button type="button" id="cashedHistoryPrevious" aria-label="Previous page of cashed Checks">Previous</button>
+      <span id="cashedHistoryPage" class="cashed-history-page" aria-live="polite"></span>
+      <button type="button" id="cashedHistoryNext" aria-label="Next page of cashed Checks">Next</button>
+    </div>
+  </nav>
 </section>
 </div>
       <p id="verificationNote" class="trail-note" hidden></p>
@@ -1288,7 +1318,7 @@ function onboardingChecksById(requests, creates, cancellations, cashes) {
       status:cash ? "cashed" : cancel ? "canceled" : "issued",
       issuedHash:created.hash, issuedLedger:created.ledger, issuedTxIndex:created.txIndex,
       issuingWallet:created.source, cashHash:cash?.hash || "", cashLedger:cash?.ledger || null,
-      cancelHash:cancel?.hash || ""}];
+      cashTxIndex:cash?.txIndex ?? null, cancelHash:cancel?.hash || ""}];
   }).sort((a,b) => b.issuedLedger - a.issuedLedger ||
     b.issuedTxIndex - a.issuedTxIndex || a.id.localeCompare(b.id));
 }
@@ -2398,7 +2428,6 @@ function makeCheckbookLegend() {
   for (const [state, symbol, text] of [
     ["complete", "✓", "Complete"],
     ["pending", "×", "Pending"],
-    ["canceled", "×", "Canceled"],
     ["na", "—", "Not applicable"]
   ]) {
     const item = document.createElement("span");
@@ -2414,61 +2443,129 @@ function makeCheckbookLegend() {
   }
   return legend;
 }
+// Step 6.8: The active Checkbook contains only work to issue or live reserve-
+// consuming Checks. Validated cashed Checks are a separate paginated history;
+// canceled Checks stay in XRPL reconstruction but appear in neither view.
 function showMatchingPayments(requests, checks) {
   const list = $("requestList");
   list.replaceChildren();
   list.hidden = false;
   $("requestCount").hidden = false;
 
-  // Every issued Check is its OWN row, even when several share a recipient.
-  // For applicants without any Check, keep the EXISTING single issuance
-  // opportunity and its unchanged First LEAP action/preflight.
+  // An already issued/cashed/canceled Check is never an opportunity to issue
+  // another First LEAP Check merely because it left the active display.
   const checksByWallet = new Set(checks.map(c => c.applicant));
   const newestRequestByWallet = new Map();
-  for (const request of [...requests].sort((a,b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash))) {
+  for (const request of [...requests].sort((a,b) => b.ledger-a.ledger || b.txIndex-a.txIndex || a.hash.localeCompare(b.hash))) {
     if (!newestRequestByWallet.has(request.applicant)) newestRequestByWallet.set(request.applicant,request);
   }
-  const pendingRows = [...newestRequestByWallet.values()].filter(r => !checksByWallet.has(r.applicant));
-  const checkRows = checks.map(c => ({ applicant:c.applicant, onboardingCheck:c }));
-  const visibleRows = [...checkRows.map(row => ({row,ledger:row.onboardingCheck.issuedLedger,
-    txIndex:row.onboardingCheck.issuedTxIndex})),
+  const pendingRows = [...newestRequestByWallet.values()].filter(r =>
+    !checksByWallet.has(r.applicant) && r.onboardingCheck?.status === "unissued" &&
+    r.recognition?.status === "awaiting");
+  const outstanding = checks.filter(c => c.status === "issued");
+  const visibleRows = [...outstanding.map(c => ({row:{applicant:c.applicant,onboardingCheck:c},ledger:c.issuedLedger,txIndex:c.issuedTxIndex})),
     ...pendingRows.map(row => ({row,ledger:row.ledger,txIndex:row.txIndex}))]
     .sort((a,b) => b.ledger-a.ledger || b.txIndex-a.txIndex);
-  const issuedCount = checks.filter(c => c.status === "issued").length;
-  const cashedCount = checks.filter(c => c.status === "cashed").length;
-  const waitingCount = pendingRows.filter(r => r.onboardingCheck?.status === "unissued" && r.recognition.status === "awaiting").length;
+  const issuedCount = outstanding.length;
+  const waitingCount = pendingRows.length;
   const announcement = $("requestCount");
   announcement.dataset.state = waitingCount > 0 ? "action" : issuedCount > 0 ? "outstanding" : "clear";
   $("requestCountTitle").textContent = waitingCount > 0 ? "Action needed · Checks to issue" :
     issuedCount > 0 ? "Outstanding Checks · XRP reserve in use" : "All caught up";
-  $("requestCountTotals").textContent = `${waitingCount} to issue · ${issuedCount} outstanding · ${cashedCount} cashed`;
+  $("requestCountTotals").textContent = `${waitingCount} to issue · ${issuedCount} outstanding`;
+
   if (!visibleRows.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "No onboarding Checks or issuance opportunities were found. You can check again anytime.";
+    empty.textContent = "No Checks need issuance or cashing.";
     list.append(empty);
-    $("requestStatus").textContent = "Search complete. No qualifying onboarding records found.";
+  } else {
+    const container = document.createElement("div");
+    container.className = "table-wrap";
+    const table = document.createElement("table");
+    table.className = "requests-table";
+    table.setAttribute("aria-label", "Active onboarding Check lifecycle");
+    const head = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    for (const text of ["Requested", "Issued", "Cashed", "Action"]) {
+      const th = document.createElement("th"); th.scope = "col"; th.textContent = text;
+      headRow.append(th);
+    }
+    head.append(headRow);
+    const body = document.createElement("tbody");
+    for (const {row} of visibleRows) body.append(makeRequestRow(row));
+    table.append(head, body);
+    container.append(table);
+    list.append(container, makeCheckbookLegend());
+  }
+  // Internal/report status remains machine-readable; not a visible debug list.
+  $("requestStatus").textContent = `${waitingCount} to issue, ${issuedCount} outstanding. Verified against XRPL transaction history.`;
+}
+
+const CASHED_HISTORY_PAGE_SIZE = 20;
+let cashedHistory = [];
+let cashedHistoryPage = 0;
+function showCashedHistory(checks) {
+  // Cashing position, NOT creation position, determines historical recency.
+  cashedHistory = checks.filter(c => c.status === "cashed").sort((a,b) =>
+    (b.cashLedger || 0)-(a.cashLedger || 0) ||
+    (b.cashTxIndex ?? -1)-(a.cashTxIndex ?? -1) ||
+    a.id.localeCompare(b.id));
+  cashedHistoryPage = 0;
+  renderCashedHistoryPage();
+}
+function renderCashedHistoryPage() {
+  const list = $("cashedHistoryList");
+  const nav = $("cashedHistoryNav");
+  list.replaceChildren();
+  const total = cashedHistory.length;
+  const pageCount = Math.ceil(total / CASHED_HISTORY_PAGE_SIZE);
+  cashedHistoryPage = Math.max(0, Math.min(cashedHistoryPage, Math.max(0,pageCount-1)));
+  nav.hidden = total <= CASHED_HISTORY_PAGE_SIZE;
+  if (!total) {
+    const empty = document.createElement("p");
+    empty.className = "cashed-history-empty";
+    empty.textContent = "No past cashed Checks yet.";
+    list.append(empty);
     return;
   }
-  const container = document.createElement("div");
-  container.className = "table-wrap";
+  const start = cashedHistoryPage * CASHED_HISTORY_PAGE_SIZE;
   const table = document.createElement("table");
-  table.className = "requests-table";
-  table.setAttribute("aria-label", "Onboarding Check lifecycle");
+  table.className = "cashed-history-table";
+  table.setAttribute("aria-label", "Past cashed onboarding Checks");
   const head = document.createElement("thead");
-  const headRow = document.createElement("tr");
-  for (const text of ["Requested", "Issued", "Cashed", "Action"]) {
+  const trHead = document.createElement("tr");
+  for (const text of ["Requested", "Cashed"]) {
     const th = document.createElement("th"); th.scope = "col"; th.textContent = text;
-    headRow.append(th);
+    trHead.append(th);
   }
-  head.append(headRow);
+  head.append(trHead);
   const body = document.createElement("tbody");
-  for (const {row} of visibleRows) body.append(makeRequestRow(row));
-  table.append(head, body);
-  container.append(table);
-  list.append(container, makeCheckbookLegend());
-  $("requestStatus").textContent = `${checks.length} individual issued ${checks.length === 1 ? "Check" : "Checks"}: ${issuedCount} outstanding, ${cashedCount} cashed, ${checks.length-issuedCount-cashedCount} canceled; ${waitingCount} to issue. Based on validated XRPL transaction history.`;
+  for (const check of cashedHistory.slice(start,start+CASHED_HISTORY_PAGE_SIZE)) {
+    const tr = document.createElement("tr");
+    const wallet = document.createElement("div");
+    wallet.className = "applicant-main";
+    wallet.title = check.applicant;
+    wallet.textContent = shortWallet(check.applicant);
+    tr.append(createCell("Requested", wallet));
+    tr.append(createCell("Cashed", checkbookSymbol("complete", "Cashed")));
+    body.append(tr);
+  }
+  table.append(head,body);
+  list.append(table);
+  $("cashedHistoryRange").textContent = `Showing ${start+1}–${Math.min(start+CASHED_HISTORY_PAGE_SIZE,total)} of ${total}`;
+  $("cashedHistoryPage").textContent = `Page ${cashedHistoryPage+1} of ${pageCount}`;
+  $("cashedHistoryPrevious").disabled = cashedHistoryPage === 0;
+  $("cashedHistoryNext").disabled = cashedHistoryPage >= pageCount-1;
 }
+$("cashedHistoryPrevious").addEventListener("click", () => {
+  if (cashedHistoryPage > 0) { cashedHistoryPage--; renderCashedHistoryPage(); }
+});
+$("cashedHistoryNext").addEventListener("click", () => {
+  if ((cashedHistoryPage+1)*CASHED_HISTORY_PAGE_SIZE < cashedHistory.length) {
+    cashedHistoryPage++; renderCashedHistoryPage();
+  }
+});
 
 
 // Step 6.5: read the CURRENT incremental XRPL reserve and the validated
@@ -2558,6 +2655,7 @@ function openReport() {
   document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
   $("authorizedContent").hidden = false;
   showMatchingPayments(data.requests, data.checks);
+  showCashedHistory(data.checks);
   void showCurrentOnboardingReserve(data.checks, session.wallet);
   const stamp = new Date(data.verifiedAt);
   $("verificationNote").textContent = `Results verified by the Ledger Trail ${stamp.toLocaleString()}. This report is a snapshot, not a live search.`;
