@@ -573,6 +573,7 @@ export async function submitCommunityRequestPayment({
   try {
     result = await submitSignedTransaction({
       serverUrl: server,
+      pollIntervalMs: 0,
       signedBlob,
       onSubmitted: details => {
         accepted = details || {};
@@ -592,7 +593,6 @@ export async function submitCommunityRequestPayment({
           }
         }
       } catch (_) {}
-      await sleep(2200);
     }
     const pending = new Error("XRPL may already have received this payment, but Wild Ledger could not confirm it yet. Do not submit or pay again. Return to this page and reconnect the same wallet to check the request status.");
     pending.doNotResubmit = true;

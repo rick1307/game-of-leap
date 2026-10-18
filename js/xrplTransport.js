@@ -251,7 +251,7 @@ export async function submitSignedTransaction({
     let lastLookup = null;
 
     while (Date.now() < deadline) {
-      await sleep(Number(pollIntervalMs));
+      if (Number(pollIntervalMs) > 0) await sleep(Number(pollIntervalMs));
       try {
         const lookup = await client.request("tx", { transaction: txHash, binary: false }, 15000);
         lastLookup = lookup;
