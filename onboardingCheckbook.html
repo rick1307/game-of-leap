@@ -199,11 +199,13 @@
 
   .trail-finished-line { color:#bdf2c8; font-weight:850; }
   /* Confirmation is the human-facing finish; details remain expandable. */
-  .success-mark { display:grid; place-items:center; width:88px; height:88px; margin:12px auto 15px; border:3px solid #a2f4b1; border-radius:50%; background:rgba(80,215,139,.13); color:#a2f4b1; font-size:3.5rem; font-weight:900; line-height:1; box-shadow:0 0 30px rgba(99,219,151,.13); }
+  /* Get Wild Ledger Trail completion check; centered beneath the existing heading. */
+  .guide-success .trail-complete-check{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(159,224,176,.48);border-radius:50%;background:rgba(159,224,176,.12);color:#bdf2c8;font-size:1rem;font-weight:950}
+
   .success-heading { color:#bdf2c8; text-align:center; font-size:1.14rem; font-weight:900; margin:0 0 16px; }
   .guide-success { padding:14px 0 0; }
   .guide-success .success-heading { margin:0; }
-  .guide-success .success-mark { margin:12px auto 0; }
+  .guide-success .trail-complete-check { margin:12px auto 0; }
   .manual-success { text-align:center; padding:20px 8px 5px; }
   .success-action { display:inline-flex; justify-content:center; align-items:center; min-height:47px; padding:12px 25px; background:linear-gradient(110deg,#a2f4b1,#62dba7); border:1px solid #8ff6ac; border-radius:12px; color:#09291a; font-weight:900; text-decoration:none; }
   .success-action:focus-visible { outline:3px solid var(--mango); outline-offset:3px; }
@@ -691,7 +693,7 @@
       <div class="guide-status" id="guideStatus" role="status" aria-live="polite">Reading your Operator session…</div>
       <div class="guide-success" id="guideSuccess" role="status" aria-live="polite" hidden>
         <p class="success-heading">Checks passed</p>
-        <div class="success-mark" aria-hidden="true">✓</div>
+        <div class="trail-complete-check" aria-hidden="true">✓</div>
       </div>
       <div id="guideRecovery" class="guide-recovery" hidden>
         <button type="button" class="step-action is-next" id="guideRetry" hidden>Try again</button>
@@ -1546,7 +1548,7 @@ function finishTrail() {
   $("trailDisclosure").open = false;
   if (guideMode) {
     // Keep all four proven checkpoints visible on the same Ledger Trail card.
-    // The large green confirmation appears BELOW them, never on a replacement card.
+    // Get Wild’s compact completion check appears below the verified checkpoints.
     $("guideLearn").hidden = true;
     $("guideRecovery").hidden = true;
     $("guideSuccess").hidden = false;
