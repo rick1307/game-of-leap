@@ -88,6 +88,7 @@ export function createLedgerTrail({
   overlay.inert = true;
 
   const panel = element('div', 'ledger-trail-panel');
+  panel.tabIndex = -1; // Receive initial dialog focus without lighting up the X control.
   const topline = element('div', 'trail-topline');
   const closeButton = element('button', 'trail-close', '×');
   closeButton.type = 'button';
@@ -222,7 +223,7 @@ export function createLedgerTrail({
     overlay.inert = false;
     overlay.setAttribute('aria-hidden', 'false');
     overlay.classList.add('show');
-    closeButton.focus({preventScroll:true});
+    panel.focus({preventScroll:true});
   }
 
   function close({ notify = false } = {}) {
