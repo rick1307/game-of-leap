@@ -555,6 +555,9 @@
   .row-number { color:var(--muted); font-size:.8rem; }
   .applicant-main { font-weight:850; font-variant-ligatures:none; overflow-wrap:anywhere; }
   .request-verified { display:block; color:#bdf2c8; font-size:.72rem; font-weight:800; margin-top:5px; }
+  .onboarding-check-id { margin-top:8px; color:var(--muted); font-size:.68rem; }
+  .onboarding-check-id summary { cursor:pointer; overflow-wrap:anywhere; }
+  .onboarding-check-id code { display:block; margin-top:5px; color:var(--ink); font-size:.65rem; overflow-wrap:anywhere; user-select:text; }
   .membership-status { display:inline-block; padding:7px 11px; border-radius:999px; border:1px solid rgba(244,189,88,.43); background:rgba(244,189,88,.09); color:#ffe6af; font-size:.76rem; font-weight:850; }
   .membership-status.fulfilled { border-color:rgba(121,213,194,.44); color:#bdf2c8; background:rgba(121,213,194,.09); }
   .paid-value { font-weight:800; white-space:nowrap; }
@@ -706,7 +709,7 @@
 <a class="action" href="getWild.html" id="reportGateLink">Sign in through Get Wild</a>
 </section>
       <div hidden="" id="authorizedContent">
-<p class="lede">Requests to join your community, discovered from XRPL. The report is read-only; issuing a Check launches a separate signed Ledger Trail.</p>
+<p class="lede">Your individual onboarding Checks, reconstructed from validated XRPL history. Issuing a First LEAP Check launches its own signed Ledger Trail.</p>
 <section aria-label="Verified community" class="panel">
 <div class="row">
 <div>
@@ -726,7 +729,7 @@
 </div>
 </div>
 </section>
-<section aria-label="Membership requests discovered on XRPL" class="panel">
+<section aria-label="Onboarding Checks recorded on XRPL" class="panel">
 <div class="report-heading">
 <div>
 <h2>Onboarding lifecycle</h2>
@@ -1068,6 +1071,31 @@ function onboardingLifecycleByWallet(requests, creates, cancellations, cashes) {
   return output;
 }
 
+// Keep every independently identified onboarding Check as its own entry.
+// The wallet-level summary above remains for the EXISTING First LEAP issuance
+// preflight; it must not be used to select a Checkbook display row.
+function onboardingChecksById(requests, creates, cancellations, cashes) {
+  const requestsByWallet = new Map();
+  for (const request of requests) {
+    if (!requestsByWallet.has(request.applicant)) requestsByWallet.set(request.applicant, []);
+    requestsByWallet.get(request.applicant).push(request);
+  }
+  for (const walletRequests of requestsByWallet.values()) walletRequests.sort(compareLedgerPositions);
+  return creates.flatMap(created => {
+    const requestsForWallet = requestsByWallet.get(created.destination) || [];
+    const request = [...requestsForWallet].reverse().find(r => compareLedgerPositions(r, created) < 0);
+    if (!request) return []; // Not proven to follow a valid onboarding request.
+    const cash = cashes.get(created.id);
+    const cancel = cancellations.get(created.id);
+    return [{id:created.id, applicant:created.destination, requestHash:request.hash,
+      status:cash ? "cashed" : cancel ? "canceled" : "issued",
+      issuedHash:created.hash, issuedLedger:created.ledger, issuedTxIndex:created.txIndex,
+      issuingWallet:created.source, cashHash:cash?.hash || "", cashLedger:cash?.ledger || null,
+      cancelHash:cancel?.hash || ""}];
+  }).sort((a,b) => b.issuedLedger - a.issuedLedger ||
+    b.issuedTxIndex - a.issuedTxIndex || a.id.localeCompare(b.id));
+}
+
 async function verifyApplicantsRecognition(requests, communityId, authority, onProgress = () => {}, onApplicantHistory = () => {}) {
   const applicants = [...new Set(requests.map(request => request.applicant))];
   if (!applicants.length) return requests;
@@ -1125,7 +1153,7 @@ function cancelAutomaticNavigation() {
   }
 }
 const stepStates = ["pending", "pending", "pending", "pending"];
-const runContext = { session:null, matched:null, requests:null, scanned:0, pages:0, excluded:0, priceStatements:0 };
+const runContext = { session:null, matched:null, requests:null, checks:null, scanned:0, pages:0, excluded:0, priceStatements:0 };
 const titles = ["Identify your community", "Confirm current authority", "Find membership requests", "Prove report readiness"];
 const evidenceDefaults = [
   "Your Get Wild Operator session must identify a wallet and Community ID. A URL alone does not grant access.",
@@ -1203,7 +1231,7 @@ function resetTrail() {
   $("backLink").hidden = true;
   // A new trail must never reuse evidence from an earlier run.
   try { sessionStorage.removeItem("wildLedger.membershipRequestsHandoff"); } catch (_) { /* Step 1 will explain an unavailable Operator session. */ }
-  runContext.session = null; runContext.matched = null; runContext.requests = null;
+  runContext.session = null; runContext.matched = null; runContext.requests = null; runContext.checks = null;
   runContext.scanned = 0; runContext.pages = 0; runContext.excluded = 0; runContext.priceStatements = 0;
   for (let n = 1; n <= 4; n++) {
     stepStates[n-1] = "pending";
@@ -1321,6 +1349,8 @@ async function performStep(number) {
       result.onboardingCreates, checkCancels, checkCashes);
     runContext.requests = withRecognition.map(row => ({...row,
       onboardingCheck:lifecycleByWallet.get(row.applicant)}));
+    runContext.checks = onboardingChecksById(result.requests,
+      result.onboardingCreates, checkCancels, checkCashes);
     runContext.excluded = result.excluded;
     const proofs = result.requests.slice(0, 5).map(r =>
       `Validated ledger: ${r.ledger}, transaction: ${r.txIndex}\nApplicant: ${r.applicant}\nAuthorized recipient: ${r.destination}\nXRP paid: ${r.drops} drops\nRequired price at that time: ${r.expectedDrops} drops\nPrice source: ${r.priceStatement ? `ledger ${r.priceStatement.ledger}, transaction ${r.priceStatement.txIndex}` : "1-drop protocol default"}\nMemo: WILD-LEDGER/MEMBERSHIP-REQUEST/${session.communityId}\nResult: tesSUCCESS\nHash: ${r.hash}`
@@ -1333,7 +1363,8 @@ async function performStep(number) {
   if (number === 4) {
     const current = assertSessionUnchanged();
     const requests = runContext.requests;
-    if (!Array.isArray(requests)) throw new Error("The search has not finished. Return to the previous step.");
+    if (!Array.isArray(requests) || !Array.isArray(runContext.checks))
+      throw new Error("The search has not finished. Return to the previous step.");
     // This page owns the read-only Trail, report, and issuance handoff.
     // Store proven results for the existing report; issuance performs a fresh check.
     const handoff = {
@@ -1343,6 +1374,7 @@ async function performStep(number) {
       operatorWallet: current.wallet,
       communityName: $("communityName").textContent,
       verifiedAt: Date.now(),
+      checks: runContext.checks,
       requests: requests.map(row => ({
         recognition: row.recognition,
         onboardingCheck: row.onboardingCheck,
@@ -1562,7 +1594,8 @@ function checkedHandoff(session) {
     if (data.version !== 2 || data.source !== "membershipRequestsBootstrap" ||
         data.communityId !== session.communityId || data.operatorWallet !== session.wallet ||
         !Number.isFinite(when) || when > Date.now() + 30_000 ||
-        Date.now() - when > MAX_HANDOFF_AGE_MS || !Array.isArray(data.requests)) return null;
+        Date.now() - when > MAX_HANDOFF_AGE_MS || !Array.isArray(data.requests) ||
+        !Array.isArray(data.checks)) return null;
     // A handoff is a short-lived browser copy of the Bootstrap's proof, not an
     // independent authority statement. Do not silently certify arbitrary rows.
     const validRows = data.requests.every(r => r &&
@@ -1593,7 +1626,28 @@ function checkedHandoff(session) {
         /^(BADGE|EVENT|CHALLENGE)=[A-Z0-9-]+$/.test(r.recognition.proof.reason) &&
         /^[0-9A-F]{64}$/.test(r.recognition.proof.hash) &&
         /^[0-9A-F]{64}$/.test(r.recognition.proof.awardHash))));
-    return validRows ? data : null;
+    // Report Checks must have unique validated Check IDs, a known requesting
+    // wallet, and a request transaction earlier than their CheckCreate.
+    const requestByHash = new Map(data.requests.map(r => [r.hash,r]));
+    const checkIds = new Set();
+    const validChecks = data.checks.every(c => {
+      const request = requestByHash.get(c?.requestHash);
+      if (!c || !request || request.applicant !== c.applicant ||
+          !isClassicAddress(c.issuingWallet) || !isClassicAddress(c.applicant) ||
+          typeof c.id !== "string" || !/^[0-9A-F]{64}$/.test(c.id) || checkIds.has(c.id) ||
+          !["issued","cashed","canceled"].includes(c.status) ||
+          typeof c.issuedHash !== "string" || !/^[0-9A-F]{64}$/.test(c.issuedHash) ||
+          !Number.isSafeInteger(c.issuedLedger) || c.issuedLedger < 1 ||
+          !Number.isSafeInteger(c.issuedTxIndex) || c.issuedTxIndex < 0 ||
+          (c.issuedLedger < request.ledger ||
+           (c.issuedLedger === request.ledger && c.issuedTxIndex <= request.txIndex)) ||
+          typeof c.cashHash !== "string" || (c.cashHash !== "" && !/^[0-9A-F]{64}$/.test(c.cashHash)) ||
+          typeof c.cancelHash !== "string" || (c.cancelHash !== "" && !/^[0-9A-F]{64}$/.test(c.cancelHash)) ||
+          (c.status === "cashed" && !c.cashHash) || (c.status === "canceled" && !c.cancelHash)) return false;
+      checkIds.add(c.id);
+      return true;
+    });
+    return validRows && validChecks ? data : null;
   } catch (_) { return null; }
 }
 
@@ -2083,6 +2137,7 @@ window.addEventListener("wildLedgerMembershipRequestsVerified", () => {
 
 function makeRequestRow(request) {
   const tr = document.createElement("tr");
+  if (request.onboardingCheck?.id) tr.dataset.checkId = request.onboardingCheck.id;
   const applicant = document.createElement("div");
   const address = document.createElement("div");
   address.className = "applicant-main";
@@ -2117,6 +2172,16 @@ function makeRequestRow(request) {
     mark.className = "membership-status fulfilled";
     mark.textContent = "✓ Issued";
     issued.append(mark);
+    if (check.id) {
+      const disclosure = document.createElement("details");
+      disclosure.className = "onboarding-check-id";
+      const summary = document.createElement("summary");
+      summary.textContent = `ID ${check.id.slice(0, 6)}…${check.id.slice(-6)}`;
+      const full = document.createElement("code");
+      full.textContent = check.id;
+      disclosure.append(summary, full);
+      issued.append(disclosure);
+    }
     if (check.status === "canceled") {
       const note = document.createElement("div");
       note.className = "lifecycle-muted";
@@ -2138,32 +2203,40 @@ function makeRequestRow(request) {
   // Operator table contains only the three lifecycle stages.
   return tr;
 }
-function showMatchingPayments(requests, communityId) {
+function showMatchingPayments(requests, checks) {
   const list = $("requestList");
   list.replaceChildren();
   list.hidden = false;
   $("requestCount").hidden = false;
-  const rowsByWallet = new Map();
-  const newestFirst = [...requests].sort((a,b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash));
-  for (const row of newestFirst) {
-    if (!rowsByWallet.has(row.applicant)) rowsByWallet.set(row.applicant, []);
-    rowsByWallet.get(row.applicant).push(row);
+
+  // Every issued Check is its OWN row, even when several share a recipient.
+  // For applicants without any Check, keep the EXISTING single issuance
+  // opportunity and its unchanged First LEAP action/preflight.
+  const checksByWallet = new Set(checks.map(c => c.applicant));
+  const newestRequestByWallet = new Map();
+  for (const request of [...requests].sort((a,b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash))) {
+    if (!newestRequestByWallet.has(request.applicant)) newestRequestByWallet.set(request.applicant,request);
   }
-  const groups = [...rowsByWallet.values()];
-  const issuedCount = groups.filter(g => g[0].onboardingCheck?.status === "issued").length;
-  const cashedCount = groups.filter(g => g[0].onboardingCheck?.status === "cashed").length;
-  const waitingCount = groups.filter(g => g[0].onboardingCheck?.status === "unissued" && g[0].recognition.status === "awaiting").length;
+  const pendingRows = [...newestRequestByWallet.values()].filter(r => !checksByWallet.has(r.applicant));
+  const checkRows = checks.map(c => ({ applicant:c.applicant, onboardingCheck:c }));
+  const visibleRows = [...checkRows.map(row => ({row,ledger:row.onboardingCheck.issuedLedger,
+    txIndex:row.onboardingCheck.issuedTxIndex})),
+    ...pendingRows.map(row => ({row,ledger:row.ledger,txIndex:row.txIndex}))]
+    .sort((a,b) => b.ledger-a.ledger || b.txIndex-a.txIndex);
+  const issuedCount = checks.filter(c => c.status === "issued").length;
+  const cashedCount = checks.filter(c => c.status === "cashed").length;
+  const waitingCount = pendingRows.filter(r => r.onboardingCheck?.status === "unissued" && r.recognition.status === "awaiting").length;
   const announcement = $("requestCount");
   announcement.dataset.state = waitingCount > 0 ? "action" : issuedCount > 0 ? "outstanding" : "clear";
   $("requestCountTitle").textContent = waitingCount > 0 ? "Action needed · Checks to issue" :
     issuedCount > 0 ? "Outstanding Checks · XRP reserve in use" : "All caught up";
   $("requestCountTotals").textContent = `${waitingCount} to issue · ${issuedCount} outstanding · ${cashedCount} cashed`;
-  if (!groups.length) {
+  if (!visibleRows.length) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "No verified onboarding requests were found. You can check again anytime.";
+    empty.textContent = "No onboarding Checks or issuance opportunities were found. You can check again anytime.";
     list.append(empty);
-    $("requestStatus").textContent = "Search complete. No qualifying requests found.";
+    $("requestStatus").textContent = "Search complete. No qualifying onboarding records found.";
     return;
   }
   const container = document.createElement("div");
@@ -2172,7 +2245,7 @@ function showMatchingPayments(requests, communityId) {
   table.className = "requests-table";
   const caption = document.createElement("caption");
   caption.className = "label";
-  caption.textContent = "One lifecycle per requester · newest request first";
+  caption.textContent = "One entry per Check · unissued opportunities included";
   const head = document.createElement("thead");
   const headRow = document.createElement("tr");
   for (const text of ["Requested", "Issued", "Cashed"]) {
@@ -2181,11 +2254,11 @@ function showMatchingPayments(requests, communityId) {
   }
   head.append(headRow);
   const body = document.createElement("tbody");
-  for (const group of groups) body.append(makeRequestRow(group[0]));
+  for (const {row} of visibleRows) body.append(makeRequestRow(row));
   table.append(caption, head, body);
   container.append(table);
   list.append(container);
-  $("requestStatus").textContent = `${groups.length} verified ${groups.length === 1 ? "requester" : "requesters"}: ${waitingCount} to issue, ${issuedCount} awaiting cashing, ${cashedCount} cashed. Each status reflects validated XRPL evidence.`;
+  $("requestStatus").textContent = `${checks.length} individual issued ${checks.length === 1 ? "Check" : "Checks"}: ${issuedCount} outstanding, ${cashedCount} cashed, ${checks.length-issuedCount-cashedCount} canceled; ${waitingCount} to issue. Based on validated XRPL transaction history.`;
 }
 
 function showGate(message, url, label) {
@@ -2216,7 +2289,7 @@ function openReport() {
   $("operatorWallet").textContent = session.wallet;
   document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
   $("authorizedContent").hidden = false;
-  showMatchingPayments(data.requests, session.communityId);
+  showMatchingPayments(data.requests, data.checks);
   const stamp = new Date(data.verifiedAt);
   $("verificationNote").textContent = `Results verified by the Ledger Trail ${stamp.toLocaleString()}. This report is a snapshot, not a live search.`;
 }
