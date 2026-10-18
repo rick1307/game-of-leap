@@ -134,7 +134,6 @@
   .trail-proof-content { padding:0 12px 12px; color:var(--muted); font-size:.74rem; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
   .trail-error { color:#ffb7aa; font-size:.81rem; line-height:1.55; margin-top:8px; overflow-wrap:anywhere; }
   .trail-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:13px; }
-  .trail-done-note { color:#bdf2c8; font-size:.84rem; font-weight:780; line-height:1.5; padding-top:5px; }
   .trail-note { color:var(--muted); font-size:.77rem; line-height:1.5; margin:0; }
 
   /* The same rounded X language as Wild Ledger's established Setup Ledger Trail. */
@@ -148,7 +147,6 @@
   .guide-kicker { color:var(--mango); text-transform:uppercase; letter-spacing:.14em; font-size:.66rem; font-weight:900; }
   .guide-window h2 { margin:9px 0 9px; font-size:clamp(1.75rem,7vw,2.65rem); line-height:1.04; letter-spacing:-.045em; }
   .guide-lede { color:var(--muted); font-size:.85rem; line-height:1.55; margin:0 0 14px; }
-  .guide-readonly { color:#bdf2c8; font-size:.78rem; font-weight:800; margin:0 0 18px; }
   .guide-route { list-style:none; margin:0 0 14px; padding:0; }
   .guide-route li { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; gap:11px; min-height:56px; color:var(--muted); border-left:2px solid rgba(121,213,194,.15); margin-left:14px; padding:8px 0 8px 14px; position:relative; }
   .guide-route li::before { content:attr(data-number); position:absolute; left:-16px; top:calc(50% - 15px); display:grid; place-items:center; width:28px; height:28px; border-radius:50%; border:1px solid rgba(121,213,194,.35); background:#082936; color:var(--muted); font-size:.75rem; font-weight:900; }
@@ -164,7 +162,6 @@
   .guide-learn { color:var(--muted); font-size:.72rem; margin:14px 0 0; line-height:1.5; }
   .guide-recovery { margin-top:13px; display:flex; gap:9px; flex-wrap:wrap; }
   .guide-recovery[hidden] { display:none!important; }
-  .manual-intro { color:var(--muted); font-size:.79rem; line-height:1.5; margin:0 0 12px; }
   .manual-tools { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
   .guide-again { background:rgba(121,213,194,.065); font-size:.76rem; }
   .step-actions { margin-top:12px; }
@@ -200,7 +197,7 @@
   .trail-finished-line { color:#bdf2c8; font-weight:850; }
   /* Confirmation is the human-facing finish; details remain expandable. */
   /* Get Wild Ledger Trail completion: left-hand check and adjacent text, same grid and visual rules. */
-  .guide-success{display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:center;padding:14px 0 0}
+  .guide-success{display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:center;margin-top:12px}
   .guide-success .trail-complete-check{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(159,224,176,.48);border-radius:50%;background:rgba(159,224,176,.12);color:#bdf2c8;font-size:1rem;font-weight:950}
   .guide-success .trail-complete-text{color:#bdf2c8;font-size:.8rem;font-weight:850}
   .manual-success { text-align:center; padding:20px 8px 5px; }
@@ -242,7 +239,7 @@
     background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99));
     box-shadow:0 34px 90px rgba(0,0,0,.58);
     color:#f5fbfa;
-    font-family:var(--wl-backend-font,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif);
+    font-family:serif; /* getWild.html inherits the browser serif; the backend otherwise forces sans-serif. */
     animation:membershipTrailPanelIn .38s cubic-bezier(.2,.8,.2,1) both;
   }
   .guide-window::before {
@@ -289,12 +286,6 @@
     color:rgba(236,249,247,.64);
     font-size:.78rem;
     line-height:1.5;
-  }
-  .guide-readonly {
-    color:rgba(189,242,200,.80);
-    font-size:.68rem;
-    font-weight:650;
-    margin:0 0 18px;
   }
   .guide-route {
     display:grid;
@@ -431,7 +422,7 @@
 
   /* First LEAP uses Get Wild's established full-screen Ledger Trail language.
      Both Trails share the same type and checkpoint activity indicator. */
-  .issuance-window { width:min(470px,100%); font-family:var(--wl-backend-font,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif); }
+  .issuance-window { width:min(470px,100%); font-family:serif; }
   .issuance-window h2 { font-family:inherit; font-weight:700; }
   .issuance-purpose { margin:1px 0 7px; font-size:.89rem; font-weight:850; color:#f5fbfa; }
   .issuance-compact { font-size:.72rem; color:var(--muted); line-height:1.5; overflow-wrap:anywhere; }
@@ -668,6 +659,90 @@
 .cancel-ledger-trail .trail-qr-refresh:focus-visible{outline:2px solid #ffe2a7;outline-offset:3px}
 @media(prefers-reduced-motion:reduce){.cancel-ledger-trail,.cancel-ledger-trail .ledger-trail-panel,.cancel-ledger-trail .trail-step.active .trail-marker:before,.cancel-ledger-trail .trail-step.active .trail-activity{animation:none}}
 
+
+  /* Conformity pass: copy Get Wild's restrained controls and checkpoint rail.
+     Scope to the existing Checkbook views; their XRPL evidence remains expandable. */
+  .guide-recovery { display:block; margin-top:0; }
+  .guide-recovery .trail-retry {
+    width:100%;min-height:44px;margin-top:12px;
+    border:1px solid rgba(255,183,170,.26);border-radius:12px;
+    background:rgba(239,118,93,.08);color:#ffd0c8;font-weight:850;
+    cursor:pointer;
+  }
+  .guide-recovery .trail-retry:focus-visible {outline:2px solid #ffd0c8;outline-offset:2px;}
+  .guide-recovery #guideSignin { margin-top:12px; }
+  .guide-lede {margin-bottom:20px;}
+  .issuance-handoff {display:block;margin:0 0 18px;padding:16px;border:1px solid rgba(244,189,88,.30);border-radius:17px;background:linear-gradient(145deg,rgba(244,189,88,.10),rgba(41,184,177,.06));box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+  .issuance-handoff strong {font-size:1.12rem;}
+  .issuance-refresh-qr {display:inline-flex;align-items:center;justify-content:center;min-height:38px;margin:12px 0 0;padding:8px 12px;border:1px solid rgba(244,189,88,.36);border-radius:9px;background:rgba(244,189,88,.06);color:#ffe2a7;font-size:.78rem;font-weight:750;text-decoration:none;cursor:pointer}
+  .issuance-refresh-qr:focus-visible {outline:2px solid #ffe2a7;outline-offset:3px;}
+  .issuance-complete-mark {font-size:1rem;font-weight:950;}
+  .guide-route {margin:4px 0 18px;}
+  .trail-panel {font-family:serif;}
+  .trail-panel .trail-body {padding-top:17px;}
+  .trail-panel .trail-step {
+    position:relative;min-height:58px;margin:0;padding:0;
+    border:0;border-radius:0;background:transparent;overflow:visible;
+    box-shadow:none;opacity:1;
+  }
+  .trail-panel .trail-step > summary {
+    position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);
+    gap:11px;min-height:58px;align-items:start;margin:0;padding:0;
+    list-style:none;border:0;
+  }
+  .trail-panel .trail-step > summary::after {content:none;}
+  .trail-panel .trail-step[open] > summary::after {content:none;}
+  .trail-panel .trail-index {
+    position:relative;display:grid;place-items:center;
+    width:28px;height:28px;margin-top:1px;
+    border:1px solid rgba(236,249,247,.22);border-radius:50%;
+    background:#082936;color:rgba(236,249,247,.40);
+    font-size:.76rem;font-weight:950;z-index:1;
+  }
+  .trail-panel .trail-step:not(:last-of-type)::before {
+    content:"";position:absolute;top:28px;left:13px;
+    width:2px;height:calc(100% - 28px);
+    background:linear-gradient(to bottom,rgba(121,213,194,.18),rgba(121,213,194,.05));
+  }
+  .trail-panel .trail-step.is-done:not(:last-of-type)::before {
+    background:linear-gradient(to bottom,rgba(121,213,194,.75),rgba(121,213,194,.25));
+  }
+  .trail-panel .trail-copy strong {
+    display:block;padding-top:1px;color:#f5fbfa;font-size:.82rem;font-weight:700;
+  }
+  .trail-panel .trail-copy .trail-step-state {
+    display:block;margin-top:3px;color:rgba(236,249,247,.43);
+    font-size:.66rem;font-weight:600;line-height:1.35;letter-spacing:0;text-transform:none;
+  }
+  .trail-panel .trail-step.is-done .trail-index {
+    border-color:rgba(159,224,176,.48);background:rgba(159,224,176,.12);color:#bdf2c8;
+  }
+  .trail-panel .trail-step.is-done .trail-copy .trail-step-state {color:rgba(189,242,200,.66);}
+  .trail-panel .trail-step.is-working .trail-index {
+    border-color:rgba(244,189,88,.70);background:rgba(244,189,88,.12);
+    color:#ffe2a7;box-shadow:0 0 0 6px rgba(244,189,88,.055);
+  }
+  .trail-panel .trail-step.is-working .trail-copy strong {color:#ffe2a7;}
+  .trail-panel .trail-step.is-working .trail-copy .trail-step-state {color:rgba(255,226,167,.72);}
+  .trail-panel .trail-step.is-failed .trail-index {
+    border-color:rgba(255,183,170,.58);background:rgba(239,118,93,.12);color:#ffb7aa;
+  }
+  .trail-panel .trail-step.is-failed .trail-copy strong,
+  .trail-panel .trail-step.is-failed .trail-copy .trail-step-state {color:#ffb7aa;}
+  .trail-panel .trail-step-body {
+    margin:0;padding:0 0 14px 47px;border:0;background:none;
+  }
+  .trail-panel .trail-proof {background:rgba(2,24,34,.28);}
+  .trail-panel .trail-step.is-working .trail-index::before {z-index:2;}
+  .trail-panel .trail-step.is-pending {opacity:1;}
+  @media(max-width:420px) {
+    .trail-panel .trail-step > summary {grid-template-columns:36px minmax(0,1fr);gap:11px;padding:0;}
+    .trail-panel .trail-index {width:28px;height:28px;}
+    .trail-panel .trail-copy strong {font-size:.82rem;}
+    .trail-panel .trail-copy .trail-step-state {font-size:.66rem;}
+  }
+
+  .cancel-ledger-trail .ledger-trail-panel {font-family:serif;} /* Same typography as getWild.html, despite wildLedgerBackend.css. */
   /* Neutralize inherited Checkbook trail-card styling; Get Wild has no cards. */
   .cancel-ledger-trail .trail-step { border:0; border-radius:0; margin:0; background:transparent; overflow:visible; opacity:1; box-shadow:none; }
 </style>
@@ -677,10 +752,9 @@
   <!-- Guided Ledger Trail: closing the tour changes presentation, never an in-flight XRPL read. -->
   <div class="guide-overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
     <div class="guide-window">
-      <div class="guide-topline"><button type="button" class="guide-close" id="guideClose" aria-label="Close guided tour and explore the steps" title="Explore the ledger steps">×</button><span class="guide-kicker">Wild Ledger · Operator</span></div>
-      <h2 id="guideTitle">The Ledger Trail</h2>
-      <p class="guide-lede">Wild Ledger checks your membership requests and gets you ready for your community. Tap X at any time to explore the actual checks.</p>
-      <p class="guide-readonly">Read-only check. No XRP is spent.</p>
+      <div class="guide-topline"><button type="button" class="guide-close" id="guideClose" aria-label="Close guided tour and explore the steps" title="Explore the ledger steps">×</button><span class="guide-kicker">Wild Ledger · Ledger Trail</span></div>
+      <h2 id="guideTitle">Onboarding Checkbook</h2>
+      <p class="guide-lede">Wild Ledger confirms your current Operator authority and reads the validated XRPL evidence for this Checkbook.</p>
       <ol class="guide-route" id="guideRoute" aria-label="Live Ledger Trail steps">
         <li id="guideStep1" data-number="1"><span class="guide-activity" aria-hidden="true"></span><div><strong>Identify your community</strong><small id="guideStepText1">Waiting</small></div></li>
         <li id="guideStep2" data-number="2"><span class="guide-activity" aria-hidden="true"></span><div><strong>Confirm your authority</strong><small id="guideStepText2">Waiting</small></div></li>
@@ -693,19 +767,17 @@
         <div class="trail-complete-text">Checks passed</div>
       </div>
       <div id="guideRecovery" class="guide-recovery" hidden>
-        <button type="button" class="step-action is-next" id="guideRetry" hidden>Try again</button>
+        <button type="button" class="trail-retry" id="guideRetry" hidden>Follow the Trail Again</button>
         <a href="getWild.html" class="action" id="guideSignin" hidden>Sign in through Get Wild</a>
       </div>
-      <p class="guide-learn" id="guideLearn">Want to see how it works? Tap the X to explore the live steps, actions, and XRPL evidence beneath this tour.</p>
     </div>
   </div>
 
   <!-- In-place issuance: independent of the read-only report Trail; no new page. -->
   <div class="guide-overlay" id="issuanceOverlay" role="dialog" aria-modal="true" aria-labelledby="issuanceTitle" hidden>
     <div class="guide-window issuance-window">
-      <div class="guide-topline"><button type="button" class="guide-close" id="issuanceClose" aria-label="Return to Checkbook">×</button><span class="guide-kicker">Wild Ledger · Operator</span></div>
-      <h2 id="issuanceTitle">The Ledger Trail</h2>
-      <p class="issuance-purpose">Issue First LEAP</p>
+      <div class="guide-topline"><button type="button" class="guide-close" id="issuanceClose" aria-label="Return to Checkbook">×</button><span class="guide-kicker">Wild Ledger · Ledger Trail</span></div>
+      <h2 id="issuanceTitle">Issue First LEAP</h2>
       <p class="guide-lede">An onboarding Check for the verified requester. Issuing a Check does not deliver LEAP; the recipient must cash it.</p>
       <div class="issuance-compact" id="issuanceRecipient"></div>
       <div class="issuance-handoff" id="issuanceHandoff" hidden>
@@ -728,7 +800,6 @@
       <div class="issuance-complete" id="issuanceComplete" role="status" aria-live="polite" hidden><span class="issuance-complete-mark">✓</span><span>Check Issued · Ledger Trail complete.</span></div>
       <details class="issuance-evidence"><summary>Transaction and XRPL evidence</summary><pre id="issuanceEvidence">Waiting for verification.</pre></details>
       <p class="issuance-compact issuance-error" id="issuanceError" role="alert" hidden></p>
-      <p class="guide-learn">Bifrost signs; Wild Ledger submits and independently verifies. An outstanding Check consumes XRP reserve until cashed or canceled.</p>
     </div>
   </div>
 
@@ -776,16 +847,14 @@
 
       <section class="panel trail-panel" id="trailPanel" aria-label="Onboarding Checkbook Ledger Trail">
         <div class="manual-tools"><span class="trail-finished-line" id="manualHeadline">Ledger checks</span><button type="button" id="guideAgain" class="action guide-again" hidden>Continue guided tour</button></div>
-        <p class="manual-intro" id="manualIntro" hidden>Explore the same steps at your pace. The <strong>green button</strong> is the next action. A running check shows activity; the next button turns green only after the proof succeeds. Open any <strong>Evidence</strong> section to inspect the XRPL details.</p>
         <details class="trail-disclosure" id="trailDisclosure" open>
           <summary>
             <span class="trail-heading">Ledger Trail <span id="trailOverall" class="trail-overall" role="status" aria-live="polite">Starting your read-only check…</span></span>
           </summary>
           <div class="trail-body">
-            <p class="trail-intro">Wild Ledger will identify your community, verify Operator authority, find and verify membership requests on XRPL, and prepare the next view. No wallet approval or XRP spending.</p>
 
             <details class="trail-step is-working" id="trailStep1" open>
-              <summary><span class="trail-index" id="trailIndex1">1</span><span class="trail-step-title">Identify your community</span><span class="trail-step-state" id="trailState1">WORKING</span></summary>
+              <summary><span class="trail-index" id="trailIndex1">1</span><span class="trail-copy"><strong class="trail-step-title">Identify your community</strong><span class="trail-step-state" id="trailState1">WORKING</span></span></summary>
               <div class="trail-step-body">
                 <p class="trail-message" id="trailMessage1">Reading your existing Operator session…</p>
                 <details class="trail-proof"><summary>What this step checks</summary><div class="trail-proof-content" id="trailProof1">Your Get Wild Operator session must identify a wallet and Community ID. A URL alone does not grant access.</div></details>
@@ -793,7 +862,7 @@
               </div>
             </details>
             <details class="trail-step is-pending" id="trailStep2">
-              <summary><span class="trail-index" id="trailIndex2">2</span><span class="trail-step-title">Confirm current authority</span><span class="trail-step-state" id="trailState2">WAITING</span></summary>
+              <summary><span class="trail-index" id="trailIndex2">2</span><span class="trail-copy"><strong class="trail-step-title">Confirm current authority</strong><span class="trail-step-state" id="trailState2">WAITING</span></span></summary>
               <div class="trail-step-body">
                 <p class="trail-message" id="trailMessage2">Waiting for your community to be identified.</p>
                 <details class="trail-proof"><summary>What this step checks</summary><div class="trail-proof-content" id="trailProof2">Wild Ledger must find this wallet as the current authorized Operator in validated XRPL history.</div></details>
@@ -801,7 +870,7 @@
               </div>
             </details>
             <details class="trail-step is-pending" id="trailStep3">
-              <summary><span class="trail-index" id="trailIndex3">3</span><span class="trail-step-title">Find membership requests</span><span class="trail-step-state" id="trailState3">WAITING</span></summary>
+              <summary><span class="trail-index" id="trailIndex3">3</span><span class="trail-copy"><strong class="trail-step-title">Find membership requests</strong><span class="trail-step-state" id="trailState3">WAITING</span></span></summary>
               <div class="trail-step-body">
                 <p class="trail-message" id="trailMessage3">Waiting for current Operator authority.</p>
                 <details class="trail-proof"><summary>What this step checks</summary><div class="trail-proof-content" id="trailProof3">Reads each Operating Wallet's validated Payments and checks the community's membership-request memo, historic authority, and price.</div></details>
@@ -809,14 +878,13 @@
               </div>
             </details>
             <details class="trail-step is-pending" id="trailStep4">
-              <summary><span class="trail-index" id="trailIndex4">4</span><span class="trail-step-title">Prove report readiness</span><span class="trail-step-state" id="trailState4">WAITING</span></summary>
+              <summary><span class="trail-index" id="trailIndex4">4</span><span class="trail-copy"><strong class="trail-step-title">Prove report readiness</strong><span class="trail-step-state" id="trailState4">WAITING</span></span></summary>
               <div class="trail-step-body">
                 <p class="trail-message" id="trailMessage4">Waiting for the search to finish.</p>
                 <details class="trail-proof"><summary>What this step checks</summary><div class="trail-proof-content" id="trailProof4">Wild Ledger checks your Operator session and confirms that verified requests are ready to display on this page.</div></details>
                 <div class="step-actions" id="stepActions4"><button type="button" class="step-action" id="stepAction4" disabled>Waiting</button></div>
               </div>
             </details>
-            <div id="trailCompleted" class="trail-done-note" hidden>Checks passed. Detailed ledger evidence is available above.</div>
             <div class="trail-error" id="trailError" hidden role="alert"></div>
             <div class="trail-actions" id="trailActions" hidden>
               <button type="button" id="retryButton" class="action" hidden>Try this check again</button>
@@ -824,7 +892,6 @@
             </div>
           </div>
         </details>
-        <p class="trail-note" style="margin-top:12px">Read-only verification. No XRP is spent. The Ledger Trail and the Onboarding Checkbook share this page and the same validated XRPL evidence.</p>
       </section>
 
       <section aria-live="polite" class="panel" hidden="" id="reportGate">
@@ -1268,7 +1335,7 @@ let completed = false;
 let completionNavigationTimer = null;
 let canRetry = true;
 // The final checkpoint completes as soon as its evidence is verified.
-// The completed card and large green check remain visible for one second.
+// The completed Ledger Trail check remains visible for one second.
 function cancelAutomaticNavigation() {
   if (completionNavigationTimer !== null) {
     clearTimeout(completionNavigationTimer);
@@ -1310,7 +1377,6 @@ function refreshControls() {
     else if (state === "done") $(`guideStepText${n}`).textContent = "Complete";
     else $(`guideStepText${n}`).textContent = "Needs attention";
   }
-  $("manualIntro").hidden = guideMode || completed;
   $("guideAgain").hidden = guideMode || completed || (next && stepStates[next-1] === "failed" && !canRetry);
   $("manualHeadline").textContent = completed ? "Checks complete" : guideMode ? "Ledger checks" : "Explore your ledger checks";
   $("guideRecovery").hidden = !(guideMode && next && stepStates[next-1] === "failed");
@@ -1322,7 +1388,7 @@ function setTrailStep(number, state, message, evidence = "") {
   stepStates[number-1] = state;
   folder.className = `trail-step is-${state}`;
   folder.setAttribute("aria-busy", state === "working" ? "true" : "false");
-  $(`trailIndex${number}`).textContent = state === "done" ? "✓" : state === "failed" ? "×" : String(number);
+  $(`trailIndex${number}`).textContent = state === "done" ? "✓" : state === "failed" ? "!" : "○";
   $(`trailState${number}`).textContent = ({working:"WORKING", done:"DONE", failed:"NEEDS ATTENTION", pending:"WAITING"})[state];
   $(`trailMessage${number}`).textContent = message;
   if (evidence) $(`trailProof${number}`).textContent = evidence;
@@ -1341,10 +1407,8 @@ function resetTrail() {
   choseToExplore = false;
   $("guideRoute").hidden = false;
   $("guideStatus").hidden = false;
-  $("guideLearn").hidden = false;
   $("trailDisclosure").open = true;
   $("trailDisclosure").classList.remove("trail-complete", "trail-failed");
-  $("trailCompleted").hidden = true;
   $("trailError").hidden = true;
   $("trailError").textContent = "";
   $("trailActions").hidden = true;
@@ -1538,7 +1602,6 @@ function revealMembershipReport() {
 
 function finishTrail() {
   completed = true;
-  $("trailCompleted").hidden = false;
   $("trailDisclosure").classList.add("trail-complete");
   const count = runContext.requests?.length || 0;
   $("trailOverall").textContent = `Complete · ${count} ${count === 1 ? "request" : "requests"} verified.`;
@@ -1546,7 +1609,6 @@ function finishTrail() {
   if (guideMode) {
     // Keep all four proven checkpoints visible on the same Ledger Trail card.
     // Get Wild’s compact left-aligned completion row appears below the verified checkpoints.
-    $("guideLearn").hidden = true;
     $("guideRecovery").hidden = true;
     $("guideSuccess").hidden = false;
     if (!choseToExplore) {
@@ -1640,7 +1702,7 @@ async function runNext() {
     updateGuideStatus(result.message);
     succeeded = true;
     if (reportIsReady()) {
-      // Show the large green confirmation BELOW all four proven checkpoints
+      // Show the Get Wild-style completion row below all four proven checkpoints
       // immediately. The existing one-second completed-card pause remains.
       finishTrail();
     }
