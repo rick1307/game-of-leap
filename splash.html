@@ -276,7 +276,7 @@ h1{
   display:flex;
   align-items:center;
   justify-content:center;
-  gap:34px;
+  gap:20px;
 }
 .bottom-links .separator{
   color:#827d70;
@@ -335,6 +335,9 @@ h1{
   .doors{grid-template-columns:1fr;gap:18px}
   .door{min-height:150px}
   .tag{margin:24px auto 0}
+  .bottom-links{width:100%;gap:6px;align-items:center}
+  .bottom-links .start-link{flex:1 1 0;min-width:0;text-align:center;font-size:10px;line-height:1.4;overflow-wrap:normal}
+  .bottom-links .separator{flex:0 0 auto;font-size:10px}
 }
 @media(prefers-reduced-motion:reduce){
   body:before{animation:none}
@@ -420,6 +423,8 @@ try{
       <div class="footer">Powered by LEAP on the XRP Ledger</div>
 
       <div class="bottom-links">
+        <a class="start-link" href="whatIs.html">What Is Wild Ledger</a>
+        <span class="separator" aria-hidden="true">•</span>
         <a class="start-link" href="ourStory.html">Our Story</a>
         <span class="separator" aria-hidden="true">•</span>
         <a class="start-link" href="startCommunity.html">Start a Community</a>
