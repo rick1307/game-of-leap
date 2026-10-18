@@ -582,7 +582,25 @@ function trailMessage(message,style=""){
 let trailRequestPresentation=null;
 // Move 5: the request reader alone decides whether a wallet may reach payment.
 // Keep payment preparation and signing on their existing functions; do not submit here.
-let trailRequestState="",trailPaymentRunning=false;
+let trailRequestState="",trailPaymentRunning=false,trailEpoch=0,paymentConfirmed=false,lastSubmitError=null,trailSubmissionStarted=false;
+// Keep trying transient XRPL reads for as long as this Trail stays open.
+// Each individual network request still has its existing timeout.
+function xrplIsTemporary(error){return /too busy|server busy|temporar|timeout|timed out|connection|closed|network|unavailable|try again|websocket|socket|slow.down|rate.limit|429|502|503|504/i.test(String(error?.message||error||""))}
+function trailStillOpen(epoch){return trailIsOpen()&&epoch===trailEpoch}
+async function trailReadUntilReady(work,epoch,waiting){
+  while(trailStillOpen(epoch)){
+    try{return await work()}
+    catch(error){
+      if(!xrplIsTemporary(error))throw error;
+      if(!trailStillOpen(epoch))break;
+      waiting();
+      // Yield to the browser so the X and progress indicator stay responsive.
+      // This schedules the next try immediately, with no deliberate wait.
+      await new Promise(resolve=>setTimeout(resolve,0));
+    }
+  }
+  return null;
+}
 function trailRequestStep(state,detail,message,style=""){
   trailRequestPresentation={message,style};
   trailRequestRow.className=`trail-step ${state}`;
@@ -624,12 +642,13 @@ function trailPaymentStep(row,state,detail,awaitingWallet=false){
 function trailResetPaymentSteps(){
   trailRequestState="";
   trailComplete.classList.remove("show");
+  paymentConfirmed=false;lastSubmitError=null;trailSubmissionStarted=false;
   trailPaymentStep(trailPrepareRow,"","Waiting to prepare the current setup fee.");
   trailPaymentStep(trailApproveRow,"","Waiting for wallet approval if payment is needed.");
   trailPaymentStep(trailVerifyRow,"","Waiting to confirm the validated payment result.");
 }
 function trailShowValidatedPayment(){
-  if(trailRequestState!=="NONE"||!preparedPayment||!signedBlob||!waitingBox.classList.contains("show"))return false;
+  if(trailRequestState!=="NONE"||!preparedPayment||!signedBlob||!paymentConfirmed)return false;
   trailPaymentStep(trailPrepareRow,"done",`Prepared ${preparedPayment.feeXrp} XRP to the Owner Wallet.`);
   trailPaymentStep(trailApproveRow,"done","Payment approved by Bifrost.");
   trailPaymentStep(trailVerifyRow,"done","Payment validated on XRPL. Owner notified.");
@@ -646,11 +665,20 @@ async function trailPrepareAndApprove(){
      !accountVerified||ownerWalletBlocked||!feeState?.current||!signer)return;
   if(trailShowValidatedPayment())return;
   trailPaymentRunning=true;
+  const runEpoch=trailEpoch;
   try{
     if(!preparedPayment){
       trailPaymentStep(trailPrepareRow,"active","Preparing the current XRP setup payment.");
       trailMessage("Reading the current fee and preparing the payment…","busy");
-      await preparePayment();
+      const epoch=trailEpoch;
+      await trailReadUntilReady(
+        ()=>preparePayment({throwOnNetworkError:true}),epoch,
+        ()=>{
+          trailPaymentStep(trailPrepareRow,"active","XRPL is taking longer than usual. Trying again automatically.");
+          trailMessage("Waiting for XRPL. Wild Ledger will keep trying…","busy");
+        }
+      );
+      if(!trailStillOpen(epoch))return;
       if(!preparedPayment){
         trailPaymentStep(trailPrepareRow,"failed","Could not prepare a valid setup payment.");
         trailMessage(paymentStatus.textContent||"Payment preparation was not completed.","error");
@@ -687,7 +715,50 @@ async function trailPrepareAndApprove(){
     trailMessage("Bifrost approved. Submitting once and checking XRPL validation…","busy");
     // Reuse the existing production submit/verification/Basin notification path.
     // That function submits only a successfully signed transaction.
-    await submitPayment();
+    const epoch=trailEpoch;
+    // Even after closing and reopening, never re-submit this signed payment.
+    if(!trailSubmissionStarted){
+      trailSubmissionStarted=true;
+      await submitPayment();
+    }
+    if(!trailStillOpen(epoch))return;
+    if(!paymentConfirmed){
+      if(lastSubmitError&&!lastSubmitError.doNotResubmit&&!xrplIsTemporary(lastSubmitError)){
+        trailPaymentStep(trailVerifyRow,"failed","XRPL could not accept or confirm the payment.");
+        trailMessage(lastSubmitError?.message||String(lastSubmitError),"error");
+        return;
+      }
+      while(trailStillOpen(epoch)&&!paymentConfirmed){
+        trailPaymentStep(trailVerifyRow,"active","Checking XRPL for the signed payment. No second payment will be sent.");
+        trailMessage("XRPL hasn't confirmed the result yet. Wild Ledger is checking again automatically…","busy");
+        try{
+          const status=await readCommunityRequestStatus({serverUrl:SERVER,account:connectedAccount,force:true});
+          const request=(status.validRequests||[]).find(item=>
+            Number(item.sequence)===Number(preparedPayment.sequence)&&
+            item.destination===preparedPayment.ownerAccount&&item.drops===preparedPayment.feeDrops
+          );
+          if(request){
+            paymentConfirmed=true;
+            sendBasin({request,status});
+            tone(paymentStatus,"good",`Validated in ledger ${request.ledger}. Your community request is waiting for Owner provisioning.`);
+            showStatusBox(status);
+            break;
+          }
+        }catch(error){
+          if(!xrplIsTemporary(error)){
+            trailPaymentStep(trailVerifyRow,"failed","Could not verify the XRPL payment record.");
+            trailMessage(error?.message||String(error),"error");
+            return;
+          }
+        }
+        // Allow Safari to repaint and handle Close before the next XRPL check.
+        // No polling pause: run again on the next browser turn.
+        if(trailStillOpen(epoch)&&!paymentConfirmed){
+          await new Promise(resolve=>setTimeout(resolve,0));
+        }
+      }
+    }
+    if(!trailStillOpen(epoch))return;
     if(!trailShowValidatedPayment()){
       trailPaymentStep(trailVerifyRow,"failed","Payment was not confirmed on XRPL.");
       trailMessage(paymentStatus.textContent||"XRPL has not confirmed this payment.","error");
@@ -702,6 +773,11 @@ async function trailPrepareAndApprove(){
   }finally{
     trailAction.classList.remove("show");
     trailPaymentRunning=false;
+    // If a slow request finished after the user closed and reopened the Trail,
+    // pick up where it left off instead of leaving the reopened Trail waiting.
+    if(trailIsOpen()&&trailEpoch!==runEpoch&&signedBlob){
+      void trailPrepareAndApprove();
+    }
   }
 }
 function trailWalletPreparing(){
@@ -735,12 +811,32 @@ function trailWalletFailure(message){
   trailQrImage.hidden=true;trailQrImage.removeAttribute("src");
   trailQrRefresh.hidden=false;trailAction.classList.add("show");
 }
+async function trailVerifyRequestAndAdvance(){
+  const epoch=trailEpoch;
+  trailRequestStep("active","Reading validated XRPL account and community-request records.","Wild Ledger is checking your request on XRPL…","busy");
+  try{
+    await trailReadUntilReady(async()=>{
+      await loadFee({throwOnNetworkError:true});
+      return verifyOnLedger(connectedAccount,{throwOnNetworkError:true});
+    },epoch,()=>{
+      trailRequestStep("active","XRPL is temporarily unavailable. Trying again automatically.","Waiting for XRPL. The Trail will continue as soon as it answers.","busy");
+    });
+    if(!trailStillOpen(epoch))return;
+    trailRestoreRequest();
+    void trailPrepareAndApprove();
+  }catch(error){
+    if(!trailStillOpen(epoch))return;
+    trailRequestStep("failed","Could not check this community request.",error?.message||String(error),"error");
+  }
+}
 function beginWalletTrail(){
   ledgerTrail.classList.add("show");
   if(connectedAccount){
     trailWalletResult(true,"Wallet connected. Your request status is shown in this Trail.");
     trailRestoreRequest();
-    if(trailPaymentRunning){
+    if(!["NONE","ASSIGNED","READY","WAITING"].includes(trailRequestState)){
+      void trailVerifyRequestAndAdvance();
+    }else if(trailPaymentRunning){
       if(!signedBlob){
         trailActionTitle.textContent="OPEN BIFROST TO REVIEW PAYMENT";
         trailActionCopy.textContent=`Open Bifrost now to review the ${preparedPayment?.feeXrp||"current"} XRP payment. Approve or reject it there, then return here.`;
@@ -766,6 +862,7 @@ document.addEventListener("wildledger:start-community:proceed",beginWalletTrail)
 trailQrRefresh.addEventListener("click",()=>{if(connectButton.disabled)return;trailWalletPreparing();void connectWallet()});
 $("ledgerTrailClose").addEventListener("click",()=>{
   // The Trail closes onto the introduction, never the old Connect Wallet application.
+  trailEpoch++; // Closing the Trail stops automatic retries.
   $("applicationSection").hidden=true;
   $("proceedButton").setAttribute("aria-expanded","false");
   qrWrap.classList.remove("show");
@@ -773,10 +870,10 @@ $("ledgerTrailClose").addEventListener("click",()=>{
 });
 function tone(el,kind,text){el.classList.remove("good","bad","wait");if(kind)el.classList.add(kind);el.textContent=text}
 function actionState(button,state,label){button.classList.remove("next-action","complete-action");if(state==="next")button.classList.add("next-action");if(state==="complete")button.classList.add("complete-action");if(label)button.textContent=label}
-function resetPayment(){preparedPayment=null;signedBlob="";submitLocked=false;actionState(preparePaymentButton,"","Prepare Payment");actionState(signPaymentButton,"","Send for Signature");actionState(submitPaymentButton,"","Submit Payment");signPaymentButton.disabled=true;submitPaymentButton.disabled=true;paymentPreview.textContent="No payment prepared.";if(accountVerified&&!ownerWalletBlocked&&feeState?.current){preparePaymentButton.disabled=false;actionState(preparePaymentButton,"next")}else{preparePaymentButton.disabled=true}}function applyOwnerWalletBlock(){ownerWalletBlocked=true;showStatusBox(null);ownerWalletWarning.classList.add("show");disconnectButton.classList.add("owner-blocked");tone(operatorStatus,"bad","This is the Wild Ledger Owner Wallet. It cannot submit a new community request.");tone(paymentStatus,"bad","Owner Wallet cannot pay the setup fee to itself. Use a different wallet to continue.");preparedPayment=null;signedBlob="";submitLocked=false;preparePaymentButton.disabled=true;signPaymentButton.disabled=true;submitPaymentButton.disabled=true;actionState(preparePaymentButton,"","Prepare Payment");actionState(signPaymentButton,"","Send for Signature");actionState(submitPaymentButton,"","Submit Payment");paymentPreview.textContent="Connect a different wallet to continue."}
+function resetPayment(){preparedPayment=null;signedBlob="";submitLocked=false;paymentConfirmed=false;lastSubmitError=null;trailSubmissionStarted=false;actionState(preparePaymentButton,"","Prepare Payment");actionState(signPaymentButton,"","Send for Signature");actionState(submitPaymentButton,"","Submit Payment");signPaymentButton.disabled=true;submitPaymentButton.disabled=true;paymentPreview.textContent="No payment prepared.";if(accountVerified&&!ownerWalletBlocked&&feeState?.current){preparePaymentButton.disabled=false;actionState(preparePaymentButton,"next")}else{preparePaymentButton.disabled=true}}function applyOwnerWalletBlock(){ownerWalletBlocked=true;showStatusBox(null);ownerWalletWarning.classList.add("show");disconnectButton.classList.add("owner-blocked");tone(operatorStatus,"bad","This is the Wild Ledger Owner Wallet. It cannot submit a new community request.");tone(paymentStatus,"bad","Owner Wallet cannot pay the setup fee to itself. Use a different wallet to continue.");preparedPayment=null;signedBlob="";submitLocked=false;preparePaymentButton.disabled=true;signPaymentButton.disabled=true;submitPaymentButton.disabled=true;actionState(preparePaymentButton,"","Prepare Payment");actionState(signPaymentButton,"","Send for Signature");actionState(submitPaymentButton,"","Submit Payment");paymentPreview.textContent="Connect a different wallet to continue."}
 function showStatusBox(status){waitingBox.classList.remove("show");readyBox.classList.remove("show");if(status?.state==="WAITING")waitingBox.classList.add("show");if(status?.state==="READY"&&status.community){readyText.textContent=`Community ${status.community.communityId} has been provisioned to this wallet.`;enterCommunityLink.href=`getWild.html`;readyBox.classList.add("show")}}
-async function loadFee(){try{feeState=await readCommunitySetupFee({serverUrl:SERVER,force:true});ownerStatus.textContent=feeState.ownerState.currentAccount;if(feeState.current){tone(feeStatus,"good",`${feeState.current.xrp} XRP`)}else{tone(feeStatus,"bad","Wild Ledger has not published a setup fee yet.")}}catch(e){tone(feeStatus,"bad",e?.message||String(e));ownerStatus.textContent="—"}}
-async function verifyOnLedger(account){
+async function loadFee({throwOnNetworkError=false}={}){try{feeState=await readCommunitySetupFee({serverUrl:SERVER,force:true});ownerStatus.textContent=feeState.ownerState.currentAccount;if(feeState.current){tone(feeStatus,"good",`${feeState.current.xrp} XRP`)}else{tone(feeStatus,"bad","Wild Ledger has not published a setup fee yet.")}}catch(e){feeState=null;tone(feeStatus,"bad",e?.message||String(e));ownerStatus.textContent="—";if(throwOnNetworkError&&xrplIsTemporary(e))throw e}}
+async function verifyOnLedger(account,{throwOnNetworkError=false}={}){
   trailRequestState="";tone(ledgerStatus,"wait","Checking validated XRPL Mainnet…");const client=new DirectXRPLClient(SERVER);try{await client.connect();const response=await client.request("account_info",{account,ledger_index:"validated",strict:true},15000);const data=response?.result?.account_data;if(!data||data.Account!==account)throw new Error("XRPL did not return the connected account.");accountVerified=true;saveWildLedgerActiveWallet(account);tone(ledgerStatus,"good","Real XRPL account found in the validated ledger.");const currentOwner=String(feeState?.ownerState?.currentAccount||"");if(currentOwner&&account===currentOwner){applyOwnerWalletBlock();trailRequestStep("failed","Owner Wallet cannot request a community.","This is the Owner Wallet. Use a different wallet to start a community.","error");return true}ownerWalletBlocked=false;ownerWalletWarning.classList.remove("show");disconnectButton.classList.remove("owner-blocked");
   // Use the same validated authority discovery as Get Wild. Legacy SFL authority
   // is recorded separately from community-request payments and Owner provisioning.
@@ -797,17 +894,29 @@ async function verifyOnLedger(account){
   }
   const status=await readCommunityRequestStatus({serverUrl:SERVER,account,force:true});
 trailRequestState=status.state;
-showStatusBox(status);if(status.state==="READY"){trailRequestStep("done",`Community ${status.community.communityId} is provisioned to this wallet.`,"Your community already exists. Return through Get Wild to finish Setup and Go Live.");tone(operatorStatus,"good",`Community ${status.community.communityId} is already provisioned to this wallet.`);tone(paymentStatus,"good","No setup payment is needed. Your community is ready.");preparePaymentButton.disabled=true;actionState(preparePaymentButton,"")}else if(status.state==="WAITING"){trailRequestStep("done","A valid setup payment is waiting for Owner provisioning.","Your payment is on XRPL. No second payment is needed. Return later through Get Wild.");tone(operatorStatus,"wait","A valid setup payment is already waiting for Owner provisioning.");tone(paymentStatus,"good",`Paid ${status.request.feeXrp} XRP in ledger ${status.request.ledger}. Do not pay again.`);preparePaymentButton.disabled=true;actionState(preparePaymentButton,"")}else{trailRequestStep("done","No existing community request. This wallet is new.",feeState?.current?"No request found. Your wallet is eligible for the setup-payment step (coming next).":"No request found, but the setup fee is unavailable. Payment cannot begin yet.",feeState?.current?"":"error");tone(operatorStatus,"good","No community request is on XRPL for this wallet yet.");if(feeState?.current){tone(paymentStatus,"wait",`Ready to prepare the ${feeState.current.xrp} XRP setup payment.`);preparePaymentButton.disabled=false;actionState(preparePaymentButton,"next")}else{tone(paymentStatus,"bad","Setup fee is not available yet.");preparePaymentButton.disabled=true;actionState(preparePaymentButton,"")}}return true}catch(e){trailRequestStep("failed","Could not verify the wallet or read its request on XRPL.","XRPL could not confirm your request status. No payment has been started.","error");accountVerified=false;ownerWalletBlocked=false;ownerWalletWarning.classList.remove("show");disconnectButton.classList.remove("owner-blocked");tone(ledgerStatus,"bad","Could not complete the XRPL wallet and authority check.");tone(operatorStatus,"bad","Cannot use this wallet for a community request yet.");preparePaymentButton.disabled=true;return false}finally{client.close()}}
-async function connectWallet(){if(!PROJECT_ID){tone(walletConnectStatus,"bad","Wallet connection is not configured on this site.");if(trailIsOpen()){trailWalletStep("failed","Wallet connection is not configured.");trailMessage("Wallet connection is not configured on this site.","error")}return}connectButton.disabled=true;trailResetRequest();trailResetPaymentSteps();accountVerified=false;ownerWalletBlocked=false;ownerWalletWarning.classList.remove("show");disconnectButton.classList.remove("owner-blocked");resetPayment();try{tone(walletConnectStatus,"wait","Starting secure wallet connection…");signer=new WalletConnectXrplSigner({projectId:PROJECT_ID,metadata:{name:"Wild Ledger Community Request",description:"Connect the XRPL wallet that will operate your Wild Ledger community",url:location.protocol.startsWith("http")?location.origin:"https://example.invalid",icons:[location.protocol.startsWith("http")?`${location.origin}/favicon.ico`:"https://example.invalid/favicon.ico"]}});const c=await signer.connect({onUri:async uri=>{qrImage.src=await QRCode.toDataURL(uri,{width:560,margin:2,errorCorrectionLevel:"M"});qrWrap.classList.toggle("show",!trailIsOpen());uriText.textContent=uri;trailWalletQr(uri,qrImage.src);tone(walletConnectStatus,"wait","Approve this connection in your XRPL wallet.")}});qrWrap.classList.remove("show");uriText.textContent="";connectedAccount=c.account;accountStatus.textContent=connectedAccount;tone(walletConnectStatus,"good",`${c.walletName} connected.`);actionState(connectButton,"complete","✓ Wallet Connected");connectButton.disabled=true;disconnectButton.disabled=false;walletChangeWrap.classList.add("show");trailWalletResult(true,"Bifrost connected. Checking XRPL request status.");trailRequestStep("active","Reading validated XRPL account and community-request records.","Wild Ledger is checking your request on XRPL…","busy");await loadFee();await verifyOnLedger(connectedAccount);if(trailIsOpen()){
-  trailRestoreRequest();
-  // Step 5: only a verified new applicant with a published fee may sign.
-  void trailPrepareAndApprove();
-}}catch(e){signer=null;connectedAccount="";accountVerified=false;qrWrap.classList.remove("show");uriText.textContent="";accountStatus.textContent="—";tone(walletConnectStatus,"bad",e?.message||String(e));tone(ledgerStatus,"wait","Waiting for wallet.");tone(operatorStatus,"wait","Connect your wallet to check.");disconnectButton.disabled=true;walletChangeWrap.classList.remove("show");actionState(connectButton,"next","Connect XRPL Wallet");connectButton.disabled=false;preparePaymentButton.disabled=true;actionState(preparePaymentButton,"");trailWalletFailure(e?.message||String(e))}}
+showStatusBox(status);if(status.state==="READY"){trailRequestStep("done",`Community ${status.community.communityId} is provisioned to this wallet.`,"Your community already exists. Return through Get Wild to finish Setup and Go Live.");tone(operatorStatus,"good",`Community ${status.community.communityId} is already provisioned to this wallet.`);tone(paymentStatus,"good","No setup payment is needed. Your community is ready.");preparePaymentButton.disabled=true;actionState(preparePaymentButton,"")}else if(status.state==="WAITING"){trailRequestStep("done","A valid setup payment is waiting for Owner provisioning.","Your payment is on XRPL. No second payment is needed. Return later through Get Wild.");tone(operatorStatus,"wait","A valid setup payment is already waiting for Owner provisioning.");tone(paymentStatus,"good",`Paid ${status.request.feeXrp} XRP in ledger ${status.request.ledger}. Do not pay again.`);preparePaymentButton.disabled=true;actionState(preparePaymentButton,"")}else{trailRequestStep("done","No existing community request. This wallet is new.",feeState?.current?"No request found. Your wallet is eligible for the setup-payment step (coming next).":"No request found, but the setup fee is unavailable. Payment cannot begin yet.",feeState?.current?"":"error");tone(operatorStatus,"good","No community request is on XRPL for this wallet yet.");if(feeState?.current){tone(paymentStatus,"wait",`Ready to prepare the ${feeState.current.xrp} XRP setup payment.`);preparePaymentButton.disabled=false;actionState(preparePaymentButton,"next")}else{tone(paymentStatus,"bad","Setup fee is not available yet.");preparePaymentButton.disabled=true;actionState(preparePaymentButton,"")}}return true}catch(e){if(throwOnNetworkError&&xrplIsTemporary(e)){accountVerified=false;throw e}trailRequestStep("failed","Could not verify the wallet or read its request on XRPL.","XRPL could not confirm your request status. No payment has been started.","error");accountVerified=false;ownerWalletBlocked=false;ownerWalletWarning.classList.remove("show");disconnectButton.classList.remove("owner-blocked");tone(ledgerStatus,"bad","Could not complete the XRPL wallet and authority check.");tone(operatorStatus,"bad","Cannot use this wallet for a community request yet.");preparePaymentButton.disabled=true;return false}finally{client.close()}}
+async function connectWallet(){if(!PROJECT_ID){tone(walletConnectStatus,"bad","Wallet connection is not configured on this site.");if(trailIsOpen()){trailWalletStep("failed","Wallet connection is not configured.");trailMessage("Wallet connection is not configured on this site.","error")}return}connectButton.disabled=true;trailResetRequest();trailResetPaymentSteps();accountVerified=false;ownerWalletBlocked=false;ownerWalletWarning.classList.remove("show");disconnectButton.classList.remove("owner-blocked");resetPayment();try{tone(walletConnectStatus,"wait","Starting secure wallet connection…");signer=new WalletConnectXrplSigner({projectId:PROJECT_ID,metadata:{name:"Wild Ledger Community Request",description:"Connect the XRPL wallet that will operate your Wild Ledger community",url:location.protocol.startsWith("http")?location.origin:"https://example.invalid",icons:[location.protocol.startsWith("http")?`${location.origin}/favicon.ico`:"https://example.invalid/favicon.ico"]}});const walletEpoch=trailEpoch;
+let c;
+while(true){
+  try{
+    c=await signer.connect({onUri:async uri=>{qrImage.src=await QRCode.toDataURL(uri,{width:560,margin:2,errorCorrectionLevel:"M"});qrWrap.classList.toggle("show",!trailIsOpen());uriText.textContent=uri;trailWalletQr(uri,qrImage.src);tone(walletConnectStatus,"wait","Approve this connection in your XRPL wallet.")}});
+    break;
+  }catch(error){
+    if(!trailStillOpen(walletEpoch)||!xrplIsTemporary(error))throw error;
+    trailWalletStep("active","Connection timed out. Creating a fresh QR code.");
+    trailMessage("Wallet connection timed out. Getting a new QR automatically…","busy");
+    if(!trailStillOpen(walletEpoch))return;
+    signer=new WalletConnectXrplSigner({projectId:PROJECT_ID,metadata:{name:"Wild Ledger Community Request",description:"Connect the XRPL wallet that will operate your Wild Ledger community",url:location.protocol.startsWith("http")?location.origin:"https://example.invalid",icons:[location.protocol.startsWith("http")?`${location.origin}/favicon.ico`:"https://example.invalid/favicon.ico"]}});
+  }
+}
+qrWrap.classList.remove("show");uriText.textContent="";connectedAccount=c.account;accountStatus.textContent=connectedAccount;tone(walletConnectStatus,"good",`${c.walletName} connected.`);actionState(connectButton,"complete","✓ Wallet Connected");connectButton.disabled=true;disconnectButton.disabled=false;walletChangeWrap.classList.add("show");trailWalletResult(true,"Bifrost connected. Checking XRPL request status.");trailRequestStep("active","Reading validated XRPL account and community-request records.","Wild Ledger is checking your request on XRPL…","busy");if(trailIsOpen()){
+  await trailVerifyRequestAndAdvance();
+}else{await loadFee();await verifyOnLedger(connectedAccount)}}catch(e){signer=null;connectedAccount="";accountVerified=false;qrWrap.classList.remove("show");uriText.textContent="";accountStatus.textContent="—";tone(walletConnectStatus,"bad",e?.message||String(e));tone(ledgerStatus,"wait","Waiting for wallet.");tone(operatorStatus,"wait","Connect your wallet to check.");disconnectButton.disabled=true;walletChangeWrap.classList.remove("show");actionState(connectButton,"next","Connect XRPL Wallet");connectButton.disabled=false;preparePaymentButton.disabled=true;actionState(preparePaymentButton,"");trailWalletFailure(e?.message||String(e))}}
 async function disconnectWallet(){trailResetRequest();trailResetPaymentSteps();disconnectButton.disabled=true;try{if(signer)await signer.disconnect()}catch(_){}signer=null;connectedAccount="";accountVerified=false;ownerWalletBlocked=false;ownerWalletWarning.classList.remove("show");disconnectButton.classList.remove("owner-blocked");accountStatus.textContent="—";tone(walletConnectStatus,"wait","Not connected.");tone(ledgerStatus,"wait","Waiting for wallet.");tone(operatorStatus,"wait","Connect your wallet to check.");tone(paymentStatus,"wait","Connect and verify your wallet first.");showStatusBox(null);resetPayment();preparePaymentButton.disabled=true;walletChangeWrap.classList.remove("show");actionState(connectButton,"next","Connect XRPL Wallet");connectButton.disabled=false}
-async function preparePayment(){if(!accountVerified||!connectedAccount||ownerWalletBlocked||trailRequestState==="ASSIGNED")return;preparePaymentButton.disabled=true;try{feeState=await readCommunitySetupFee({serverUrl:SERVER,force:true});ownerStatus.textContent=feeState.ownerState.currentAccount;if(feeState.current)tone(feeStatus,"good",`${feeState.current.xrp} XRP`);if(connectedAccount===String(feeState?.ownerState?.currentAccount||"")){applyOwnerWalletBlock();return}tone(paymentStatus,"wait","Preparing the current setup payment from validated XRPL state…");preparedPayment=await prepareCommunityRequestPayment({serverUrl:SERVER,account:connectedAccount,feeCushion:FEE_CUSHION});paymentPreview.textContent=JSON.stringify(preparedPayment.preparedTx,null,2);tone(paymentStatus,"good",`Prepared ${preparedPayment.feeXrp} XRP to the current Owner Wallet.`);actionState(preparePaymentButton,"complete","✓ Payment Prepared");signPaymentButton.disabled=false;actionState(signPaymentButton,"next")}catch(e){tone(paymentStatus,"bad",e?.message||String(e));preparePaymentButton.disabled=false;actionState(preparePaymentButton,"next")}}
+async function preparePayment({throwOnNetworkError=false}={}){if(!accountVerified||!connectedAccount||ownerWalletBlocked||trailRequestState==="ASSIGNED")return;preparePaymentButton.disabled=true;try{feeState=await readCommunitySetupFee({serverUrl:SERVER,force:true});ownerStatus.textContent=feeState.ownerState.currentAccount;if(feeState.current)tone(feeStatus,"good",`${feeState.current.xrp} XRP`);if(connectedAccount===String(feeState?.ownerState?.currentAccount||"")){applyOwnerWalletBlock();return}tone(paymentStatus,"wait","Preparing the current setup payment from validated XRPL state…");preparedPayment=await prepareCommunityRequestPayment({serverUrl:SERVER,account:connectedAccount,feeCushion:FEE_CUSHION});paymentPreview.textContent=JSON.stringify(preparedPayment.preparedTx,null,2);tone(paymentStatus,"good",`Prepared ${preparedPayment.feeXrp} XRP to the current Owner Wallet.`);actionState(preparePaymentButton,"complete","✓ Payment Prepared");signPaymentButton.disabled=false;actionState(signPaymentButton,"next")}catch(e){tone(paymentStatus,"bad",e?.message||String(e));preparePaymentButton.disabled=false;actionState(preparePaymentButton,"next");if(throwOnNetworkError&&xrplIsTemporary(e))throw e}}
 async function signPayment(){if(!preparedPayment||!signer)return;signPaymentButton.disabled=true;try{tone(paymentStatus,"wait","Approve the payment in your connected wallet.");const signed=await signer.signTransaction(preparedPayment.preparedTx);signedBlob=signed.signedBlob;tone(paymentStatus,"good",`Signed ${preparedPayment.feeXrp} XRP setup payment. Ready to submit once.`);actionState(signPaymentButton,"complete","✓ Payment Signed");submitPaymentButton.disabled=false;actionState(submitPaymentButton,"next")}catch(e){tone(paymentStatus,"bad",e?.message||String(e));signPaymentButton.disabled=false;actionState(signPaymentButton,"next")}}
 function sendBasin(out){if(basinSent||!out?.request)return;basinSent=true;$("basinWallet").value=connectedAccount;$("basinPaymentHash").value=out.request.hash||out.result?.txHash||"";$("basinPaymentLedger").value=String(out.request.ledger||out.result?.ledgerIndex||"");$("basinFeeXrp").value=String(out.request.feeXrp||preparedPayment?.feeXrp||"");$("basinFeeDrops").value=String(out.request.drops||preparedPayment?.feeDrops||"");$("basinOwnerWallet").value=String(out.request.destination||preparedPayment?.ownerAccount||"");$("basinCommunityRequestForm").submit()}
-async function submitPayment(){if(!signedBlob||submitLocked)return;submitLocked=true;submitPaymentButton.disabled=true;actionState(submitPaymentButton,"","Submitted — checking XRPL…");try{tone(paymentStatus,"wait","Submitting once, then checking validated XRPL history…");const out=await submitCommunityRequestPayment({serverUrl:SERVER,signedBlob,account:connectedAccount,expectedOwner:preparedPayment.ownerAccount,expectedFeeDrops:preparedPayment.feeDrops,expectedSequence:preparedPayment.sequence,onSubmitted:d=>tone(paymentStatus,"wait",d?.txHash?`Submitted ${d.txHash.slice(0,14)}… Checking validation…`:"Submitted. Checking validation…")});sendBasin(out);tone(paymentStatus,"good",`Validated in ledger ${out.request.ledger}. Your community request is waiting for Owner provisioning.`);showStatusBox(out.status);operatorStatus.textContent="Valid setup payment found. Waiting for provisioning.";actionState(submitPaymentButton,"complete","✓ Payment Complete")}catch(e){tone(paymentStatus,"bad",e?.message||String(e));if(!e?.doNotResubmit){submitLocked=false;submitPaymentButton.disabled=false;actionState(submitPaymentButton,"next","Submit Payment")}}}
+async function submitPayment(){if(!signedBlob||submitLocked)return;lastSubmitError=null;submitLocked=true;submitPaymentButton.disabled=true;actionState(submitPaymentButton,"","Submitted — checking XRPL…");try{tone(paymentStatus,"wait","Submitting once, then checking validated XRPL history…");const out=await submitCommunityRequestPayment({serverUrl:SERVER,signedBlob,account:connectedAccount,expectedOwner:preparedPayment.ownerAccount,expectedFeeDrops:preparedPayment.feeDrops,expectedSequence:preparedPayment.sequence,onSubmitted:d=>tone(paymentStatus,"wait",d?.txHash?`Submitted ${d.txHash.slice(0,14)}… Checking validation…`:"Submitted. Checking validation…")});sendBasin(out);paymentConfirmed=true;tone(paymentStatus,"good",`Validated in ledger ${out.request.ledger}. Your community request is waiting for Owner provisioning.`);showStatusBox(out.status);operatorStatus.textContent="Valid setup payment found. Waiting for provisioning.";actionState(submitPaymentButton,"complete","✓ Payment Complete")}catch(e){lastSubmitError=e;tone(paymentStatus,"bad",e?.message||String(e));if(!e?.doNotResubmit){submitLocked=false;submitPaymentButton.disabled=false;actionState(submitPaymentButton,"next","Submit Payment")}}}
 connectButton.addEventListener("click",connectWallet);disconnectButton.addEventListener("click",disconnectWallet);preparePaymentButton.addEventListener("click",preparePayment);signPaymentButton.addEventListener("click",signPayment);submitPaymentButton.addEventListener("click",submitPayment);memoStatus.textContent=COMMUNITY_REQUEST_MEMO;loadFee();
 </script>
 </body></html>
