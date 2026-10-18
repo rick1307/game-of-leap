@@ -2880,19 +2880,39 @@ async function cancelTrailFindValidated() {
 }
 function cancelTrailValidatedResult(tx) {
   if (tx?.validated!==true) throw new Error("The CheckCancel transaction is not validated yet.");
-  // `tx` RPC responses may attach their own hash/date to tx_json. These
-  // response-only fields are not transaction fields and were not Bifrost-signed.
-  const ledgerTx={...(tx.tx_json || tx.tx || tx.transaction || tx)};
-  delete ledgerTx.hash;
-  delete ledgerTx.date;
-  delete ledgerTx.ledger_index;
-  delete ledgerTx.inLedger;
+  // XRPL tx RPC may attach these response-only fields inside tx_json (not
+  // just at top level), including ctid in API v2. They are NOT signed fields.
+  // Exclude ONLY documented RPC metadata; all transaction fields below are
+  // still checked against the actual Bifrost-signed serialized bytes.
+  const received=tx.tx_json || tx.tx || tx.transaction || tx;
+  if (!received || typeof received!=="object" || Array.isArray(received))
+    throw new Error("XRPL did not provide a decoded CheckCancel transaction.");
+  const ledgerTx={...received};
+  for (const name of ["hash","date","ledger_index","inLedger","ctid",
+    "close_time_iso","ledger_hash","validated","meta","metaData",
+    "tx_blob","meta_blob","tx_json","tx","transaction"])
+    delete ledgerTx[name];
   cancelTrailAssertTx(ledgerTx,cancelTx.prepared);
+  // Beyond checking the approved CheckID and prepared fields, independently
+  // match every actual signed field to the transaction returned by consensus.
+  // XRPL may expose an absent default Flags as 0; these are equivalent.
+  const signedTx=decode(cancelTx.signedBlob);
+  cancelTrailAssertTx(signedTx,cancelTx.prepared);
+  const canonical=value=>value && typeof value==="object" ?
+    (Array.isArray(value) ? value.map(canonical) : Object.fromEntries(
+      Object.keys(value).sort().map(key=>[key,canonical(value[key])]))) : value;
+  const signedComparison={...signedTx};
+  const responseComparison={...ledgerTx};
+  if (Number(signedComparison.Flags || 0)===0) delete signedComparison.Flags;
+  if (Number(responseComparison.Flags || 0)===0) delete responseComparison.Flags;
+  if (JSON.stringify(canonical(signedComparison))!==JSON.stringify(canonical(responseComparison)))
+    throw new Error("XRPL's validated CheckCancel fields differ from the original signed transaction.");
   if ((tx.meta || tx.metaData)?.TransactionResult!=="tesSUCCESS")
     throw new Error("The CheckCancel transaction was validated unsuccessfully. It must not be signed again.");
-  const recordedHash=String(tx.hash || tx.tx_json?.hash || "").toUpperCase();
-  if (recordedHash && recordedHash!==cancelTx.txHash) throw new Error("XRPL returned a different validated cancellation hash.");
-  return tx.ledger_index;
+  const recordedHash=String(tx.hash || received.hash || "").toUpperCase();
+  if (!recordedHash || recordedHash!==cancelTx.txHash)
+    throw new Error("XRPL did not return the expected validated cancellation hash.");
+  return tx.ledger_index || received.ledger_index || tx.inLedger;
 }
 function cancelTrailMarkSubmitted(ledger) {
   // A validated CheckCancel does NOT finish the Trail. Retain signed evidence
