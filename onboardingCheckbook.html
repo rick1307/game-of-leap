@@ -1753,6 +1753,7 @@ const $ = id => document.getElementById(id);
 const HANDOFF_KEY = "wildLedger.membershipRequestsHandoff";
 const MAX_HANDOFF_AGE_MS = 60 * 60 * 1000;
 const params = new URLSearchParams(window.location.search);
+const xrplServer = String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
 
 function readOperatorSession() {
   try {
@@ -2483,8 +2484,10 @@ async function showCurrentOnboardingReserve(checks, operatorWallet) {
     amount.textContent = "Unavailable";
     return;
   }
-  const client = new DirectXRPLClient(xrplServer);
+  let client;
   try {
+    if (!xrplServer) throw new Error("XRPL endpoint is not configured.");
+    client = new DirectXRPLClient(xrplServer);
     await client.connect();
     const response = await client.request("server_info", {}, 20000);
     const ledger = response?.result?.info?.validated_ledger;
@@ -2519,7 +2522,7 @@ async function showCurrentOnboardingReserve(checks, operatorWallet) {
   } catch (_) {
     // Never assume a 0.2 XRP rate or advertise an unverified amount.
     if (token === reserveReadToken) amount.textContent = "Unavailable";
-  } finally { client.close(); }
+  } finally { client?.close(); }
 }
 
 function showGate(message, url, label) {
