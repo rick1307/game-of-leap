@@ -173,8 +173,8 @@ export function createLedgerTrail({
 
   function setStatus(message, tone = '') {
     assertAlive();
-    if (!['', 'busy', 'error'].includes(tone)) {
-      throw new TypeError('Ledger Trail: status tone must be "", "busy", or "error".');
+    if (!['', 'busy', 'error', 'blocked', 'success'].includes(tone)) {
+      throw new TypeError('Ledger Trail: status tone must be "", "busy", "error", "blocked", or "success".');
     }
     status.className = `trail-status${tone ? ` ${tone}` : ''}`;
     status.textContent = String(message);
@@ -183,7 +183,7 @@ export function createLedgerTrail({
   /** working = spinner; waiting = pulsar; done = Get Wild's ordinary ✓. */
   function setStep(id, state, detail) {
     assertAlive();
-    if (!['pending', 'working', 'waiting', 'done', 'failed'].includes(state)) {
+    if (!['pending', 'working', 'waiting', 'done', 'failed', 'blocked'].includes(state)) {
       throw new TypeError(`Ledger Trail: unknown checkpoint state "${state}".`);
     }
     const record = records.get(id);
@@ -199,7 +199,7 @@ export function createLedgerTrail({
       activity.setAttribute('aria-hidden', 'true');
       record.marker.appendChild(activity);
     } else {
-      record.marker.textContent = state === 'done' ? '✓' : state === 'failed' ? '×' : '○';
+      record.marker.textContent = state === 'done' ? '✓' : (state === 'failed' || state === 'blocked') ? '×' : '○';
     }
     if (detail !== undefined) record.detail.textContent = String(detail);
   }
