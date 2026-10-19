@@ -885,9 +885,6 @@
     let supabaseClient = null;
     let chatChannel = null;
     let chatRealtimeReady = false;
-    let cancelRealtimeAttempt = null;
-    let realtimeRecoveryPromise = null;
-    const retiredRealtimeChannels = new WeakSet();
     let currentXrpManagerName = "";
     let preparedXrpTipTx = null;
     let xrpTipSigner = null;
@@ -1233,155 +1230,71 @@
       renderChatMessage({ ...message, isMe: false });
     }
 
-    function ensureRealtimeRun(run) {
-      // Before admission the visible Trail is our X-controlled run. After
-      // admission, the same verified session stays alive until page exit.
-      if (run !== loungeEntryRun || !loungeSession ||
-          (!loungeTrail.element.classList.contains("show") &&
-           !chatView.classList.contains("lounge-admitted"))) {
-        const error = new Error("Lounge session closed.");
-        error.trailClosed = true;
-        throw error;
-      }
-    }
+    // Restore the original pre-Trail Supabase channel lifecycle.
+    // Lounge admission and wallet identity are separate from Realtime.
     function retireRealtimeChannel(channel) {
-      if (!channel || retiredRealtimeChannels.has(channel)) return;
-      retiredRealtimeChannels.add(channel);
+      if (!channel) return;
       if (chatChannel === channel) chatChannel = null;
-      // Teardown is initiated immediately; never wait for an unresponsive
-      // socket's unsubscribe acknowledgement before another connection.
       try { Promise.resolve(channel.untrack()).catch(() => {}); } catch (_) {}
       try {
         const removal = typeof supabaseClient?.removeChannel === "function"
-          ? supabaseClient.removeChannel(channel)
-          : channel.unsubscribe();
+          ? supabaseClient.removeChannel(channel) : channel.unsubscribe();
         Promise.resolve(removal).catch(() => {});
       } catch (_) {}
     }
-    function nonrecoverableRealtimeError(error) {
-      return /invalid (?:api[ -]?key|jwt|token)|(?:unauthorized|forbidden|permission denied|access denied)|(?:http |status )(?:401|403)\b|invalid supabase configuration/i
-        .test(String(error?.message || error || ""));
-    }
-    function resumeRealtimeAfterDrop(run, failedChannel) {
-      if (failedChannel !== chatChannel || run !== loungeEntryRun || !loungeSession) return;
-      if (realtimeRecoveryPromise) return;
-      chatRealtimeReady = false;
-      setRoomConnectionState("connecting", "Reconnecting live room…");
-      // Once the Lounge is open, recovery stays with this session. It must
-      // never reconnect Bifrost or change the assigned name.
-      realtimeRecoveryPromise = initializeRealtimeChat(run)
-        .catch(error => {
-          if (!error?.trailClosed) {
-            console.error("Live-room reconnection stopped:", error);
-            setRoomConnectionState("offline", "Live room unavailable");
-          }
-        })
-        .finally(() => { realtimeRecoveryPromise = null; });
-    }
     async function initializeRealtimeChat(run) {
-      if (!community || !CHAT_CHANNEL_TOPIC) throw new Error("Community unavailable.");
-      if (!hasSupabaseRealtimeConfig()) throw new Error("Live-room configuration is unavailable.");
-      ensureRealtimeRun(run);
-      // Share a single client; create a fresh channel for each interrupted
-      // attempt rather than multiplying socket clients or overlapping presence.
-      if (!supabaseClient) {
-        supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-        });
+      if (run !== loungeEntryRun || !loungeSession ||
+          !chatView.classList.contains("lounge-admitted")) return;
+      if (!community || !CHAT_CHANNEL_TOPIC) {
+        setRoomConnectionState("offline", "Community unavailable");
+        return;
       }
-      while (true) {
-        ensureRealtimeRun(run);
-        setRoomConnectionState("connecting", "Connecting live room…");
-        if (loungeTrail.element.classList.contains("show")) {
-          loungeTrail.setStep("session", "working", "Connecting to the live room…");
-          loungeTrail.setStatus("Connecting to the live Lounge…", "busy");
-        }
-        retireRealtimeChannel(chatChannel);
-        let channel;
-        try {
-          channel = supabaseClient.channel(CHAT_CHANNEL_TOPIC, {
-            config: {broadcast: {self: false, ack: true}, presence: {key: chatClientId}}
+      if (!hasSupabaseRealtimeConfig()) {
+        setRoomConnectionState("offline", "Live-room configuration unavailable");
+        return;
+      }
+      if (chatChannel) return;
+      setRoomConnectionState("connecting", "Connecting live room…");
+      try {
+        if (!supabaseClient) {
+          supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
           });
-          chatChannel = channel;
-          await new Promise((resolve, reject) => {
-            let settled = false;
-            let subscribed = false;
-            const complete = error => {
-              if (settled) return;
-              settled = true;
-              clearTimeout(timeout);
-              if (cancelRealtimeAttempt === abort) cancelRealtimeAttempt = null;
-              if (error) reject(error); else resolve();
-            };
-            const abort = () => {
-              const error = new Error("Lounge entry closed.");
-              error.trailClosed = true;
-              complete(error);
-            };
-            // This timeout *detects* a hung connection. It is not a pause
-            // between attempts; the next attempt begins at the next task.
-            const timeout = setTimeout(() => complete(new Error("Live-room connection timed out.")), 15000);
-            cancelRealtimeAttempt = abort;
-            channel
-              .on("broadcast", { event: "chat-message" }, ({ payload }) => {
-                if (channel === chatChannel && run === loungeEntryRun && loungeSession)
-                  handleRealtimeChatMessage(payload);
-              })
-              .on("presence", { event: "sync" }, () => {
-                if (channel === chatChannel && run === loungeEntryRun && loungeSession)
-                  updateRoomPresenceCount();
-              })
-              .subscribe(async (status, error) => {
-                if (run !== loungeEntryRun || channel !== chatChannel || !loungeSession) {
-                  abort(); return;
-                }
-                if (status === "SUBSCRIBED" && !settled) {
-                  // Match the original Lounge: subscription is live messaging;
-                  // Presence is best-effort and never blocks entry or messaging.
-                  subscribed = true;
-                  chatRealtimeReady = true;
-                  setRoomConnectionState("online", "Live room connected");
-                  complete();
-                  try {
-                    Promise.resolve(channel.track({online_at: new Date().toISOString()}))
-                      .then(presence => {
-                        if (presence !== "ok" && channel === chatChannel && run === loungeEntryRun)
-                          console.warn("Supabase Presence track returned", presence);
-                      })
-                      .catch(error => {
-                        if (channel === chatChannel && run === loungeEntryRun)
-                          console.warn("Supabase Presence tracking failed", error);
-                      });
-                  } catch (error) {
-                    if (channel === chatChannel && run === loungeEntryRun)
-                      console.warn("Supabase Presence tracking failed", error);
-                  }
-                } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-                  const failure = new Error(error?.message || `Live-room ${status.toLowerCase().replaceAll("_", " ")}.`);
-                  if (!settled) complete(failure);
-                  else if (subscribed) resumeRealtimeAfterDrop(run, channel);
-                }
-              });
-          });
-          ensureRealtimeRun(run);
-          return;
-        } catch (error) {
-          ensureRealtimeRun(run); // X stops even an in-flight failed attempt.
-          if (nonrecoverableRealtimeError(error)) throw error;
-          chatRealtimeReady = false;
-          setRoomConnectionState("connecting", "Reconnecting live room…");
-          if (loungeTrail.element.classList.contains("show")) {
-            loungeTrail.setStep("session", "working", "Live-room connection interrupted; reconnecting…");
-            loungeTrail.setStatus("Reconnecting to the live Lounge…", "busy");
-          }
-          // No attempt cap, no timer-based backoff, no user Retry button.
-          // Yield one browser task so X can be processed before retrying.
-          await nextBrowserTask();
-        } finally {
-          // A failed or closed attempt is replaced with an entirely fresh
-          // channel; a successful channel remains active for messaging.
-          if (channel && (!chatRealtimeReady || run !== loungeEntryRun)) retireRealtimeChannel(channel);
         }
+        const channel = supabaseClient.channel(CHAT_CHANNEL_TOPIC, {
+          config: { broadcast: { self: false, ack: true }, presence: { key: chatClientId } }
+        });
+        chatChannel = channel;
+        channel
+          .on("broadcast", { event: "chat-message" }, ({ payload }) => {
+            if (channel === chatChannel && run === loungeEntryRun && loungeSession)
+              handleRealtimeChatMessage(payload);
+          })
+          .on("presence", { event: "sync" }, () => {
+            if (channel === chatChannel && run === loungeEntryRun && loungeSession)
+              updateRoomPresenceCount();
+          })
+          .subscribe(async (status, error) => {
+            if (channel !== chatChannel || run !== loungeEntryRun || !loungeSession) return;
+            if (status === "SUBSCRIBED") {
+              chatRealtimeReady = true;
+              setRoomConnectionState("online", "Live room connected");
+              try {
+                const presence = await channel.track({ online_at: new Date().toISOString() });
+                if (presence !== "ok") console.warn("Supabase Presence track returned", presence);
+              } catch (presenceError) {
+                console.warn("Supabase Presence tracking failed", presenceError);
+              }
+            } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
+              console.error("Supabase Realtime channel status", status, error || "");
+              chatRealtimeReady = false;
+              setRoomConnectionState("offline", "Live room disconnected");
+            }
+          });
+      } catch (error) {
+        console.error("Supabase Realtime initialization failed", error);
+        chatRealtimeReady = false;
+        setRoomConnectionState("offline", "Live room unavailable");
       }
     }
 
@@ -1523,7 +1436,6 @@
     }
 
     async function closeLoungeSession() {
-      cancelRealtimeAttempt?.();
       const channel = chatChannel;
       chatChannel = null;
       chatRealtimeReady = false;
