@@ -91,24 +91,6 @@
     .visibility-switch:disabled{cursor:not-allowed;opacity:.42}
     .visibility-note{margin:0 2px;color:rgba(236,249,247,.48);font-size:.74rem;line-height:1.45}
     .visibility-note.error{color:#ffb2a7}
-    .ledger-trail{position:fixed;inset:0;width:100vw;height:100dvh;z-index:40;display:flex;align-items:center;justify-content:center;padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));background:rgba(0,12,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .34s ease,visibility 0s linear .34s}
-    .ledger-trail.show{opacity:1;visibility:visible;pointer-events:auto;transition-delay:0s}
-    .ledger-trail-panel{position:relative;width:min(470px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:24px 22px 22px;border:1px solid rgba(134,215,201,.24);border-radius:26px;background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99));box-shadow:0 34px 90px rgba(0,0,0,.58);opacity:0;transform:translateY(10px) scale(.985);transition:opacity .34s ease,transform .38s cubic-bezier(.2,.8,.2,1)}
-    .ledger-trail.show .ledger-trail-panel{opacity:1;transform:none}
-    .ledger-trail-panel:before{content:"";display:block;height:3px;margin:-24px -22px 21px;background:linear-gradient(90deg,var(--lagoon),var(--sea-glass),var(--mango),var(--coral))}
-    .trail-topline{display:flex;align-items:center;gap:10px;margin:0 0 6px}
-    .trail-close{flex:0 0 28px;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;margin:0!important;padding:0!important;display:grid!important;place-items:center;border:1px solid rgba(236,249,247,.20)!important;border-radius:50%!important;background:rgba(255,255,255,.035)!important;color:rgba(245,251,250,.72)!important;font:500 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;cursor:pointer;-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent;box-shadow:none!important;transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease}
-    .trail-close:hover,.trail-close:focus-visible{background:rgba(255,255,255,.08)!important;border-color:rgba(134,215,201,.42)!important;color:#fff!important;outline:none}
-    .trail-close:active{transform:scale(.94)}
-    .trail-kicker{padding-left:0;color:var(--mango);font-size:.64rem;font-weight:950;letter-spacing:.16em;text-transform:uppercase}
-    .ledger-trail h2{margin:7px 0 6px;font-size:clamp(1.8rem,8vw,2.8rem);letter-spacing:-.045em}
-    .trail-lede{margin:0 0 18px;color:var(--muted);font-size:.78rem;line-height:1.5}
-    .trail-action{display:none;margin:0 0 18px;padding:16px;border:1px solid rgba(243,182,74,.30);border-radius:17px;background:linear-gradient(145deg,rgba(243,182,74,.10),rgba(47,168,160,.06))}
-    .trail-action.show{display:block}.trail-action strong{display:block;color:#ffe2a7;font-size:1.05rem}.trail-action p{margin:6px 0 0;color:rgba(255,244,214,.80);font-size:.76rem;line-height:1.45}.trail-action img{display:block;width:min(220px,72vw);margin:14px auto 0;padding:7px;border-radius:13px;background:white}.trail-action .trail-uri{margin-top:8px;color:rgba(236,249,247,.42);font-size:.52rem;line-height:1.35;overflow-wrap:anywhere}
-    .trail-route{display:grid;gap:0;margin:4px 0 18px}.trail-step{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);gap:11px;min-height:58px;align-items:start}.trail-marker{position:relative;display:grid;place-items:center;width:28px;height:28px;margin-top:1px;border:1px solid rgba(236,249,247,.22);border-radius:50%;background:#082936;color:rgba(236,249,247,.40);font-size:.76rem;font-weight:950;z-index:1}.trail-step:not(:last-child) .trail-marker:after{content:"";position:absolute;top:27px;left:50%;width:2px;height:32px;transform:translateX(-50%);background:linear-gradient(to bottom,rgba(134,215,201,.18),rgba(134,215,201,.05))}.trail-copy strong{display:block;padding-top:1px;font-size:.82rem}.trail-copy span{display:block;margin-top:3px;color:rgba(236,249,247,.43);font-size:.66rem;line-height:1.35}.trail-step.done .trail-marker{border-color:rgba(159,224,176,.48);background:rgba(159,224,176,.12);color:#bdf2c8}.trail-step.done:not(:last-child) .trail-marker:after{background:linear-gradient(to bottom,rgba(134,215,201,.75),rgba(134,215,201,.25))}.trail-step.done .trail-copy span{color:rgba(189,242,200,.66)}.trail-step.active .trail-marker{border-color:rgba(243,182,74,.70);background:rgba(243,182,74,.12);color:#ffe2a7;box-shadow:0 0 0 6px rgba(243,182,74,.055)}.trail-step.active .trail-marker:before{content:"";position:absolute;inset:-7px;border:1px solid rgba(243,182,74,.22);border-radius:50%;animation:trailPulse 1.6s ease-out infinite}.trail-step.active .trail-copy strong{color:#ffe2a7}.trail-step.active .trail-copy span{color:rgba(255,226,167,.72)}.trail-step.failed .trail-marker{border-color:rgba(255,183,170,.58);background:rgba(239,115,95,.12);color:var(--bad)}.trail-step.failed .trail-copy strong,.trail-step.failed .trail-copy span{color:var(--bad)}
-    .trail-status{margin:2px 0 0;padding:12px 13px;border:1px solid rgba(255,255,255,.09);border-radius:13px;background:rgba(0,13,21,.28);color:rgba(236,249,247,.72);font-size:.7rem;line-height:1.45}.trail-status.busy{color:#ffe2a7;border-color:rgba(243,182,74,.20);background:rgba(243,182,74,.05)}.trail-status.error{color:var(--bad);border-color:rgba(239,115,95,.22);background:rgba(239,115,95,.06)}.trail-retry{width:100%;margin-top:11px;border:1px solid rgba(134,215,201,.24);border-radius:12px;padding:11px 13px;background:rgba(134,215,201,.08);color:#dffff8;font-weight:900}.trail-complete{display:none;margin-top:13px;text-align:center;color:#bdf2c8;font-weight:950}.trail-complete.show{display:block}.trail-complete .trail-complete-check{display:grid;place-items:center;width:50px;height:50px;margin:0 auto 8px;border:2px solid rgba(159,224,176,.58);border-radius:50%;background:rgba(159,224,176,.10);font-size:1.55rem}
-    @keyframes trailPulse{0%{transform:scale(.84);opacity:.85}75%,100%{transform:scale(1.32);opacity:0}}
-    @media(prefers-reduced-motion:reduce){.ledger-trail,.ledger-trail-panel{transition:none}.trail-step.active .trail-marker:before{animation:none}}
     .future{
       margin:2px 22px 24px;padding:16px 18px;border:1px dashed rgba(134,215,201,.2);border-radius:18px;
       color:rgba(236,249,247,.58);font-size:.82rem;line-height:1.5;
@@ -120,6 +102,7 @@
     }
   </style>
   <link rel="stylesheet" href="wildLedgerControls.css">
+  <link rel="stylesheet" href="ledgerTrail.css">
 </head>
 <body>
   <main class="shell">
@@ -146,37 +129,17 @@
     </section>
   </main>
 
-  <div class="ledger-trail" id="ledgerTrail" role="dialog" aria-modal="true" aria-labelledby="ledgerTrailTitle" aria-live="polite">
-    <div class="ledger-trail-panel">
-      <div class="trail-topline">
-        <button class="trail-close" id="ledgerTrailClose" type="button" aria-label="Close Ledger Trail">×</button>
-        <div class="trail-kicker">Wild Ledger · Owner visibility</div>
-      </div>
-      <h2 id="ledgerTrailTitle">The Ledger Trail</h2>
-      <p class="trail-lede" id="ledgerTrailLede">One Owner-authorized path from the current public state to a newly verified visibility state.</p>
-      <div class="trail-action" id="trailAction">
-        <strong id="trailActionTitle">GO TO BIFROST NOW</strong>
-        <p id="trailActionCopy"></p>
-        <img id="trailQrImage" alt="Wallet connection QR code" hidden>
-        <div class="trail-uri" id="trailUri" hidden></div>
-      </div>
-      <div class="trail-route" id="trailRoute"></div>
-      <p class="trail-status" id="ledgerTrailStatus">Ready when you are.</p>
-      <div class="trail-complete" id="trailComplete"><div class="trail-complete-check">✓</div><div id="trailCompleteText">Visibility updated.</div></div>
-      <button class="trail-retry" id="ledgerTrailRetry" type="button" hidden>Follow the Trail Again</button>
-    </div>
-  </div>
-
   <script src="js/wildLedgerConfig.js"></script>
   <script src="js/communityConfig.js" data-registry-only="true"></script>
   <script type="module">
     import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
+    import { createLedgerTrail } from "./js/ledgerTrail.js";
+    import { DirectXRPLClient, submitSignedTransaction } from "./js/xrplTransport.js";
     import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
     import {
       readCommunityVisibility,
       communityIsHidden,
-      prepareCommunityVisibility,
-      submitCommunityVisibility
+      prepareCommunityVisibility
     } from "./js/communityVisibility.js?wl=20261004xrpl2";
 
     const directory = document.getElementById("communityDirectoryList");
@@ -199,10 +162,14 @@
     let prepared = null;
     let signedBlob = "";
     let visibilityTrailBusy = false;
-    let trailActiveStep = "";
-    let trailRetryHandler = null;
     let walletHandoffActive = false;
+    let trailActiveStep = "";
+    let trailRun = 0;
+    let finishResolve = null;
+    let savedVisibility = null;
     let trailSubmittedHash = "";
+    const STOPPED = Symbol("Ledger Trail closed");
+    const PENDING_KEY = "wild-ledger-owner-visibility-signed-v1";
 
     const TRAIL_STEPS = Object.freeze([
       ["owner", "Owner authority", "Waiting to recheck the current Wild Ledger Owner."],
@@ -215,95 +182,98 @@
       ["ready", "Visibility updated", "Waiting for the final proof."]
     ]);
 
-    function currentOwner() {
-      return String(visibilityState?.ownerState?.currentAccount || "").trim();
-    }
-
-    function trailElement(step) {
-      return document.querySelector(`[data-trail-step="${step}"]`);
-    }
-
-    function renderTrail() {
-      $("trailRoute").innerHTML = TRAIL_STEPS.map(([id, label, detail]) =>
-        `<div class="trail-step" data-trail-step="${id}"><div class="trail-marker">○</div><div class="trail-copy"><strong>${label}</strong><span>${detail}</span></div></div>`
-      ).join("");
-    }
-
-    function resetTrail() {
-      trailActiveStep = "";
-      trailRetryHandler = null;
-      walletHandoffActive = false;
-      renderTrail();
-      $("ledgerTrailRetry").hidden = true;
-      $("trailComplete").classList.remove("show");
-      hideTrailAction();
-      const status = $("ledgerTrailStatus");
-      status.className = "trail-status";
-      status.textContent = "Starting the trail…";
-    }
-
-    function showTrail() {
-      resetTrail();
-      $("ledgerTrail").classList.add("show");
-    }
-
-    function hideTrail() {
-      walletHandoffActive = false;
-      $("ledgerTrail").classList.remove("show");
-    }
-
+    const trail = createLedgerTrail({
+      title: "Community Visibility",
+      description: "One Owner-authorized path to update a community’s public visibility on XRPL.",
+      steps: TRAIL_STEPS.map(([id,title,detail]) => ({id,title,detail})),
+      onClose() {
+        ++trailRun;
+        walletHandoffActive = false;
+        if (finishResolve) { finishResolve(); finishResolve = null; }
+      }
+    });
+    function isActive(run) { return run === trailRun && trail.element.classList.contains("show"); }
+    function assertActive(run) { if (!isActive(run)) throw STOPPED; }
+    function showTrail() { ++trailRun; trailActiveStep = ""; walletHandoffActive = false; trail.open(); return trailRun; }
+    function hideTrail() { walletHandoffActive = false; trail.close(); }
     function setTrailStep(step, stateName, detail = "") {
-      const row = trailElement(step);
-      if (!row) return;
-      row.className = `trail-step ${stateName}`;
-      const marker = row.querySelector(".trail-marker");
-      marker.textContent = stateName === "done" ? "✓" : stateName === "failed" ? "×" : stateName === "active" ? "•" : "○";
-      if (detail) row.querySelector(".trail-copy span").textContent = detail;
-      if (stateName === "active") trailActiveStep = step;
+      if (stateName === "active" || stateName === "waiting") trailActiveStep = step;
+      trail.setStep(step, stateName === "active" ? "working" : stateName, detail || undefined);
     }
-
-    function setTrailStatus(message, tone = "") {
-      const el = $("ledgerTrailStatus");
-      el.className = `trail-status${tone ? ` ${tone}` : ""}`;
-      el.textContent = message;
-    }
-
-    function showTrailAction(title, copy, { qrDataUrl = "", uri = "" } = {}) {
+    function setTrailStatus(message, tone = "") { trail.setStatus(message, tone); }
+    function showTrailAction(title, copy, { qrDataUrl = "" } = {}) {
       walletHandoffActive = true;
-      $("trailActionTitle").textContent = title;
-      $("trailActionCopy").textContent = copy;
-      $("trailQrImage").hidden = !qrDataUrl;
-      $("trailQrImage").src = qrDataUrl || "";
-      $("trailUri").hidden = !uri;
-      $("trailUri").textContent = uri || "";
-      $("trailAction").classList.add("show");
+      trail.showPrompt({ heading: title, detail: copy, qrDataUrl });
     }
-
-    function hideTrailAction() {
-      walletHandoffActive = false;
-      $("trailAction").classList.remove("show");
-      $("trailQrImage").hidden = true;
-      $("trailQrImage").src = "";
-      $("trailUri").hidden = true;
-      $("trailUri").textContent = "";
-    }
-
-    function failTrail(error, retryHandler = null, retryLabel = "Follow the Trail Again") {
+    function hideTrailAction() { walletHandoffActive = false; trail.hidePrompt(); }
+    function failTrail(error) {
+      if (error === STOPPED || error?.trailCancelled || !trail.element.classList.contains("show")) return;
       if (trailActiveStep) setTrailStep(trailActiveStep, "failed", error?.message || String(error));
       setTrailStatus(error?.message || String(error), "error");
-      trailRetryHandler = typeof retryHandler === "function" ? retryHandler : null;
-      $("ledgerTrailRetry").textContent = retryLabel;
-      $("ledgerTrailRetry").hidden = !trailRetryHandler;
     }
-
-    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
-
-    async function trailCompletion(text) {
-      await wait(500);
-      $("trailCompleteText").textContent = text;
-      $("trailComplete").classList.add("show");
-      await wait(650);
+    // Yield to browser/X events between immediate attempts; never a timed backoff.
+    const yieldToX = () => new Promise(resolve => setTimeout(resolve, 0));
+    function transientReadError(error) {
+      const message = `${error?.response?.error || ""} ${error?.response?.error_message || ""} ${error?.message || error || ""}`;
+      return /too.?busy|server.?busy|slow.?down|temporar|time.?out|timed out|connection|disconnect|socket|websocket|network|unavailable|try again|failed to fetch|fetch failed|ECONN|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH|429\b|50[234]\b/i.test(message);
     }
+    async function readUntilX(label, fn, run) {
+      for (;;) {
+        assertActive(run);
+        try { const result = await fn(); assertActive(run); return result; }
+        catch (error) {
+          if (!isActive(run) || error === STOPPED || error?.trailCancelled) throw STOPPED;
+          if (!transientReadError(error)) throw error;
+          setTrailStatus(`XRPL connection interrupted. Continuing ${label.toLowerCase()}…`, "busy");
+          await yieldToX();
+        }
+      }
+    }
+    async function finishTrail(run) {
+      assertActive(run);
+      await new Promise(resolve => {
+        finishResolve = resolve;
+        trail.finish({ message: "Completed", onFinished() { finishResolve = null; resolve(); } });
+      });
+      assertActive(run);
+      hideTrail();
+    }
+    function currentOwner() { return String(visibilityState?.ownerState?.currentAccount || "").trim(); }
+    async function signedHash(blob) {
+      if (!/^(?:[A-Fa-f0-9]{2}){40,}$/.test(blob)) throw new Error("Bifrost signed transaction blob is invalid.");
+      const bytes = Uint8Array.from(blob.match(/../g), pair => parseInt(pair,16));
+      const input = new Uint8Array(bytes.length+4);
+      input.set([0x54,0x58,0x4e,0x00]); input.set(bytes,4);
+      const hash = new Uint8Array(await crypto.subtle.digest("SHA-512", input));
+      return Array.from(hash.slice(0,32), b => b.toString(16).padStart(2,"0")).join("").toUpperCase();
+    }
+    function loadSavedVisibility() {
+      for (const storage of [localStorage,sessionStorage]) {
+        try {
+          const value = JSON.parse(storage.getItem(PENDING_KEY) || "null");
+          if (value && /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(value.communityId)
+            && /^(?:[A-F0-9]{2}){40,}$/.test(value.signedBlob)
+            && /^[A-F0-9]{64}$/.test(value.hash)
+            && /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(value.owner)
+            && typeof value.hidden === "boolean" && typeof value.submitAttempted === "boolean") return value;
+        } catch (_) {}
+      }
+      return null;
+    }
+    function saveVisibility(record) {
+      const raw = JSON.stringify(record);
+      let saved = false;
+      for (const storage of [localStorage,sessionStorage]) {
+        try { storage.setItem(PENDING_KEY,raw); if (storage.getItem(PENDING_KEY) === raw) saved = true; } catch (_) {}
+      }
+      if (!saved) throw new Error("Signed visibility transaction could not be saved. Nothing was submitted.");
+      savedVisibility = record;
+    }
+    function clearSavedVisibility() {
+      for (const storage of [localStorage,sessionStorage]) { try { storage.removeItem(PENDING_KEY); } catch (_) {} }
+      savedVisibility = null;
+    }
+    savedVisibility = loadSavedVisibility();
 
     function addChip(meta, text, reference = false, hidden = false) {
       if (!text) return;
@@ -383,11 +353,7 @@
       latestCommunities.forEach(renderCommunity);
     }
 
-    function clearPrepared() {
-      prepared = null;
-      signedBlob = "";
-      trailSubmittedHash = "";
-    }
+    function clearPrepared() { prepared = null; signedBlob = ""; trailSubmittedHash = ""; }
 
     async function disconnectSigner() {
       if (!signer) return;
@@ -396,24 +362,7 @@
       signerAccount = "";
     }
 
-    async function reconstructExpectedVisibility(communityId, hidden, { attempts = 8 } = {}) {
-      let lastError = null;
-      for (let attempt = 1; attempt <= attempts; attempt += 1) {
-        try {
-          const stateResult = await readCommunityVisibility({ serverUrl: SERVER, force: true });
-          const record = stateResult.visibility.get(communityId) || null;
-          if (record && record.hidden === Boolean(hidden)) return { state: stateResult, record };
-          lastError = new Error(`${communityId} is not yet reconstructed as ${hidden ? "HIDDEN" : "VISIBLE"}.`);
-        } catch (error) {
-          lastError = error;
-        }
-        setTrailStatus(`XRPL submission is already behind us. Reconstructing visibility · check ${attempt} of ${attempts}…`, "busy");
-        await wait(1100 + attempt * 250);
-      }
-      throw lastError || new Error("Canonical visibility could not yet be reconstructed.");
-    }
-
-    function applyPublishedVisibility(stateResult, record, { recovered = false } = {}) {
+    function applyPublishedVisibility(stateResult, record) {
       visibilityState = stateResult;
       visibilityReady = true;
       renderList();
@@ -423,44 +372,117 @@
       return ledger;
     }
 
-    async function finishVisibilityTrail(stateResult, record, { recovered = false, alreadyCanonical = false } = {}) {
-      const ledger = applyPublishedVisibility(stateResult, record, { recovered });
-      setTrailStep("verify", "done", `${record.communityId} reconstructed as ${record.hidden ? "HIDDEN" : "VISIBLE"} from validated Owner history${ledger !== "?" ? ` · ledger ${ledger}` : ""}.`);
-      setTrailStep("ready", "active", "Final proof is complete.");
-      await wait(180);
-      setTrailStep("ready", "done", `${record.communityId} is ${record.hidden ? "hidden from" : "visible on"} the public Wild Ledger page.`);
-      setTrailStatus(alreadyCanonical ? "The requested visibility was already canonical. No second transaction was submitted." : "Owner visibility is canonical. The change is complete.");
-      await trailCompletion(record.hidden ? "Community hidden" : "Community visible");
-      hideTrail();
-      pendingCommunity = null;
-      prepared = null;
-      signedBlob = "";
-      trailSubmittedHash = "";
+    async function confirmCanonicalVisibility(record, run) {
+      setTrailStep("verify", "active", "Independently reconstructing Owner-signed visibility history.");
+      for (;;) {
+        const stateResult = await readUntilX("Owner visibility reconstruction", () => readCommunityVisibility({ serverUrl: SERVER, force: true }), run);
+        const latest = stateResult.visibility.get(record.communityId) || null;
+        if (latest && latest.hidden === record.hidden && (!record.hash || String(latest.hash || "").toUpperCase() === record.hash)) {
+          return { state: stateResult, record: { ...latest, communityId: record.communityId } };
+        }
+        assertActive(run);
+        setTrailStatus("Waiting for the original Owner-signed visibility record to appear in validated XRPL history…", "busy");
+        await yieldToX();
+      }
     }
 
-    async function resumeVisibilityReadback() {
-      if (!pendingCommunity) return;
-      if (!$("ledgerTrail").classList.contains("show")) $("ledgerTrail").classList.add("show");
-      visibilityTrailBusy = true;
-      renderList();
-      const id = pendingCommunity.communityId;
-      const target = pendingHidden ? "HIDDEN" : "VISIBLE";
-      setTrailStep("owner", "done", "Owner authority was confirmed before submission.");
-      setTrailStep("choice", "done", `${id} target state confirmed as ${target}.`);
-      setTrailStep("connect", "done", "Current Owner Wallet connection completed.");
-      setTrailStep("prepared", "done", "Canonical visibility transaction was prepared.");
-      setTrailStep("signature", "done", "Owner signature was returned by Bifrost.");
-      setTrailStep("xrpl", "done", trailSubmittedHash ? `Transaction submitted · ${trailSubmittedHash.slice(0, 12)}…` : "Signed transaction was submitted once; Wild Ledger will not resubmit it.");
-      setTrailStep("verify", "active", "Reading validated Owner visibility history until the requested state is canonical.");
-      try {
-        const recovered = await reconstructExpectedVisibility(id, pendingHidden);
-        await finishVisibilityTrail(recovered.state, recovered.record, { recovered: true });
-      } catch (error) {
-        failTrail(error, () => resumeVisibilityReadback(), "Retry XRPL readback");
-      } finally {
-        visibilityTrailBusy = false;
-        renderList();
+    async function readSignedTransaction(hash, run) {
+      return readUntilX("signed visibility transaction", async () => {
+        const client = new DirectXRPLClient(SERVER);
+        try {
+          await client.connect();
+          assertActive(run);
+          let response;
+          try { response = await client.request("tx", { transaction: hash, binary: false }, 20000); }
+          catch (error) {
+            if (/txnNotFound|transaction not found|not.?found/i.test(`${error?.response?.error || ""} ${error?.message || ""}`)) return null;
+            throw error;
+          }
+          assertActive(run);
+          const data = response.result || {};
+          if (!data.validated) return null;
+          if (String(data.hash || "").toUpperCase() !== hash) throw new Error("XRPL returned a different transaction hash.");
+          const result = data.meta?.TransactionResult || data.metaData?.TransactionResult || data.engine_result;
+          if (result !== "tesSUCCESS") {
+            const error = new Error(`Owner visibility transaction validated as ${result || "UNKNOWN"}, not tesSUCCESS.`);
+            // A confirmed, validated non-success can never later become successful.
+            if (result) error.validatedFailure = true;
+            throw error;
+          }
+          return data;
+        } finally { client.close(); }
+      }, run);
+    }
+
+    async function completeVisibility(record, run, { alreadyCanonical = false } = {}) {
+      assertActive(run);
+      const canonical = await confirmCanonicalVisibility(record, run);
+      assertActive(run);
+      const ledger = applyPublishedVisibility(canonical.state, canonical.record);
+      setTrailStep("verify", "done", `${record.communityId} reconstructed as ${record.hidden ? "HIDDEN" : "VISIBLE"} from validated Owner history${ledger !== "?" ? ` · ledger ${ledger}` : ""}.`);
+      setTrailStep("ready", "active", "Final proof is complete.");
+      setTrailStep("ready", "done", `${record.communityId} is ${record.hidden ? "hidden from" : "visible on"} the public Wild Ledger page.`);
+      setTrailStatus(alreadyCanonical ? "Requested visibility was already canonical; nothing was submitted." : "Owner visibility is canonical. The change is complete.");
+      await finishTrail(run);
+      clearSavedVisibility();
+      pendingCommunity = null;
+      clearPrepared();
+    }
+
+    async function submitAndConfirm(record, run) {
+      assertActive(run);
+      if (await signedHash(record.signedBlob) !== record.hash) throw new Error("Saved signed visibility evidence is inconsistent. Nothing was submitted.");
+      setTrailStep("xrpl", "active", "Checking the exact signed visibility transaction on XRPL.");
+      let confirmed = await readSignedTransaction(record.hash, run);
+      if (!confirmed && !record.submitAttempted) {
+        // Verify current Owner and existing visibility before a first-ever submission.
+        const fresh = await readUntilX("pre-submit Owner authority", () => readCommunityVisibility({ serverUrl: SERVER, force: true }), run);
+        if (!fresh.ownerState?.authorityEstablished || fresh.ownerState.currentAccount !== record.owner) {
+          throw new Error("Owner authority changed after signing. The saved transaction was not submitted.");
+        }
+        const existing = fresh.visibility.get(record.communityId) || null;
+        if (existing?.hidden === record.hidden) {
+          for (const step of ["xrpl", "verify"]) setTrailStep(step, "done", "Requested visibility is already canonical. No transaction submitted.");
+          await completeVisibility({ ...record, hash: "" }, run, { alreadyCanonical: true });
+          return;
+        }
+        assertActive(run);
+        setTrailStatus("Submitting the original signed visibility transaction once…", "busy");
+        try {
+          await submitSignedTransaction({
+            serverUrl: SERVER, signedBlob: record.signedBlob,
+            pollIntervalMs: 0, shouldContinue: () => isActive(run),
+            onBeforeSubmit() { assertActive(run); record.submitAttempted = true; saveVisibility(record); },
+            onSubmitted({ txHash }) {
+              if (String(txHash || "").toUpperCase() !== record.hash) throw new Error("XRPL returned a different signed visibility hash.");
+              trailSubmittedHash = record.hash;
+              setTrailStatus("Original signed visibility transaction accepted by XRPL. Confirming validation…", "busy");
+            }
+          });
+        } catch (error) {
+          if (!isActive(run) || error?.trailCancelled || error === STOPPED) throw STOPPED;
+          // A submission response may be lost. From here onward, read the same hash.
+          if (!transientReadError(error) && !/not confirmed within|already|past.seq|tefALREADY|tefPAST_SEQ/i.test(String(error?.message || error))) throw error;
+        }
       }
+      // Reopen, lost WebSocket, or uncertain response: never re-sign or re-submit.
+      while (!confirmed) {
+        assertActive(run);
+        setTrailStatus("Reading XRPL for the original signed visibility transaction…", "busy");
+        confirmed = await readSignedTransaction(record.hash, run);
+        if (!confirmed) await yieldToX();
+      }
+      setTrailStep("xrpl", "done", `Original signed visibility transaction validated${confirmed.ledger_index ? ` · ledger ${confirmed.ledger_index}` : ""}.`);
+      await completeVisibility(record, run);
+    }
+
+    function markSavedSteps(record) {
+      setTrailStep("owner", "done", "Owner authority confirmed before signing.");
+      setTrailStep("choice", "done", `${record.communityId} target ${record.hidden ? "HIDDEN" : "VISIBLE"}.`);
+      setTrailStep("connect", "done", "Owner Wallet connection completed.");
+      setTrailStep("prepared", "done", "Canonical visibility transaction prepared.");
+      setTrailStep("signature", "done", "Owner signature saved.");
+      trailSubmittedHash = record.hash;
     }
 
     async function runVisibilityTrail(community, nextHidden) {
@@ -470,47 +492,42 @@
       pendingHidden = Boolean(nextHidden);
       clearPrepared();
       renderList();
-      showTrail();
-      $("ledgerTrailLede").textContent = `One Owner-authorized path to make ${community.communityName || community.communityId} ${pendingHidden ? "hidden from" : "visible on"} the public Wild Ledger page. Each breadcrumb lights only when that step is real.`;
-
+      const run = showTrail();
       try {
+        if (savedVisibility) {
+          if (await signedHash(savedVisibility.signedBlob) !== savedVisibility.hash) throw new Error("Saved visibility transaction evidence is inconsistent. No transaction was submitted.");
+          pendingHidden = savedVisibility.hidden;
+          pendingCommunity = latestCommunities.find(item => item.communityId === savedVisibility.communityId) || { communityId: savedVisibility.communityId };
+          markSavedSteps(savedVisibility);
+          await submitAndConfirm(savedVisibility, run);
+          return;
+        }
         if (!PROJECT_ID) throw new Error("WalletConnect Project ID is not configured.");
-
-        setTrailStep("owner", "active", "Rechecking the current Wild Ledger Owner from validated XRPL history.");
-        visibilityState = await readCommunityVisibility({ serverUrl: SERVER, force: true });
+        setTrailStep("owner", "active", "Rechecking the current Owner from validated XRPL history.");
+        visibilityState = await readUntilX("current Owner authority", () => readCommunityVisibility({ serverUrl: SERVER, force: true }), run);
         visibilityReady = true;
         const owner = currentOwner();
-        if (!owner) throw new Error("Current Wild Ledger Owner authority could not be resolved from XRPL.");
+        if (!owner) throw new Error("Current Owner authority could not be resolved from XRPL.");
         setTrailStep("owner", "done", `Current Wild Ledger Owner confirmed: ${owner}`);
-
-        setTrailStep("choice", "active", "Confirming the selected community and requested public state against current XRPL visibility history.");
+        setTrailStep("choice", "active", "Checking the requested public state against current XRPL history.");
         const liveCommunity = latestCommunities.find(item => item.communityId === community.communityId);
-        if (!liveCommunity) throw new Error("That community is no longer in the live Wild Ledger directory.");
-        const defaultHidden = liveCommunity?.source === "owner-xrpl";
+        if (!liveCommunity) throw new Error("That community is no longer in the Wild Ledger directory.");
+        const defaultHidden = liveCommunity.source === "owner-xrpl";
         const currentHidden = communityIsHidden(visibilityState, liveCommunity.communityId, defaultHidden);
         const target = pendingHidden ? "HIDDEN" : "VISIBLE";
         setTrailStep("choice", "done", `${liveCommunity.communityId}: ${currentHidden ? "HIDDEN" : "VISIBLE"} → ${target}`);
-
         if (currentHidden === pendingHidden) {
           const existing = visibilityState.visibility.get(liveCommunity.communityId) || null;
           if (existing) {
-            setTrailStep("connect", "done", "No wallet handoff needed; the requested state is already canonical.");
-            setTrailStep("prepared", "done", "No new transaction required.");
-            setTrailStep("signature", "done", "No new signature required.");
-            setTrailStep("xrpl", "done", "No new XRPL submission required.");
-            setTrailStep("verify", "active", "Confirming the existing canonical visibility record.");
-            await finishVisibilityTrail(visibilityState, existing, { alreadyCanonical: true });
+            for (const key of ["connect", "prepared", "signature", "xrpl"]) setTrailStep(key, "done", "No transaction required.");
+            await completeVisibility({ communityId: liveCommunity.communityId, hidden: pendingHidden, hash: "" }, run, { alreadyCanonical: true });
             return;
           }
         }
-
-        setTrailStep("connect", "active", "Bifrost needs the current Owner Wallet connection.");
-        setTrailStatus("Waiting for the Owner Wallet connection…", "busy");
+        setTrailStep("connect", "waiting", "Approve the current Owner Wallet connection in Bifrost.");
+        showTrailAction("Connect Owner Wallet", "Approve the current Owner Wallet connection in Bifrost, then return here.");
         await disconnectSigner();
-        showTrailAction(
-          "GO TO BIFROST NOW",
-          "First handoff: approve the Wild Ledger Owner wallet connection in Bifrost, then return here. Wild Ledger will verify the connected account before continuing."
-        );
+        assertActive(run);
         signer = new WalletConnectXrplSigner({
           projectId: PROJECT_ID,
           metadata: {
@@ -520,110 +537,52 @@
             icons: [location.protocol.startsWith("http") ? `${location.origin}/favicon.ico` : "https://example.invalid/favicon.ico"]
           }
         });
-        const connection = await signer.connect({
-          onUri: async uri => {
-            const qrDataUrl = await QRCode.toDataURL(uri, { width: 560, margin: 2, errorCorrectionLevel: "M" });
-            showTrailAction(
-              "GO TO BIFROST NOW",
-              "First handoff: approve the Wild Ledger Owner wallet connection in Bifrost, then return here. Wild Ledger will verify the connected account before continuing.",
-              { qrDataUrl, uri }
-            );
-            setTrailStatus("Bifrost has the helm. Approve the Owner Wallet connection, then return here.", "busy");
-          }
-        });
+        const connection = await signer.connect({ onUri: async uri => {
+          if (!isActive(run)) return;
+          const qrDataUrl = await QRCode.toDataURL(uri, { width: 560, margin: 2, errorCorrectionLevel: "M" });
+          if (isActive(run)) showTrailAction("Connect Owner Wallet", "Approve the Owner Wallet connection in Bifrost, then return here.", { qrDataUrl });
+        }});
+        assertActive(run);
         signerAccount = connection.account;
-        if (signerAccount !== currentOwner()) throw new Error(`Wrong wallet connected: ${signerAccount}. Current Owner is ${currentOwner()}.`);
+        if (signerAccount !== currentOwner()) throw new Error(`Wrong Owner Wallet: ${signerAccount}. Current Owner is ${currentOwner()}.`);
         hideTrailAction();
         setTrailStep("connect", "done", "Correct current Owner Wallet connected.");
-
-        setTrailStep("prepared", "active", "Rechecking Owner authority and building the exact visibility AccountSet.");
-        prepared = await prepareCommunityVisibility({
-          serverUrl: SERVER,
-          communityId: liveCommunity.communityId,
-          hidden: pendingHidden,
-          feeCushion: FEE_CUSHION
-        });
+        setTrailStep("prepared", "active", "Rechecking authority and preparing canonical visibility AccountSet.");
+        prepared = await readUntilX("visibility transaction preparation", () => prepareCommunityVisibility({
+          serverUrl: SERVER, communityId: liveCommunity.communityId,
+          hidden: pendingHidden, feeCushion: FEE_CUSHION
+        }), run);
         if (prepared.ownerAccount !== signerAccount) throw new Error("Owner authority changed after wallet connection. Nothing was signed or submitted.");
-        signedBlob = "";
         setTrailStep("prepared", "done", `${prepared.memoText} · fee ${prepared.preparedTx.Fee} drops.`);
-
-        setTrailStep("signature", "active", "The current Owner Wallet must authorize this visibility statement.");
-        showTrailAction(
-          "GO TO BIFROST NOW",
-          `Second handoff: approve and sign the ${target} visibility transaction in Bifrost, then return here. Wild Ledger will not submit until the signed transaction comes back.`
-        );
-        setTrailStatus("Waiting for the Owner signature…", "busy");
+        setTrailStep("signature", "waiting", "Approve the visibility signature in Bifrost.");
+        showTrailAction("Sign Visibility", `Approve and sign the ${target} visibility transaction in Bifrost, then return here.`);
         const signed = await signer.signTransaction(prepared.preparedTx);
-        signedBlob = String(signed?.signedBlob || "");
-        if (!signedBlob) throw new Error("Bifrost did not return a signed transaction.");
+        const blob = String(signed?.signedBlob || "").toUpperCase();
+        if (!blob) throw new Error("Bifrost did not return a signed transaction.");
+        // Preserve an approved signature even when the human closed X during handoff.
+        const record = { communityId: liveCommunity.communityId, hidden: pendingHidden, owner: signerAccount,
+          signedBlob: blob, hash: await signedHash(blob), submitAttempted: false };
+        saveVisibility(record);
+        assertActive(run);
         hideTrailAction();
-        setTrailStep("signature", "done", "Owner signature received from Bifrost.");
-
-        setTrailStep("xrpl", "active", "Rechecking Owner authority, submitting once, and waiting for validated XRPL consensus.");
-        setTrailStatus("Submitting to XRPL and waiting for validated consensus…", "busy");
-        const published = await submitCommunityVisibility({
-          serverUrl: SERVER,
-          signedBlob,
-          expectedOwner: prepared.ownerAccount,
-          communityId: prepared.communityId,
-          hidden: prepared.hidden,
-          onSubmitted: ({ txHash }) => {
-            trailSubmittedHash = String(txHash || "").toUpperCase();
-            setTrailStatus(`Accepted by XRPL${trailSubmittedHash ? ` · ${trailSubmittedHash.slice(0, 12)}…` : ""}. Waiting for validation…`, "busy");
-          },
-          onValidated: ({ txHash, ledgerIndex, recovered }) => {
-            trailSubmittedHash = String(txHash || trailSubmittedHash || "").toUpperCase();
-            setTrailStep("xrpl", "done", `${recovered ? "Validated visibility recovered" : "Visibility transaction validated"}${ledgerIndex ? ` · ledger ${ledgerIndex}` : ""}.`);
-            setTrailStep("verify", "active", "Independently reconstructing the canonical visibility state from validated Owner history.");
-            setTrailStatus("XRPL validation is real. Wild Ledger is now proving the resulting visibility state from ledger history…", "busy");
-          }
-        });
-
-        if (published.alreadyCanonical) {
-          setTrailStep("xrpl", "done", "The requested visibility became canonical before submission. The signed transaction was not broadcast again.");
-        } else {
-          trailSubmittedHash = String(published.result?.txHash || trailSubmittedHash || "").toUpperCase();
-          setTrailStep("xrpl", "done", `Visibility transaction validated${published.result?.ledgerIndex ? ` · ledger ${published.result.ledgerIndex}` : ""}.`);
-        }
-
-        setTrailStep("verify", "active", "Independently confirming the canonical visibility state from validated Owner history.");
-        if (!published.record || published.record.hidden !== pendingHidden) throw new Error("XRPL validated, but the expected visibility state was not reconstructed.");
-        await finishVisibilityTrail(published.visibilityState, published.record, {
-          recovered: Boolean(published.recovered),
-          alreadyCanonical: Boolean(published.alreadyCanonical)
-        });
+        setTrailStep("signature", "done", "Owner signature saved.");
+        await submitAndConfirm(record, run);
       } catch (error) {
-        hideTrailAction();
-        if (error?.doNotResubmit || trailSubmittedHash) {
-          if (trailActiveStep === "xrpl") setTrailStep("xrpl", "done", trailSubmittedHash ? `Transaction submitted · ${trailSubmittedHash.slice(0, 12)}… · do not resubmit.` : "The signed transaction may already be on XRPL. Do not resubmit it.");
-          setTrailStep("verify", "active", "The safe next action is canonical XRPL readback, not another transaction.");
-          failTrail(error, () => resumeVisibilityReadback(), "Retry XRPL readback");
-        } else {
-          failTrail(error, () => {
-            hideTrail();
-            setTimeout(() => runVisibilityTrail(pendingCommunity, pendingHidden), 220);
-          }, "Try Visibility Change Again");
-        }
+        if (error?.validatedFailure) clearSavedVisibility();
+        if (error !== STOPPED && !error?.trailCancelled) { hideTrailAction(); failTrail(error); }
       } finally {
         visibilityTrailBusy = false;
         renderList();
       }
     }
 
-    $("ledgerTrailClose").addEventListener("click", hideTrail);
-    $("ledgerTrailRetry").addEventListener("click", () => {
-      const handler = trailRetryHandler;
-      trailRetryHandler = null;
-      $("ledgerTrailRetry").hidden = true;
-      if (handler) handler();
-    });
     document.addEventListener("visibilitychange", () => {
-      if (!walletHandoffActive || !$("ledgerTrail").classList.contains("show")) return;
+      if (!walletHandoffActive || !trail.element.classList.contains("show")) return;
       if (document.visibilityState === "hidden") setTrailStatus("Bifrost has the helm. Wild Ledger will be here when you return.", "busy");
       else setTrailStatus("Back in Wild Ledger. Checking Bifrost for proof before continuing…", "busy");
     });
     window.addEventListener("focus", () => {
-      if (walletHandoffActive && $("ledgerTrail").classList.contains("show")) setTrailStatus("Checking the wallet handoff…", "busy");
+      if (walletHandoffActive && trail.element.classList.contains("show")) setTrailStatus("Checking the wallet handoff…", "busy");
     });
 
     try {
@@ -664,6 +623,10 @@
       renderList(result.communities);
       await visibilityPromise;
       renderList(result.communities);
+      if (savedVisibility) {
+        const resumeCommunity = result.communities.find(item => item.communityId === savedVisibility.communityId) || { communityId: savedVisibility.communityId };
+        void runVisibilityTrail(resumeCommunity, savedVisibility.hidden);
+      }
 
       if (!result.communities.length) {
         state.textContent = "No communities were found.";
