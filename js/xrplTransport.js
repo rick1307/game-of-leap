@@ -216,17 +216,30 @@ export async function submitSignedTransaction({
   signedBlob,
   validationTimeoutMs = 60000,
   pollIntervalMs = 1800,
-  onSubmitted = null
+  onSubmitted = null,
+  shouldContinue = null,
+  onBeforeSubmit = null
 }) {
+  const checkOpen = () => {
+    if(typeof shouldContinue === "function" && !shouldContinue()){
+      const cancelled = new Error("Ledger Trail closed.");
+      cancelled.trailCancelled = true;
+      throw cancelled;
+    }
+  };
   const blob = String(signedBlob ?? "").trim();
   if (!blob || !/^[A-Fa-f0-9]+$/.test(blob)) throw new Error("A serialized signed XRPL transaction is required.");
   if (!serverUrl) throw new Error("XRPL WebSocket URL is required.");
 
   const client = new DirectXRPLClient(serverUrl);
   try {
+    checkOpen();
     await client.connect();
-
+    // Never send a signed payment after X closed the calling Trail.
+    checkOpen();
+    if(typeof onBeforeSubmit === "function")onBeforeSubmit();
     const submitResponse = await client.request("submit", { tx_blob: blob, fail_hard: false }, 20000);
+    checkOpen();
     const submitResult = submitResponse.result || {};
     const engineResult = submitResult.engine_result || "UNKNOWN";
     const engineMessage = submitResult.engine_result_message || "";
@@ -251,9 +264,12 @@ export async function submitSignedTransaction({
     let lastLookup = null;
 
     while (Date.now() < deadline) {
+      checkOpen();
       if (Number(pollIntervalMs) > 0) await sleep(Number(pollIntervalMs));
+      checkOpen();
       try {
         const lookup = await client.request("tx", { transaction: txHash, binary: false }, 15000);
+        checkOpen();
         lastLookup = lookup;
         const result = lookup.result || {};
 
@@ -268,10 +284,12 @@ export async function submitSignedTransaction({
           };
         }
       } catch (lookupError) {
+        checkOpen();
         const message = String(lookupError?.message || lookupError);
         if (!/not found|txnNotFound/i.test(message)) throw lookupError;
       }
     }
+    checkOpen();
 
     const seconds = Math.max(1, Math.round(Number(validationTimeoutMs) / 1000));
     const error = new Error(`XRPL accepted the transaction, but validation was not confirmed within ${seconds} seconds. Do not re-sign; the same signed blob can be checked or re-submitted safely.`);

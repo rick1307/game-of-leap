@@ -547,8 +547,18 @@ export async function submitCommunityRequestPayment({
   expectedOwner,
   expectedFeeDrops,
   expectedSequence,
-  onSubmitted = null
+  onSubmitted = null,
+  shouldContinue = null,
+  onBeforeSubmit = null
 } = {}) {
+  const checkOpen = () => {
+    if(typeof shouldContinue === "function" && !shouldContinue()){
+      const cancelled = new Error("Ledger Trail closed.");
+      cancelled.trailCancelled = true;
+      throw cancelled;
+    }
+  };
+  checkOpen();
   const server = String(serverUrl || "").trim();
   const wallet = String(account || "").trim();
   if (!server) throw new Error("XRPL WebSocket URL is required.");
@@ -556,13 +566,16 @@ export async function submitCommunityRequestPayment({
 
   const canonicalExpectedFeeDrops = normalizeSetupFeeDrops(expectedFeeDrops);
   const current = await readCommunitySetupFee({ serverUrl: server, force: true });
+  checkOpen();
   if (current.ownerState.currentAccount !== expectedOwner || current.currentFeeDrops !== canonicalExpectedFeeDrops) {
     throw new Error("The Owner Wallet or setup fee changed after this payment was prepared. Prepare a new payment before signing or submitting.");
   }
 
   const exactBefore = await findExactRequest({ serverUrl: server, account: wallet, sequence: expectedSequence, destination: expectedOwner, drops: expectedFeeDrops });
+  checkOpen();
   if (exactBefore) {
     const status = await readCommunityRequestStatus({ serverUrl: server, account: wallet, force: true });
+    checkOpen();
     if (status.validRequests.some(item => item.hash === exactBefore.hash)) {
       return { result: { validated: true, finalResult: "tesSUCCESS", alreadyCanonical: true, txHash: exactBefore.hash, ledgerIndex: exactBefore.ledger }, request: exactBefore, status, recovered: true };
     }
@@ -571,36 +584,49 @@ export async function submitCommunityRequestPayment({
   let accepted = null;
   let result;
   try {
+    checkOpen();
     result = await submitSignedTransaction({
       serverUrl: server,
       pollIntervalMs: 0,
       signedBlob,
+      shouldContinue,
+      onBeforeSubmit,
       onSubmitted: details => {
         accepted = details || {};
         if (typeof onSubmitted === "function") onSubmitted(details);
       }
     });
   } catch (error) {
+    if(error?.trailCancelled)throw error;
+    checkOpen();
     if (!ambiguousSubmit(error, accepted)) throw error;
     const deadline = Date.now() + 65000;
     while (Date.now() < deadline) {
+      checkOpen();
       try {
         const exact = await findExactRequest({ serverUrl: server, account: wallet, sequence: expectedSequence, destination: expectedOwner, drops: expectedFeeDrops });
+        checkOpen();
         if (exact) {
           const status = await readCommunityRequestStatus({ serverUrl: server, account: wallet, force: true });
+          checkOpen();
           if (status.validRequests.some(item => item.hash === exact.hash)) {
             return { result: { validated: true, finalResult: "tesSUCCESS", recoveredAfterSubmitError: true, txHash: exact.hash, ledgerIndex: exact.ledger }, request: exact, status, recovered: true };
           }
         }
-      } catch (_) {}
+      } catch (error) {
+        if(error?.trailCancelled)throw error;
+      }
     }
+    checkOpen();
     const pending = new Error("XRPL may already have received this payment, but Wild Ledger could not confirm it yet. Do not submit or pay again. Return to this page and reconnect the same wallet to check the request status.");
     pending.doNotResubmit = true;
     throw pending;
   }
 
+  checkOpen();
   if (result.finalResult !== "tesSUCCESS") throw new Error(`Validated community request payment returned ${result.finalResult}.`);
   const status = await readCommunityRequestStatus({ serverUrl: server, account: wallet, force: true });
+  checkOpen();
   const request = status.validRequests.find(item => item.hash === result.txHash) || status.request || null;
   if (!request) {
     const pending = new Error("The payment validated, but Wild Ledger has not reconstructed it as a valid community request yet. Do not pay again. Reconnect this same wallet later to check status.");
