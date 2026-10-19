@@ -1120,6 +1120,22 @@
     }
     realtimeDebug("Diagnostics loaded; waiting for Lounge entry");
     realtimeDebug("Realtime config", `URL: ${(() => { try { return new URL(SUPABASE_URL).host; } catch { return "invalid"; } })()} | key type: ${SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_") ? "publishable" : "other"}`);
+    // TEMPORARY DIAGNOSTIC: observe the actual Realtime WebSocket lifecycle.
+    // No credentials, message payloads, or URL query parameters are logged.
+    const NativeRealtimeWebSocket = globalThis.WebSocket;
+    class DiagnosticRealtimeWebSocket extends NativeRealtimeWebSocket {
+      constructor(url, protocols) {
+        super(url, protocols);
+        try {
+          const parsed = new URL(String(url));
+          realtimeDebug("WS attempt", `${parsed.host}${parsed.pathname}`);
+        } catch (_) { realtimeDebug("WS attempt", "URL unavailable"); }
+        this.addEventListener("open", () => realtimeDebug("WS open", "handshake completed"));
+        this.addEventListener("error", () => realtimeDebug("WS error", "browser reported transport error; inspect Safari Web Inspector for HTTP/TLS detail"));
+        this.addEventListener("close", event => realtimeDebug("WS close", `code=${event.code} clean=${event.wasClean} reason=${String(event.reason || "(none)").slice(0, 120)}`));
+      }
+    }
+    realtimeDebug("Browser WebSocket", typeof NativeRealtimeWebSocket);
     function setRoomConnectionState(state, label) {
       roomConnectionDot.classList.toggle("offline", state === "offline");
       roomConnectionDot.classList.toggle("connecting", state === "connecting");
@@ -1279,7 +1295,8 @@
       try {
         if (!supabaseClient) {
           supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+            auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+            realtime: { transport: DiagnosticRealtimeWebSocket }
           });
         }
         const channel = supabaseClient.channel(CHAT_CHANNEL_TOPIC, {
