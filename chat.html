@@ -569,6 +569,7 @@
   </style>
   <link rel="stylesheet" href="communitySurface.css">
   <link rel="stylesheet" href="wildLedgerControls.css">
+  <link rel="stylesheet" href="ledgerTrail.css">
   <style>
     /* Mobile typing: keep focused text fields at iPhone-safe size after shared CSS loads. */
     #nickname,
@@ -593,7 +594,9 @@
       to { opacity:0; }
     }
 
-    html.wl-chat-enter body {
+    /* Fade only the page, never the first-paint Ledger Trail overlay. */
+    html.wl-chat-enter body nav,
+    html.wl-chat-enter body main {
       animation:wlChatEnter 320ms ease-out both;
     }
 
@@ -603,11 +606,16 @@
     }
 
     @media (prefers-reduced-motion: reduce) {
-      html.wl-chat-enter body,
+      html.wl-chat-enter body nav,
+      html.wl-chat-enter body main,
       body.wl-chat-exit,
       .entry-card { animation-duration:1ms; }
     }
-  </style>
+    /* Opening handoff is instantaneous; all later Trail animation stays standard. */
+  .ledger-trail.lounge-first-paint,.ledger-trail.lounge-first-paint .ledger-trail-panel{transition:none!important}
+  .ledger-trail .trail-step.done .trail-copy strong .lounge-alias-word{color:#fff;font-weight:950;letter-spacing:.02em}
+  .room-head #loungeSessionName{color:var(--navy);font-weight:800}
+</style>
   <script>
     try {
       if (sessionStorage.getItem("wildLedger.chatTransition") === "1") {
@@ -619,6 +627,36 @@
 </head>
 
 <body class="wl-community-surface" data-prototype-role="manager">
+  <!-- Visible at first paint, before module imports; replaced seamlessly by shared Ledger Trail. -->
+  <div id="loungeEntryBoot" class="ledger-trail show" role="dialog" aria-modal="true" aria-labelledby="loungeEntryBootTitle">
+    <div class="ledger-trail-panel" tabindex="-1">
+      <div class="trail-topline"><button id="loungeEntryBootClose" class="trail-close" type="button" aria-label="Close Ledger Trail">×</button><div class="trail-kicker">Wild Ledger · Ledger Trail</div></div>
+      <h2 id="loungeEntryBootTitle">Enter the Community Lounge</h2>
+      <p class="trail-lede">Connect your wallet, verify your LEAP passport, and receive your temporary Lounge name.</p>
+      <div class="trail-route">
+        <div class="trail-step active"><div class="trail-marker" aria-hidden="true"><span class="trail-activity" aria-hidden="true"></span></div><div class="trail-copy"><strong>Connect Wallet</strong><span>Preparing Bifrost wallet connection.</span></div></div>
+        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Verify LEAP Passport</strong><span>Reading LEAP evidence from the validated XRP Ledger.</span></div></div>
+        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Assign Lounge Alias</strong><span>Wild Ledger assigns a temporary name automatically.</span></div></div>
+        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Establish Lounge Session</strong><span>Waiting for the live room to connect.</span></div></div>
+        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Ready</strong><span>Waiting to open the Lounge.</span></div></div>
+      </div>
+      <p class="trail-status busy" role="status" aria-live="polite">Preparing your Lounge entry…</p>
+    </div>
+  </div>
+  <script>
+    // X works before the external modules load; early closure prevents pairing.
+    window.__wildLedgerLoungeBootClosed = false;
+    (() => {
+      const boot = document.getElementById('loungeEntryBoot');
+      const key = event => { if (event.key === 'Escape') {event.preventDefault(); dismiss();} };
+      function cleanup() { document.removeEventListener('keydown',key);boot.remove(); }
+      function dismiss() {window.__wildLedgerLoungeBootClosed = true;cleanup();}
+      document.getElementById('loungeEntryBootClose').addEventListener('click',dismiss);
+      document.addEventListener('keydown',key);
+      window.__wildLedgerLoungeBootCleanup = cleanup;
+    })();
+  </script>
+
   <nav>
     <div class="wrap nav-inner wl-nav-right">
       <a class="back-link wl-header-control" id="backLink" href="memberRecord.html">Back</a>
@@ -629,7 +667,7 @@
     <div class="wrap">
       <div class="kicker" id="communityKicker">Community</div>
       <h1 id="loungeHeading">Community Lounge</h1>
-      <p class="lede" id="loungeLede">A place for members to pull up a chair, pick a name, and join the conversation.</p>
+      <p class="lede" id="loungeLede">A place for members to pull up a chair and join the conversation.</p>
 
       <div class="prototype-role-switch" aria-label="Prototype view" data-test-only hidden>
         <span class="prototype-role-label">Prototype view</span>
@@ -638,21 +676,6 @@
       </div>
 
       <section class="panel" id="loungePanel" aria-label="Community Lounge prototype">
-        <div id="entryView">
-          <div class="entry-card">
-            <h2>“Wanna ride with Batman?”</h2>
-            <p class="entry-intro">Pick an alias for the Lounge.</p>
-            <p class="entry-principle">We care that you’re here, not who you are.</p>
-
-            <form id="entryForm">
-              <div class="nickname-row">
-                <input id="nickname" maxlength="24" autocomplete="off" placeholder="Choose an alias" aria-label="Choose an alias" required />
-                <button class="primary" type="submit">Enter the Lounge</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
         <div id="chatView">
           <div class="room-head">
             <div class="room-title">
@@ -660,6 +683,7 @@
               <strong id="roomTitle">Community Lounge</strong>
             </div>
             <span class="room-count" id="roomConnectionStatus" aria-live="polite">Local preview</span>
+            <span class="room-count" id="loungeSessionName" aria-live="polite"></span>
           </div>
 
           <div class="messages" id="messages" aria-live="polite">
@@ -848,9 +872,12 @@
   <script type="module">
     import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2?bundle";
-    import { prepareTransaction, textToHex, isClassicAddress } from "./js/xrplTransport.js";
+    import { DirectXRPLClient, prepareTransaction, textToHex, isClassicAddress } from "./js/xrplTransport.js";
     import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
     import { resolveCommunityAuthority, clearCommunityAuthorityCache } from "./js/communityAuthority.js";
+    import { createLedgerTrail } from "./js/ledgerTrail.js";
+    import { generateLoungeAlias } from "./js/loungeAliases.js";
+    import { ensureWildLedgerCommunityRecord } from "./js/walletCommunityRecord.js";
 
     // Deliberately session-only: nickname is never written to localStorage or sessionStorage.
     let currentNickname = "";
@@ -912,10 +939,7 @@
     const OPERATING_WALLET_LABEL = `${COMMUNITY_BACKEND_ID} Operating Wallet`;
     const CHAT_CHANNEL_TOPIC = COMMUNITY_BACKEND_ID ? `wild-ledger:${COMMUNITY_BACKEND_ID}:lounge` : "";
 
-    const entryView = document.getElementById("entryView");
     const chatView = document.getElementById("chatView");
-    const entryForm = document.getElementById("entryForm");
-    const nicknameInput = document.getElementById("nickname");
     const messageForm = document.getElementById("messageForm");
     const messageInput = document.getElementById("messageInput");
     const messageSendButton = document.getElementById("messageSendButton");
@@ -1024,7 +1048,7 @@
       if (pageDescription) pageDescription.setAttribute("content", `${LOUNGE_NAME} for ${COMMUNITY_NAME}.`);
       if (communityKicker) communityKicker.textContent = COMMUNITY_NAME;
       if (loungeHeading) loungeHeading.textContent = LOUNGE_NAME;
-      if (loungeLede) loungeLede.textContent = `A place for ${MEMBER_PLURAL} to pull up a chair, pick an alias, and join the conversation.`;
+      if (loungeLede) loungeLede.textContent = `A place for ${MEMBER_PLURAL} to pull up a chair and join the conversation.`;
       if (loungePanel) loungePanel.setAttribute("aria-label", `${LOUNGE_NAME} prototype`);
       if (roomTitle) roomTitle.textContent = LOUNGE_NAME;
       if (backLink) backLink.href = `memberRecord.html?community=${encodeURIComponent(COMMUNITY_BACKEND_ID)}`;
@@ -1035,6 +1059,7 @@
         managerSampleTip.textContent = `Tip ${MANAGER_NAME} in XRP`;
       }
       applyDemoParticipants();
+    if (!TEST_MODE) messages.querySelectorAll(":scope > .message").forEach(node => node.remove());
       if (xrpManagerName) xrpManagerName.textContent = MANAGER_NAME;
       if (xrpManagerNameSecondary) xrpManagerNameSecondary.textContent = MANAGER_NAME;
       if (appreciationRecipient) appreciationRecipient.textContent = MANAGER_NAME;
@@ -1069,22 +1094,6 @@
 
     applyPrototypeRole(TEST_MODE ? document.body.dataset.prototypeRole : "member");
 
-    entryForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      if (!community) {
-        showChatToast(communitySelectionError || "Choose a valid Wild Ledger community first.");
-        return;
-      }
-      const name = nicknameInput.value.trim();
-      if (!name) return;
-
-      currentNickname = name;
-      entryView.style.display = "none";
-      chatView.style.display = "block";
-      messageInput.focus();
-      messages.scrollTop = messages.scrollHeight;
-    });
-
     function hasSupabaseRealtimeConfig() {
       return /^https:\/\//i.test(SUPABASE_URL)
         && !SUPABASE_URL.includes("PASTE_SUPABASE")
@@ -1114,7 +1123,7 @@
 
     function normalizedIncomingChatMessage(payload) {
       const value = payload && typeof payload === "object" ? payload : {};
-      const nickname = String(value.nickname || "").trim().slice(0, 24);
+      const nickname = String(value.nickname || "").trim().slice(0, 70);
       const text = String(value.text || "").trim().slice(0, 280);
       const senderId = String(value.senderId || "").trim().slice(0, 100);
       const messageId = String(value.messageId || "").trim().slice(0, 120);
@@ -1146,14 +1155,14 @@
       const copy = document.createElement("p");
 
       if (status === "enabled") {
-        trigger.setAttribute("aria-label", "Great Chats enabled");
-        title.textContent = "Great Chats enabled";
+        trigger.setAttribute("aria-label", "LEAP direct payments enabled");
+        title.textContent = "LEAP direct payments enabled";
       } else if (status === "disabled") {
-        trigger.setAttribute("aria-label", "Great Chats not enabled yet");
-        title.textContent = "Great Chats not enabled yet";
+        trigger.setAttribute("aria-label", "LEAP direct payments not enabled yet");
+        title.textContent = "LEAP direct payments not enabled yet";
       } else {
-        trigger.setAttribute("aria-label", "Great Chats not enabled yet");
-        title.textContent = "Great Chats not enabled yet";
+        trigger.setAttribute("aria-label", "LEAP direct payments not enabled yet");
+        title.textContent = "LEAP direct payments not enabled yet";
       }
 
       popover.append(title);
@@ -1205,7 +1214,7 @@
       row.querySelector(".name").textContent = nickname;
       const transferStatusSlot = row.querySelector(".transfer-status-slot");
       if (isMe && transferStatusSlot) {
-        transferStatusSlot.replaceWith(createTransferStatusNode("pending", { isMe: true }));
+        transferStatusSlot.replaceWith(createTransferStatusNode(loungeSession?.leapTransfersEnabled ? "enabled" : "disabled", { isMe: true }));
       } else if (transferStatusSlot) {
         transferStatusSlot.remove();
       }
@@ -1221,72 +1230,65 @@
       renderChatMessage({ ...message, isMe: false });
     }
 
-    async function initializeRealtimeChat() {
-      if (!community || !CHAT_CHANNEL_TOPIC) {
-        chatRealtimeReady = false;
-        setRoomConnectionState("offline", "Community unavailable");
-        return;
-      }
-      if (!hasSupabaseRealtimeConfig()) {
-        chatRealtimeReady = false;
-        setRoomConnectionState("offline", "Local preview — Supabase pending");
-        return;
-      }
-
+    async function initializeRealtimeChat(run) {
+      if (!community || !CHAT_CHANNEL_TOPIC) throw new Error("Community unavailable.");
+      if (!hasSupabaseRealtimeConfig()) throw new Error("Live-room configuration is unavailable.");
+      ensureLoungeRun(run);
       setRoomConnectionState("connecting", "Connecting live room…");
-      try {
-        supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-          auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
-        });
-
-        chatChannel = supabaseClient.channel(CHAT_CHANNEL_TOPIC, {
-          config: {
-            broadcast: { self: false, ack: true },
-            presence: { key: chatClientId }
-          }
-        });
-
-        chatChannel
-          .on("broadcast", { event: "chat-message" }, ({ payload }) => handleRealtimeChatMessage(payload))
-          .on("presence", { event: "sync" }, () => updateRoomPresenceCount())
+      supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+        auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
+      });
+      chatChannel = supabaseClient.channel(CHAT_CHANNEL_TOPIC, {
+        config: {broadcast: {self: false, ack: true},presence: {key: chatClientId}}
+      });
+      const channel = chatChannel;
+      await new Promise((resolve, reject) => {
+        let settled = false;
+        const complete = error => {
+          if (settled) return;
+          settled = true;
+          clearTimeout(timeout);
+          if (error) reject(error); else resolve();
+        };
+        // Network timeout is a failure signal, not an artificial delay or retry backoff.
+        const timeout = setTimeout(() => complete(new Error("Live-room connection timed out.")), 15000);
+        channel
+          .on("broadcast", { event: "chat-message" }, ({ payload }) => {
+            if (run === loungeEntryRun && loungeSession) handleRealtimeChatMessage(payload);
+          })
+          .on("presence", { event: "sync" }, () => {
+            if (run === loungeEntryRun && loungeSession) updateRoomPresenceCount();
+          })
           .subscribe(async (status, error) => {
+            if (run !== loungeEntryRun) {complete(new Error("Lounge entry closed."));return;}
             if (status === "SUBSCRIBED") {
-              chatRealtimeReady = true;
-              setRoomConnectionState("online", "Live room connected");
               try {
-                const trackStatus = await chatChannel.track({
-                  online_at: new Date().toISOString()
-                });
-                if (trackStatus !== "ok") {
-                  console.error("Supabase Presence track returned", trackStatus);
-                }
-              } catch (presenceError) {
-                console.error("Supabase Presence tracking failed", presenceError);
-              }
-              return;
-            }
-            if (status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED") {
-              console.error("Supabase Realtime channel status", status, error || "");
+                const presence = await channel.track({online_at: new Date().toISOString()});
+                ensureLoungeRun(run);
+                if (presence !== "ok") throw new Error("Live-room presence could not be established.");
+                chatRealtimeReady = true;
+                setRoomConnectionState("online", "Live room connected");
+                complete();
+              } catch (e) {complete(e);}
+            } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
               chatRealtimeReady = false;
               setRoomConnectionState("offline", "Live room disconnected");
+              complete(new Error(error?.message || "Live-room connection was interrupted."));
             }
           });
-      } catch (error) {
-        console.error("Supabase Realtime initialization failed", error);
-        chatRealtimeReady = false;
-        setRoomConnectionState("offline", "Live room unavailable");
-      }
+      });
+      ensureLoungeRun(run);
     }
 
     messageForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const text = messageInput.value.trim();
-      if (!text || !currentNickname) return;
+      if (!text || !currentNickname || !loungeSession || !chatView.classList.contains("lounge-admitted")) return;
 
       const message = {
         messageId: globalThis.crypto?.randomUUID?.() || `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         senderId: chatClientId,
-        nickname: currentNickname.slice(0, 24),
+        nickname: currentNickname.slice(0, 70),
         text: text.slice(0, 280),
         sentAt: new Date().toISOString()
       };
@@ -1319,9 +1321,245 @@
       }
     });
 
-    void initializeRealtimeChat();
+    // Never subscribe or track presence before the verified Lounge entry finishes.
 
+    // Lounge Entry — wallet is private session identity; alias is disposable display only.
+    // Existing public Supabase Broadcast is NOT server-authorized by this browser gate.
+    let loungeEntryRun = 0;
+    let loungeSigner = null;
+    let loungeSession = null;
+    const loungeSessionName = document.getElementById("loungeSessionName");
+    const loungeTrail = createLedgerTrail({
+      title: "Enter the Community Lounge",
+      description: "Connect your wallet, verify your LEAP passport, and receive your temporary Lounge name.",
+      steps: [
+        {id:"wallet", title:"Connect Wallet", detail:"Preparing Bifrost wallet connection."},
+        {id:"membership", title:"Verify LEAP Passport", detail:"Reading LEAP evidence from the validated XRP Ledger."},
+        {id:"alias", title:"Assign Lounge Alias", detail:"Wild Ledger assigns a temporary name automatically."},
+        {id:"session", title:"Establish Lounge Session", detail:"Waiting for the live room to connect."},
+        {id:"ready", title:"Ready", detail:"Waiting to open the Lounge."}
+      ],
+      onClose: () => { ++loungeEntryRun; void closeLoungeSession(); }
+    });
+    function ensureLoungeRun(run) {
+      if (run !== loungeEntryRun || !loungeTrail.element.classList.contains("show")) {
+        const error = new Error("Lounge Entry Ledger Trail closed.");
+        error.trailClosed = true;
+        throw error;
+      }
+    }
+    // Yield one browser task between immediately repeated reads so X can respond.
+    // MessageChannel adds no timed wait and no exponential or fixed backoff.
+    function nextBrowserTask() {
+      return new Promise(resolve => {
+        const ch = new MessageChannel();
+        ch.port1.onmessage = () => {ch.port1.close();ch.port2.close();resolve();};
+        ch.port2.postMessage(0);
+      });
+    }
+    function interruptedXRPL(error) {
+      return /websocket|socket|connection|network|timeout|timed out|temporar|unavailable|429|502|503|504|failed to fetch|server busy|disconnected|closed|xrpl connection interrupted|xrpl read incomplete/i.test(String(error?.message || error || ""));
+    }
+    async function ledgerReadUntilSuccess(run, job, label) {
+      while (true) {
+        ensureLoungeRun(run);
+        try {
+          const result = await job();
+          ensureLoungeRun(run);
+          return result;
+        } catch (error) {
+          ensureLoungeRun(run);
+          if (!interruptedXRPL(error)) throw error; // Semantically invalid evidence is not a transient read.
+          loungeTrail.setStep("membership", "working", `${label}…`);
+          loungeTrail.setStatus("Checking validated XRPL evidence…", "busy");
+          await nextBrowserTask();
+        }
+      }
+    }
+    async function readLeapPassport(wallet) {
+      const client = new DirectXRPLClient(XRPL_SERVER);
+      try {
+        await client.connect();
+        const response = await client.request("account_lines", {
+          account: wallet,
+          peer: LEAP_ISSUER,
+          ledger_index: "validated",
+          limit: 400
+        }, 15000);
+        const lines = response?.result?.lines;
+        if (!Array.isArray(lines)) throw new Error("XRPL read incomplete: LEAP trust lines unavailable.");
+        const line = lines.find(item =>
+          String(item?.account || "") === LEAP_ISSUER &&
+          String(item?.currency || "").toUpperCase() === LEAP_CURRENCY.toUpperCase()
+        );
+        const balance = Number(line?.balance ?? 0);
+        const limit = Number(line?.limit ?? 0);
+        if (!Number.isFinite(balance) || !Number.isFinite(limit)) {
+          throw new Error("XRPL read incomplete: LEAP trust line has invalid amounts.");
+        }
+        return { holdsLeap: balance > 0, leapTransfersEnabled: limit > 0 };
+      } finally {
+        client.close();
+      }
+    }
+
+    async function closeLoungeSession() {
+      const channel = chatChannel;
+      chatChannel = null;
+      chatRealtimeReady = false;
+      loungeSession = null;
+      currentNickname = "";
+      chatView.classList.remove("lounge-admitted");
+      chatView.style.display = "none";
+      if (loungeSessionName) loungeSessionName.textContent = "";
+      if (channel) {
+        try { await channel.untrack(); } catch (_) {}
+        try { await channel.unsubscribe(); } catch (_) {}
+      }
+      const signer = loungeSigner;
+      loungeSigner = null;
+      if (signer) { try { await signer.disconnect(); } catch (_) {} }
+    }
+    function showLoungeTrail() {
+      const boot = document.getElementById("loungeEntryBoot");
+      if (boot) loungeTrail.element.classList.add("lounge-first-paint");
+      loungeTrail.open();
+      if (boot) {
+        window.__wildLedgerLoungeBootCleanup?.();
+        requestAnimationFrame(() => loungeTrail.element.classList.remove("lounge-first-paint"));
+      }
+    }
+    async function beginLoungeEntry() {
+      const run = ++loungeEntryRun;
+      showLoungeTrail();
+      let currentStep = "wallet";
+      try {
+        if (!community || communitySelectionError) throw new Error(communitySelectionError || "Choose an established community.");
+        if (!XRPL_SERVER || !LEAP_ISSUER || !LEAP_CURRENCY || !WALLETCONNECT_PROJECT_ID) {
+          throw new Error("Lounge wallet/XRPL configuration is incomplete.");
+        }
+        loungeTrail.setStep("wallet","working","Preparing Bifrost connection.");
+        loungeTrail.setStatus("Connecting your XRPL wallet…","busy");
+        const connectingSigner = new WalletConnectXrplSigner({
+          projectId: WALLETCONNECT_PROJECT_ID,
+          metadata: {name:"Wild Ledger",description:"Wild Ledger Community Lounge",url:location.origin,icons:[]}
+        });
+        loungeSigner = connectingSigner;
+        let pairing;
+        try {
+          pairing = await connectingSigner.connect({onUri: async uri => {
+          ensureLoungeRun(run);
+          const img = await QRCode.toDataURL(uri,{width:480,margin:2,errorCorrectionLevel:"M"});
+          ensureLoungeRun(run);
+          loungeTrail.setStep("wallet","waiting","Approve the Bifrost wallet connection.");
+          loungeTrail.showPrompt({heading:"CONNECT BIFROST",detail:"Scan this QR code in Bifrost and approve the wallet connection.",qrDataUrl:img});
+          loungeTrail.setStatus("Waiting for your Bifrost approval…","busy");
+          }});
+        } finally {
+          // X may have been pressed while a wallet approval was still in flight.
+          // A late-approved WalletConnect session must not be left connected.
+          if (run !== loungeEntryRun) {
+            try { await connectingSigner.disconnect(); } catch (_) {}
+          }
+        }
+        ensureLoungeRun(run);
+        if (!isClassicAddress(pairing.account)) throw new Error("Bifrost did not return a valid XRPL wallet.");
+        loungeTrail.hidePrompt();
+        loungeTrail.setStep("wallet","done",`Wallet ${pairing.account.slice(0,6)}…${pairing.account.slice(-4)} connected.`);
+        currentStep = "membership";
+        loungeTrail.setStep("membership","working","Checking the wallet's LEAP passport on XRPL.");
+        loungeTrail.setStatus("Reading validated LEAP wallet state…","busy");
+        // A LEAP passport is ecosystem-wide. A wallet that holds canonical LEAP
+        // enters ANY Lounge, not only the community that originally awarded it.
+        // Receiving LEAP directly from another community establishes membership
+        // there; a separate onboarding Check is not required.
+        const passport = await ledgerReadUntilSuccess(run,
+          () => readLeapPassport(pairing.account), "Reading LEAP wallet state");
+        ensureLoungeRun(run);
+        let passportDetail = "Canonical LEAP holder verified for all community Lounges.";
+        if (!passport.holdsLeap) {
+          // Historical membership survives spending current LEAP. Current
+          // Operators also retain access to their own Lounge. Never mistake
+          // destination-community membership for a condition of entry.
+          const record = await ledgerReadUntilSuccess(run, async () => {
+            const result = await ensureWildLedgerCommunityRecord({wallet:pairing.account,force:true});
+            if (!result || !Array.isArray(result.communities)) {
+              throw new Error("XRPL read incomplete: ecosystem community record unavailable.");
+            }
+            const relationships = result.communities;
+            if (!relationships.some(item => item.member || item.currentOperator)) {
+              const interruptions = (result.warnings || []).filter(message => interruptedXRPL(new Error(message)));
+              if (interruptions.length) throw new Error("XRPL connection interrupted: " + interruptions.join("; "));
+            }
+            return result;
+          },"Reading LEAP history");
+          ensureLoungeRun(run);
+          const hasHistoricalMembership = record.communities.some(item => item.member);
+          const operatesDestination = record.communities.some(item =>
+            String(item.communityId || "").toUpperCase() === COMMUNITY_BACKEND_ID && item.currentOperator);
+          if (!hasHistoricalMembership && !operatesDestination) {
+            throw new Error("No LEAP passport found for this wallet yet. Receive your first LEAP to enter Wild Ledger Lounges.");
+          }
+          passportDetail = hasHistoricalMembership
+            ? "Existing LEAP community membership verified; all Lounges are open."
+            : "Current Community Operator verified.";
+        }
+        // This is NOT an admission condition. A dim lightning bolt is a prompt
+        // to enable direct LEAP receipt; it must never block a LEAP passport.
+        loungeTrail.setStep("membership","done",passportDetail);
+        currentStep = "alias";
+        loungeTrail.setStep("alias","working","Assigning your Lounge name…");
+        // Alias identity lives only in this tab for the current visit; no directory.
+        // Until authenticated server presence exists, collisions cannot be guaranteed globally.
+        const alias = generateLoungeAlias({locale:"en"});
+        ensureLoungeRun(run);
+        const aliasRow = loungeTrail.element.querySelector('[data-trail-step="alias"] .trail-copy strong');
+        if (aliasRow) {
+          aliasRow.textContent = "Assigned Lounge Alias: ";
+          const name = document.createElement("span");
+          name.className = "lounge-alias-word";
+          name.textContent = alias.display;
+          aliasRow.appendChild(name);
+        }
+        loungeTrail.setStep("alias","done",`Your temporary Lounge name is ${alias.display}.`);
+        currentStep = "session";
+        loungeTrail.setStep("session","working","Opening the live room; LEAP transfer readiness is separate from access.");
+        loungeTrail.setStatus("Establishing live Lounge presence…","busy");
+        loungeSession = Object.freeze({wallet:pairing.account, alias, sessionId:chatClientId, communityId:COMMUNITY_BACKEND_ID, leapTransfersEnabled:passport.leapTransfersEnabled});
+        currentNickname = alias.display;
+        await initializeRealtimeChat(run);
+        ensureLoungeRun(run);
+        loungeTrail.setStep("session","done","Live room connected; temporary alias assigned to this visit.");
+        currentStep = "ready";
+        loungeTrail.setStep("ready","working","Opening the Lounge.");
+        loungeTrail.finish({message:"Completed",onFinished: () => {
+          if (run !== loungeEntryRun) return;
+          chatView.style.display = "block";
+          chatView.classList.add("lounge-admitted");
+          if (loungeSessionName) loungeSessionName.textContent = `You: ${alias.display}`;
+          loungeTrail.close();
+          messageInput.focus();
+          messages.scrollTop = messages.scrollHeight;
+        }});
+      } catch (error) {
+        if (error.trailClosed || run !== loungeEntryRun) return;
+        console.error("Lounge Entry Ledger Trail:", error);
+        loungeTrail.hidePrompt();
+        loungeTrail.setStep(currentStep,"failed",error.message || String(error));
+        loungeTrail.setStatus(error.message || "Lounge entry could not complete.","error");
+        // No Retry control. X closes; the user can open the page afresh.
+        void closeLoungeSession();
+      }
+    }
+    if (!window.__wildLedgerLoungeBootClosed) void beginLoungeEntry();
+    else document.getElementById("loungeEntryBoot")?.remove();
+
+    window.addEventListener("pageshow", event => {
+      if (event.persisted) location.reload(); // A returned bfcache page must verify again.
+    });
     window.addEventListener("pagehide", () => {
+      ++loungeEntryRun;
+      void closeLoungeSession();
       if (chatChannel) {
         void chatChannel.untrack().catch(() => {});
       }
