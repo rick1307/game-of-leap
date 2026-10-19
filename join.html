@@ -823,6 +823,33 @@ const signedBlobPattern = /^(?:[A-F0-9]{2}){40,}$/;
 let selected = null, context = null, signer = null, applicant = "", prepared = null;
 let connectRun = 0, preparing = false, signing = false, reconciling = false, terminal = false;
 let pending = null;
+// Cancellation is explicit: the human closes the Trail with X (or Escape).
+// No recoverable XRPL read has a retry ceiling or timed backoff.
+let readRun = 0, readStopped = false;
+const READ_STOPPED = Symbol('Join Ledger Trail closed');
+const zeroDelayYield = () => new Promise(resolve => setTimeout(resolve, 0));
+function isInterruptedXrplRead(error) {
+  const detail = `${error?.response?.error || ''} ${error?.response?.error_message || ''} ${error?.message || error || ''}`;
+  return /too.?busy|server.?busy|slow.?down|temporar|time.?out|timed out|connection|disconnect|socket|websocket|network|unavailable|try again|failed to fetch|fetch failed|ECONN|ETIMEDOUT|ENETUNREACH|EHOSTUNREACH|429\b|50[234]\b/i.test(detail);
+}
+async function readUntilX(label, read) {
+  const run = readRun;
+  if (readStopped) throw READ_STOPPED;
+  for (;;) {
+    if (readStopped || run !== readRun) throw READ_STOPPED;
+    try {
+      const value = await read();
+      if (readStopped || run !== readRun) throw READ_STOPPED;
+      return value;
+    } catch (error) {
+      if (readStopped || run !== readRun || error === READ_STOPPED) throw READ_STOPPED;
+      if (!isInterruptedXrplRead(error)) throw error;
+      message('joinLedgerStatus', `XRPL connection interrupted. Continuing ${label}…`);
+      // Yield only to let the browser paint and register X; this is not timed backoff.
+      await zeroDelayYield();
+    }
+  }
+}
 // Seven real checkpoints, in chronological order. No invented progress or delays.
 const joinStages = ['community','wallet','recheck','payment','review','signature','consensus'];
 const trail = createLedgerTrail({
@@ -838,7 +865,10 @@ const trail = createLedgerTrail({
     {id:'consensus',title:'Verify XRPL Confirmation',detail:'Checking the saved signed payment against XRPL.'}
   ],
   onClose:()=>{
-    // Work continues and signed evidence remains protected when the human exits.
+    // Closing with X cancels further XRPL reads/retries and any not-yet-sent submit.
+    readStopped = true;
+    ++readRun;
+    ++connectRun;
     document.body.style.overflow='';
     $('firstLeapSubmit')?.focus();
   }
@@ -862,8 +892,10 @@ function stage(number,state,text) {
   trail.setStep(joinStages[number],state,text);
 }
 function setOverlay(open) {
-  if(open)trail.open({resetSteps:false});
-  else trail.close();
+  if(open){
+    if(readStopped){readStopped=false;++readRun;}
+    trail.open({resetSteps:false});
+  }else trail.close();
   document.body.style.overflow=open?'hidden':'';
 }
 function hidePaymentApproval() {
@@ -977,7 +1009,7 @@ async function signedHash(blob) {
   return Array.from(digest.slice(0,32),b=>b.toString(16).padStart(2,'0')).join('').toUpperCase();
 }
 async function beginConnect() {
-  if(pending || terminal || preparing || signing || reconciling) return;
+  if(pending || terminal || preparing || signing || reconciling || readStopped) return;
   const run=++connectRun;
   emptyQR('Creating QR…');
   $('firstLeapSubmit').disabled=true;
@@ -990,12 +1022,12 @@ async function beginConnect() {
   message('joinWalletStatus','Connecting to Bifrost…');
   try {
     if(!context){
-      await readCommunity();
-      if(run!==connectRun)return;
+      await readUntilX('community verification', readCommunity);
+      if(run!==connectRun || readStopped)return;
       stage(0,'done','Verified Community authority and current Join Request Price');
       stage(1,'working','Creating a secure Bifrost wallet connection…');
     }
-    if(run!==connectRun)return;
+    if(run!==connectRun || readStopped)return;
     if(signer) {try{await signer.disconnect();}catch(_){}}
     signer=new WalletConnectXrplSigner({projectId,metadata:metadata()});
     const connection=await signer.connect({onUri:async uri=>{
@@ -1006,7 +1038,7 @@ async function beginConnect() {
       showWalletPrompt(qr);
       message('joinWalletStatus','Open Bifrost and approve the wallet connection.');
     }});
-    if(run!==connectRun)return;
+    if(run!==connectRun || readStopped)return;
     applicant=String(connection.account||'').trim();
     if(!isClassicAddress(applicant))throw new Error('Bifrost did not return a valid XRPL address.');
     emptyQR('Connected');
@@ -1017,7 +1049,7 @@ async function beginConnect() {
     // The transaction is prepared but never signed/sent without separate consent.
     if(trail.element.classList.contains('show')) void prepareTrail();
   }catch(error){
-    if(run!==connectRun)return;
+    if(run!==connectRun || readStopped || error===READ_STOPPED)return;
     emptyQR('Unavailable');
     if(!context)stage(0,'failed','Unable to verify the Community on XRPL.');
     else stage(1,'failed','Bifrost connection could not be completed.');
@@ -1060,7 +1092,7 @@ async function prepareTrail() {
   stage(2,'working','Rechecking validated Community authority and published price…');
   message('joinLedgerStatus','Reading XRPL. No payment has been sent.');
   try {
-    const current=await resolveContext(selected);
+    const current=await readUntilX('authority and price verification',()=>resolveContext(selected));
     stage(2,'done','Verified current Community authority and Join Request Price');
     if(current.destination!==context.destination||current.drops!==context.drops){
       context=current;
@@ -1070,7 +1102,7 @@ async function prepareTrail() {
     stage(3,'working','Preparing and simulating the exact XRP Payment…');
     const tx={TransactionType:'Payment',Account:applicant,Destination:current.destination,Amount:current.drops,
       Memos:[{Memo:{MemoData:textToHex(current.memo)}}]};
-    const simulation=await prepareTransaction({serverUrl,txJson:tx,feeCushion});
+    const simulation=await readUntilX('payment preparation',()=>prepareTransaction({serverUrl,txJson:tx,feeCushion}));
     assertPayment(simulation.preparedTx,{...current,account:applicant});
     const fee=String(simulation.preparedTx.Fee||'');
     if(!/^[1-9][0-9]*$/.test(fee)||!Number.isInteger(Number(simulation.preparedTx.Sequence))||
@@ -1083,6 +1115,7 @@ async function prepareTrail() {
     stateForAwaitingApproval();
     message('joinLedgerStatus','Review the XRP amount, network fee, recipient and memo. Nothing has been signed or sent.');
   }catch(error){
+    if(error===READ_STOPPED)return;
     stage(3,'failed','Unable to prepare payment');
     message('joinLedgerStatus',error.message||String(error),true);
   }finally{preparing=false;}
@@ -1100,7 +1133,7 @@ async function signAndSend() {
   stage(4,'done','XRP payment review and consent completed');
   stage(2,'working','Verifying that the approved payment details remain current…');
   try {
-    const fresh=await resolveContext(selected);
+    const fresh=await readUntilX('approved payment recheck',()=>resolveContext(selected));
     if(fresh.destination!==prepared.destination||fresh.drops!==prepared.drops) {
       // Nothing is signed yet. Reprepare only after showing the new amount to the visitor.
       throw new Error('The published price or Operating Wallet changed. Close and reopen the Ledger Trail to review the new payment.');
@@ -1124,8 +1157,10 @@ async function signAndSend() {
     stage(5,'done','Bifrost signed the exact approved transaction');
     trail.hidePrompt();
     lockAfterSignature();
-    await reconcileSignedPayment();
+    // A signed blob is persisted before any submit; X means don't start submitting.
+    if(!readStopped) await reconcileSignedPayment();
   }catch(error){
+    if(error===READ_STOPPED)return;
     if(!pending){
       stage(5,'failed','Bifrost approval did not complete');
       message('joinLedgerStatus',`${error.message||String(error)} No payment was submitted.`,true);
@@ -1156,10 +1191,12 @@ async function readTransaction(hash) {
   try {await client.connect(); const resp=await client.request('tx',{transaction:hash,binary:false},20000);return resp.result||{};}
   finally{client.close();}
 }
-async function submitSameSignedBlob(record) {
+async function submitSameSignedBlob(record, run) {
   const client=new DirectXRPLClient(serverUrl);
   try {
     await client.connect();
+    // X may be pressed while the socket is connecting: never submit afterward.
+    if(readStopped || run!==readRun)throw READ_STOPPED;
     const response=await client.request('submit',{tx_blob:record.signedBlob,fail_hard:false},20000);
     const result=response.result||{};
     const serverHash=String(result.tx_json?.hash||result.hash||'').toUpperCase();
@@ -1173,7 +1210,8 @@ async function submitSameSignedBlob(record) {
   }finally{client.close();}
 }
 async function reconcileSignedPayment() {
-  if(!pending||reconciling)return;
+  if(!pending||reconciling||readStopped)return;
+  const run=readRun;
   reconciling=true;lockAfterSignature();trail.hidePrompt();
   // These are facts established by the persisted signed transaction, verified
   // below before any new payment can ever be attempted.
@@ -1196,7 +1234,7 @@ async function reconcileSignedPayment() {
     reconciling=false;return;
   }
   let alreadySent=false;
-  while(pending&&!terminal){
+  while(pending&&!terminal && !readStopped && run===readRun){
     try {
       message('joinLedgerStatus',`Checking validated XRPL transaction ${pending.hash.slice(0,16)}… No new Bifrost signature.`);
       let ledgerResult=null, notFound=false;
@@ -1206,6 +1244,7 @@ async function reconcileSignedPayment() {
         if(/txnNotFound|transactionNotFound|not found|not found/i.test(code))notFound=true;
         else throw error;
       }
+      if(readStopped || run!==readRun)break;
       if(ledgerResult?.validated===true){
         const ledger=confirmedResult(ledgerResult,pending);
         stage(6,'done','Validated XRPL Payment and canonical memo confirmed');
@@ -1224,14 +1263,15 @@ async function reconcileSignedPayment() {
         // A transport failure before the first submit must not strand the visitor.
         if(!alreadySent){
           alreadySent=true;
-          await submitSameSignedBlob(pending);
+          await submitSameSignedBlob(pending,run);
         }else{
           // Retry the original signed transaction when XRPL still cannot find it;
           // no new signature, sequence, amount or transaction hash is created.
-          await submitSameSignedBlob(pending);
+          await submitSameSignedBlob(pending,run);
         }
       }
     }catch(error){
+      if(readStopped || run!==readRun)break;
       const msg=String(error.message||error);
       if(/wrong signed hash|unexpected|not match|Validated transaction returned|complete validated ledger position/i.test(msg)){
         terminal=true;
@@ -1242,11 +1282,11 @@ async function reconcileSignedPayment() {
       message('joinLedgerStatus',`Still checking XRPL. The original signed payment is preserved; verification retries automatically. (${msg})`);
     }
     // Yield to Safari rendering, but do not introduce a timed polling interval.
-    if(pending&&!terminal)await new Promise(resolve=>setTimeout(resolve,0));
+    if(pending&&!terminal && !readStopped && run===readRun)await zeroDelayYield();
   }
   reconciling=false;
 }
-$('refreshJoinQr').addEventListener('click',()=>{if(!pending){context=null;void beginConnect();}});
+$('refreshJoinQr').addEventListener('click',()=>{if(!pending){context=null;setOverlay(true);void beginConnect();}});
 $('firstLeapSubmit').addEventListener('click',()=>{if(!pending)void prepareTrail();});
 $('joinApprove').addEventListener('change',()=>{$('joinSignAndSend').disabled=!$('joinApprove').checked||signing||!!pending;});
 $('joinSignAndSend').addEventListener('click',()=>void signAndSend());
@@ -1274,10 +1314,11 @@ async function boot() {
     setOverlay(true);
     stage(0,'working','Discovering the Community and checking validated XRPL authority…');
     message('joinLedgerStatus','Verifying the Community and published Join Request Price on XRPL.');
-    await readCommunity();
+    await readUntilX('community verification', readCommunity);
     stage(0,'done','Verified Community authority and current Join Request Price');
     void beginConnect();
   }catch(error){
+    if(error===READ_STOPPED)return;
     $('refreshJoinQr').disabled=false;
     emptyQR('Unavailable');
     message('joinCommunityStatus',error.message||String(error),true);
