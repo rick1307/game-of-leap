@@ -773,31 +773,19 @@
   .cancel-ledger-trail .trail-step { border:0; border-radius:0; margin:0; background:transparent; overflow:visible; opacity:1; box-shadow:none; }
 </style>
 <link rel="stylesheet" href="wildLedgerBackend.css">
+<link rel="stylesheet" href="ledgerTrail.css">
+<style>
+  /* The Checkbook has older generic .trail-step cards. Keep those styles on
+     its read-only evidence, issuance and cancellation; never on the module. */
+  #openingCheckbookTrail .trail-step {
+    border:0; border-radius:0; margin:0; padding:0;
+    background:transparent; box-shadow:none; overflow:visible; opacity:1;
+  }
+</style>
 </head>
 <body>
-  <!-- Guided Ledger Trail: closing the tour changes presentation, never an in-flight XRPL read. -->
-  <div class="guide-overlay" id="guideOverlay" role="dialog" aria-modal="true" aria-labelledby="guideTitle">
-    <div class="guide-window">
-      <div class="guide-topline"><button type="button" class="guide-close" id="guideClose" aria-label="Close guided tour and explore the steps" title="Explore the ledger steps">×</button><span class="guide-kicker">Wild Ledger · Ledger Trail</span></div>
-      <h2 id="guideTitle">Onboarding Checkbook</h2>
-      <p class="guide-lede">Wild Ledger confirms your current Operator authority and reads the validated XRPL evidence for this Checkbook.</p>
-      <ol class="guide-route" id="guideRoute" aria-label="Live Ledger Trail steps">
-        <li id="guideStep1" data-number="1"><span class="guide-activity" aria-hidden="true"></span><div><strong>Identify your community</strong><small id="guideStepText1">Waiting</small></div></li>
-        <li id="guideStep2" data-number="2"><span class="guide-activity" aria-hidden="true"></span><div><strong>Confirm your authority</strong><small id="guideStepText2">Waiting</small></div></li>
-        <li id="guideStep3" data-number="3"><span class="guide-activity" aria-hidden="true"></span><div><strong>Find membership requests</strong><small id="guideStepText3">Waiting</small></div></li>
-        <li id="guideStep4" data-number="4"><span class="guide-activity" aria-hidden="true"></span><div><strong>Prove report readiness</strong><small id="guideStepText4">Waiting</small></div></li>
-      </ol>
-      <div class="guide-status" id="guideStatus" role="status" aria-live="polite">Reading your Operator session…</div>
-      <div class="guide-success" id="guideSuccess" role="status" aria-live="polite" hidden>
-        <div class="trail-complete-check" aria-hidden="true">✓</div>
-        <div class="trail-complete-text">Checks passed</div>
-      </div>
-      <div id="guideRecovery" class="guide-recovery" hidden>
-        <button type="button" class="trail-retry" id="guideRetry" hidden>Follow the Trail Again</button>
-        <a href="getWild.html" class="action" id="guideSignin" hidden>Sign in through Get Wild</a>
-      </div>
-    </div>
-  </div>
+  <!-- Opening read-only verification Trail is created by js/ledgerTrail.js.
+       The separate issuance and cancellation Trails are unchanged. -->
 
   <!-- In-place issuance: independent of the read-only report Trail; no new page. -->
   <div class="guide-overlay" id="issuanceOverlay" role="dialog" aria-modal="true" aria-labelledby="issuanceTitle" hidden>
@@ -979,6 +967,7 @@
 <script src="js/communityConfig.js" data-registry-only="true"></script>
 <script src="js/wildLedgerConfig.js"></script>
 <script type="module">
+import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { DirectXRPLClient, isClassicAddress } from "./js/xrplTransport.js";
 import { resolveWalletAccess } from "./js/communityAccess.js";
 import { isAuthorizedAtLedger } from "./js/communityAuthority.js";
@@ -1064,7 +1053,7 @@ function verifyRequestAtLedger(candidate, authority, priceHistory) {
   return { ...candidate, expectedDrops, priceStatement };
 }
 
-async function discoverMatchingPayments(communityId, authority, priceHistory, onProgress = () => {}) {
+async function discoverMatchingPayments(communityId, authority, priceHistory, onProgress = () => {}, checkActive = () => {}) {
   // The same validated authority intervals already used by Wild Ledger's
   // historical price reader establish which wallet histories must be searched.
   const accounts = [...new Set((authority?.intervals || []).map(interval => String(interval?.account || "").trim()))];
@@ -1080,12 +1069,16 @@ async function discoverMatchingPayments(communityId, authority, priceHistory, on
   let excluded = 0;
   try {
     await client.connect();
+    checkActive();
     for (const [index, account] of accounts.entries()) {
+      checkActive();
       let marker;
       do {
+        checkActive();
         const fields = { account, ledger_index_min: -1, ledger_index_max: -1, binary: false, forward: true, limit: 400 };
         if (marker !== undefined) fields.marker = marker;
         const response = await client.request("account_tx", fields, 30000);
+        checkActive();
         const entries = response?.result?.transactions;
         if (!Array.isArray(entries)) throw new Error("XRPL returned no readable transaction list.");
         pages += 1;
@@ -1103,6 +1096,7 @@ async function discoverMatchingPayments(communityId, authority, priceHistory, on
           if (verified) found.set(verified.hash, verified);
           else excluded += 1;
         }
+        checkActive();
         onProgress({scanned, pages, matches:found.size, excluded,
           wallet:account, walletIndex:index + 1, walletCount:accounts.length});
         marker = response.result.marker;
@@ -1323,7 +1317,7 @@ function onboardingChecksById(requests, creates, cancellations, cashes) {
     b.issuedTxIndex - a.issuedTxIndex || a.id.localeCompare(b.id));
 }
 
-async function verifyApplicantsRecognition(requests, communityId, authority, onProgress = () => {}, onApplicantHistory = () => {}) {
+async function verifyApplicantsRecognition(requests, communityId, authority, onProgress = () => {}, onApplicantHistory = () => {}, checkActive = () => {}) {
   const applicants = [...new Set(requests.map(request => request.applicant))];
   if (!applicants.length) return requests;
   const cfg = window.WILD_LEDGER_CONFIG || {};
@@ -1336,19 +1330,24 @@ async function verifyApplicantsRecognition(requests, communityId, authority, onP
   const community = {id:communityId.toLowerCase(),backendId:communityId,
     communityName:$("communityName").textContent, leapNamespace:`${communityId}-LEAP`, operatingWallet:initialWallet};
   const catalog = await loadRecognitionCatalog({community,serverUrl:xrplServer,issuer,currency,includeIgnored:true});
+  checkActive();
   const legacyDistributors = new Set([PERMANENT_LEAP_DISTRIBUTOR,
     ...(Array.isArray(cfg.leapDistributors) ? cfg.leapDistributors : [])]);
   const proofByApplicant = new Map();
   const client = new DirectXRPLClient(xrplServer);
   try {
     await client.connect();
+    checkActive();
     for (const [index, applicant] of applicants.entries()) {
+      checkActive();
       let marker;
       const entries = [];
       do {
+        checkActive();
         const fields = {account:applicant,ledger_index_min:-1,ledger_index_max:-1,binary:false,forward:true,limit:400};
         if (marker !== undefined && marker !== null) fields.marker = marker;
         const response = await client.request("account_tx",fields,30000);
+        checkActive();
         if (!Array.isArray(response?.result?.transactions)) throw new Error("XRPL did not provide the complete applicant history.");
         entries.push(...response.result.transactions);
         marker = response.result.marker;
@@ -1363,22 +1362,15 @@ async function verifyApplicantsRecognition(requests, communityId, authority, onP
     : {status:"awaiting",proof:null}}));
 }
 
-// One operation, two views: guided Ledger Trail or hands-on workbench.
-// Closing the X changes only presentation; any XRPL read already running finishes normally.
+// One read-only verification operation: the shared module shows the approved
+// Get Wild Trail; this page owns evidence, XRPL reads, and the Checkbook report.
+// X is the only way to cancel recoverable XRPL read retries.
 let guideMode = true;
-let choseToExplore = false;
 let busy = false;
 let completed = false;
-let completionNavigationTimer = null;
-let canRetry = true;
-// The final checkpoint completes as soon as its evidence is verified.
-// The completed Ledger Trail check remains visible for one second.
-function cancelAutomaticNavigation() {
-  if (completionNavigationTimer !== null) {
-    clearTimeout(completionNavigationTimer);
-    completionNavigationTimer = null;
-  }
-}
+let openingRun = 1;
+let canRetry = false; // Old manual retry buttons never run an XRPL read.
+const OPENING_CLOSED = Symbol("Opening Ledger Trail closed");
 const stepStates = ["pending", "pending", "pending", "pending"];
 const runContext = { session:null, matched:null, requests:null, checks:null, scanned:0, pages:0, excluded:0, priceStatements:0 };
 const titles = ["Identify your community", "Confirm current authority", "Find membership requests", "Prove report readiness"];
@@ -1388,37 +1380,35 @@ const evidenceDefaults = [
   "Verifies each request's memo, successful XRP Payment, historical Operating Wallet authority, and price at the time of payment.",
   "Wild Ledger checks your Operator session and confirms that verified requests are ready to display on this page."
 ];
-
+const openingStepIds = ["identify", "authority", "requests", "ready"];
+const openingTrail = createLedgerTrail({
+  title: "Onboarding Checkbook",
+  description: "Wild Ledger confirms your current Operator authority and reads validated XRPL evidence for this Checkbook.",
+  steps: openingStepIds.map((id, i) => ({id, title:titles[i], detail:"Waiting for the previous checkpoint."})),
+  onClose: closeGuide
+});
+openingTrail.element.id = "openingCheckbookTrail";
+function openingActive(run) {
+  return guideMode && run === openingRun && openingTrail.element.classList.contains("show");
+}
+function assertOpeningActive(run) {
+  if (!openingActive(run)) throw OPENING_CLOSED;
+}
 function nextStep() { const index = stepStates.findIndex(s => s !== "done"); return index < 0 ? 0 : index + 1; }
 function reportIsReady() { return stepStates.every(s => s === "done"); }
-
 function updateGuideStatus(message, failed = false) {
-  $("guideStatus").textContent = message;
-  $("guideStatus").classList.toggle("is-error", failed);
+  if (guideMode && openingTrail.element.classList.contains("show"))
+    openingTrail.setStatus(message, failed ? "error" : "busy");
 }
 function refreshControls() {
-  const next = nextStep();
   for (let n = 1; n <= 4; n++) {
     const state = stepStates[n-1];
-    const button = $(`stepAction${n}`);
-    const isNext = n === next && !busy && (state === "pending" || (state === "failed" && canRetry));
-    button.disabled = !isNext;
-    button.className = "step-action " + (state === "done" ? "is-done" : state === "working" ? "is-busy" : isNext ? "is-next" : "");
-    button.textContent = state === "done" ? "✓ Complete" : state === "working" ? "Checking XRPL…" : isNext ? state === "failed" ? "Try this step again" : titles[n-1] : "Waiting for previous step";
-    // The guided overlay owns the experience until the visitor chooses to explore.
-    $(`stepActions${n}`).hidden = guideMode;
-    const guideStep = $(`guideStep${n}`);
-    guideStep.className = `is-${state}`;
-    if (state === "pending") $(`guideStepText${n}`).textContent = "Waiting";
-    else if (state === "working") $(`guideStepText${n}`).textContent = "Checking…";
-    else if (state === "done") $(`guideStepText${n}`).textContent = "Complete";
-    else $(`guideStepText${n}`).textContent = "Needs attention";
+    $(`stepActions${n}`).hidden = true; // The X reveals evidence, not manual Retry actions.
+    $(`stepAction${n}`).disabled = true;
+    $(`stepAction${n}`).textContent = state === "done" ? "✓ Complete" : "Checking XRPL…";
   }
-  $("guideAgain").hidden = guideMode || completed || (next && stepStates[next-1] === "failed" && !canRetry);
-  $("manualHeadline").textContent = completed ? "Checks complete" : guideMode ? "Ledger checks" : "Explore your ledger checks";
-  $("guideRecovery").hidden = !(guideMode && next && stepStates[next-1] === "failed");
-  $("guideRetry").hidden = !canRetry;
-  $("guideSignin").hidden = canRetry;
+  $("guideAgain").hidden = true;
+  $("manualHeadline").textContent = completed ? "Checks complete" : "Explore your ledger checks";
 }
 function setTrailStep(number, state, message, evidence = "") {
   const folder = $(`trailStep${number}`);
@@ -1430,20 +1420,19 @@ function setTrailStep(number, state, message, evidence = "") {
   $(`trailMessage${number}`).textContent = message;
   if (evidence) $(`trailProof${number}`).textContent = evidence;
   if (state === "working" || state === "failed") {
-    document.querySelectorAll(".trail-step").forEach(step => { if (step !== folder) step.open = false; });
+    // Scope selection to the underlying proof workbench. Never touch issuance,
+    // cancellation, or the shared module's own checkpoint elements.
+    document.querySelectorAll("#trailPanel details.trail-step").forEach(step => { if (step !== folder) step.open = false; });
     folder.open = true;
     $("trailDisclosure").open = true;
   } else if (state === "done") folder.open = false;
+  if (guideMode && openingTrail.element.classList.contains("show"))
+    openingTrail.setStep(openingStepIds[number-1], state, message);
   refreshControls();
 }
 function resetTrail() {
-  cancelAutomaticNavigation();
   completed = false;
   $("trailPanel").hidden = false;
-  $("guideSuccess").hidden = true;
-  choseToExplore = false;
-  $("guideRoute").hidden = false;
-  $("guideStatus").hidden = false;
   $("trailDisclosure").open = true;
   $("trailDisclosure").classList.remove("trail-complete", "trail-failed");
   $("trailError").hidden = true;
@@ -1453,8 +1442,7 @@ function resetTrail() {
   $("signinLink").hidden = true;
   $("authorizedContent").hidden = true;
   $("backLink").hidden = true;
-  // A new trail must never reuse evidence from an earlier run.
-  try { sessionStorage.removeItem("wildLedger.membershipRequestsHandoff"); } catch (_) { /* Step 1 will explain an unavailable Operator session. */ }
+  try { sessionStorage.removeItem("wildLedger.membershipRequestsHandoff"); } catch (_) { /* Step 1 checks the session. */ }
   runContext.session = null; runContext.matched = null; runContext.requests = null; runContext.checks = null;
   runContext.scanned = 0; runContext.pages = 0; runContext.excluded = 0; runContext.priceStatements = 0;
   for (let n = 1; n <= 4; n++) {
@@ -1466,15 +1454,14 @@ function resetTrail() {
   updateGuideStatus("Reading your Operator session…");
 }
 function trailFailure(number, message) {
-  canRetry = !/session|sign in|wallet is not the current authorized|this link|no verified Operator/i.test(message);
   setTrailStep(number, "failed", "This step needs attention. No result is claimed.", message);
   $("trailDisclosure").classList.add("trail-failed");
   $("trailOverall").textContent = `Step ${number} needs attention.`;
   $("trailError").textContent = message;
   $("trailError").hidden = false;
-  $("trailActions").hidden = false;
-  $("retryButton").hidden = !canRetry;
-  $("signinLink").hidden = canRetry;
+  $("trailActions").hidden = !/session|sign in|wallet is not the current authorized|this link|no verified Operator/i.test(message);
+  $("retryButton").hidden = true;
+  $("signinLink").hidden = $("trailActions").hidden;
   $("authorizedContent").hidden = true;
   $("backLink").hidden = true;
   updateGuideStatus(message, true);
@@ -1489,7 +1476,7 @@ function assertSessionUnchanged() {
   return current;
 }
 
-async function performStep(number) {
+async function performStep(number, checkActive = () => {}) {
   const session = runContext.session;
   if (number === 1) {
     const active = readOperatorSession();
@@ -1508,6 +1495,7 @@ async function performStep(number) {
   if (number === 2) {
     assertSessionUnchanged();
     const access = await resolveWalletAccess({ account:session.wallet, serverUrl:xrplServer, force:true });
+    checkActive();
     const matched = (access?.operatorMatches || []).find(item =>
       String(item.communityId || "").trim().toUpperCase() === session.communityId &&
       String(item.currentAccount || "").trim() === session.wallet && item.authorityEstablished === true
@@ -1539,9 +1527,11 @@ async function performStep(number) {
     updateGuideStatus("Checking the community's historical Join Request Prices…");
     $("trailMessage3").textContent = "Checking the prices in effect when requests were made…";
     const price = await readCommunityJoinRequestPrice({ communityId:session.communityId, authority:matched, serverUrl:xrplServer });
+    checkActive();
     assertSessionUnchanged();
     runContext.priceStatements = price.history.length;
     const result = await discoverMatchingPayments(session.communityId, matched, price.history, progress => {
+      checkActive();
       runContext.scanned = progress.scanned;
       runContext.pages = progress.pages;
       runContext.excluded = progress.excluded;
@@ -1549,25 +1539,29 @@ async function performStep(number) {
       $("trailMessage3").textContent = message;
       $("trailProof3").textContent = `Community: ${session.communityId}\nWallet being read (${progress.walletIndex}/${progress.walletCount}): ${progress.wallet}\nTransactions read: ${progress.scanned}\nHistory pages: ${progress.pages}\nPrice statements checked: ${price.history.length}\nCanonical request memo: WILD-LEDGER/MEMBERSHIP-REQUEST/${session.communityId}\nVerified requests: ${progress.matches}\nCandidates not qualifying: ${progress.excluded}\nRules: successful validated Payment; exact memo; no paths or partial payment; historical Operating Wallet and exact historical price.`;
       updateGuideStatus(message);
-    });
+    }, checkActive);
+    checkActive();
     assertSessionUnchanged();
     // Reuse the completed ledger request scan; the member-status verification is
     // still part of this same guided step, never a second destination scan.
     const checkCashes = new Map();
     const checkCancels = new Map(result.checkCancels.map(c => [c.id,c]));
     const withRecognition = await verifyApplicantsRecognition(result.requests, session.communityId, matched, p => {
+      checkActive();
       const message = p.stage === "catalog" ? "Checking the community's recognition history…" :
         `Checking member ${p.index} of ${p.total} for delivered LEAP…`;
       $("trailMessage3").textContent = message;
       updateGuideStatus(message);
     }, (wallet, entries) => {
+      checkActive();
       for (const entry of entries) {
         const cash = successfulCheckAction(entry, "CheckCash", wallet);
         if (cash) checkCashes.set(cash.id, cash);
         const cancel = successfulCheckAction(entry, "CheckCancel", wallet);
         if (cancel) checkCancels.set(cancel.id, cancel);
       }
-    });
+    }, checkActive);
+    checkActive();
     assertSessionUnchanged();
     const lifecycleByWallet = onboardingLifecycleByWallet(result.requests,
       result.onboardingCreates, checkCancels, checkCashes);
@@ -1629,99 +1623,71 @@ async function performStep(number) {
 
 function revealMembershipReport() {
   $("authorizedContent").hidden = false;
-  $("guideOverlay").hidden = true;
   window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified"));
-  // During verification, X reveals the real expandable evidence cards.
-  // After completion, show the Operator's report without a second inspection panel.
   $("trailPanel").hidden = true;
   $("authorizedContent").scrollIntoView({block:"start", behavior:"auto"});
 }
-
-function finishTrail() {
+function finishTrail(run) {
+  assertOpeningActive(run);
   completed = true;
   $("trailDisclosure").classList.add("trail-complete");
   const count = runContext.requests?.length || 0;
   $("trailOverall").textContent = `Complete · ${count} ${count === 1 ? "request" : "requests"} verified.`;
   $("trailDisclosure").open = false;
-  if (guideMode) {
-    // Keep all four proven checkpoints visible on the same Ledger Trail card.
-    // Get Wild’s compact left-aligned completion row appears below the verified checkpoints.
-    $("guideRecovery").hidden = true;
-    $("guideSuccess").hidden = false;
-    if (!choseToExplore) {
-      completionNavigationTimer = setTimeout(() => {
-        completionNavigationTimer = null;
-        if (completed && guideMode && !choseToExplore) revealMembershipReport();
-      }, 1000);
-    }
-  }
-  // In manual mode, keep the same workbench/evidence accessible and show its verified report.
-  if (!guideMode) revealMembershipReport();
+  openingTrail.finish({message:"Completed",onFinished() {
+    if (!openingActive(run)) return;
+    openingTrail.close();
+    guideMode = false;
+    revealMembershipReport();
+  }});
 }
 function closeGuide() {
-  cancelAutomaticNavigation();
-  choseToExplore = true;
+  // X alone cancels retry loops. In-flight calls can settle, but cannot start
+  // further XRPL requests, complete a checkpoint, or advance after this point.
+  openingRun += 1;
   guideMode = false;
-  $("guideOverlay").hidden = true;
   if (completed) revealMembershipReport();
-  if (!completed) {
+  else {
     $("trailDisclosure").open = true;
     const next = nextStep();
     if (next && stepStates[next-1] !== "done") $(`trailStep${next}`).open = true;
   }
   refreshControls();
-  // No session reset, cancellation or duplicate XRPL request occurs here.
-}
-function openGuide() {
-  if (completed) return;
-  guideMode = true;
-  $("guideOverlay").hidden = false;
-  updateGuideStatus("Continuing from your last proven step…");
-  refreshControls();
-  if (!busy) void runNext();
 }
 
-// XRPL history verification is read-only. A temporary WebSocket or server
-// failure must recover within the CURRENT checkpoint: never reset completed
-// proofs, show a failure card, or ask the Operator to restart a network call.
 function isTemporaryXRPLReadFailure(error) {
   const message = String(error?.message || error || "");
-  return /(?:websocket (?:connection failed|is not connected|closed|disconnected)|connection (?:closed|lost|failed|timed out|refused|reset)|connection timed out|request timed out|timed? out|timeout|server.{0,25}busy|too busy|overload|slow.?down|rate.?limit|too many requests|temporarily unavailable|service unavailable|network error|network disconnected|fetch failed|\b429\b|\b502\b|\b503\b|\b504\b)/i.test(message);
+  return /(?:websocket|socket|connection|disconnect|network|fetch failed|failed to fetch|timed? out|timeout|too busy|server.{0,25}busy|overload|slow.?down|rate.?limit|too many requests|temporarily unavailable|service unavailable|429|502|503|504)/i.test(message);
 }
-
-async function performWithAutomaticReadRetry(number) {
-  // Steps 2 and 3 read XRPL; neither signs, submits, or spends XRP.
-  // All other errors (including authority denial) retain normal handling.
-  if (number !== 2 && number !== 3) return performStep(number);
-  let retries = 0;
-  while (true) {
-    assertSessionUnchanged();
+// Zero-millisecond event-loop yield (not a timed backoff): keeps the X clickable
+// even if a broken transport rejects synchronously on every connection attempt.
+const yieldToX = () => new Promise(resolve => setTimeout(resolve, 0));
+async function performWithAutomaticReadRetry(number, run) {
+  const checkActive = () => assertOpeningActive(run);
+  for (;;) {
+    checkActive();
     try {
-      return await performStep(number);
+      const result = await performStep(number, checkActive);
+      checkActive();
+      return result;
     } catch (error) {
-      if (!isTemporaryXRPLReadFailure(error)) throw error;
-      assertSessionUnchanged();
-      retries += 1;
-      // Bounded delay, not bounded retries: a temporary outage can last longer
-      // than a few attempts. The page will resume when XRPL is available.
-      const waitMs = Math.min(1500 * 2 ** Math.min(retries - 1, 5), 30000);
-      const message = "Reconnecting to XRPL… verification will continue automatically.";
+      if (!openingActive(run) || error === OPENING_CLOSED) throw OPENING_CLOSED;
+      if ((number !== 2 && number !== 3) || !isTemporaryXRPLReadFailure(error)) throw error;
+      const message = "XRPL connection interrupted. Reconnecting automatically…";
       $(`trailMessage${number}`).textContent = message;
-      $(`trailProof${number}`).textContent = `Temporary connection problem: ${String(error?.message || error)}\nReconnect attempt: ${retries}\nNext attempt in ${waitMs / 1000} seconds.\nCompleted checkpoints remain verified. No transaction is sent.`;
+      $("trailProof"+number).textContent = `XRPL connection interrupted: ${String(error?.message || error)}\nThe current checkpoint is being rechecked. Completed checkpoints remain verified. No transaction is sent.`;
       if (number === 3) $("requestStatus").textContent = message;
       updateGuideStatus(message);
-      await new Promise(resolve => setTimeout(resolve, waitMs));
-      assertSessionUnchanged();
+      await yieldToX();
     }
   }
 }
-
 async function runNext() {
-  if (busy || completed) return;
+  if (busy || completed || !guideMode) return;
+  const run = openingRun;
   const number = nextStep();
-  if (!number || (stepStates[number-1] === "failed" && !canRetry)) return;
+  if (!number || stepStates[number-1] === "failed") return;
   busy = true;
-  canRetry = true;
   $("trailError").hidden = true;
   $("trailActions").hidden = true;
   $("trailDisclosure").classList.remove("trail-failed");
@@ -1729,38 +1695,29 @@ async function runNext() {
   const workingMessage = ["Reading your existing Operator session…", "Reading validated XRPL authority history…", "Reading community wallet history…", "Checking your Operator session before displaying the verified requests…"][number-1];
   setTrailStep(number,"working",workingMessage);
   updateGuideStatus(workingMessage);
-  // Checkpoint 4 runs immediately; its result depends on genuine proof.
-  if (number === 4 && guideMode) $("guideStep4").scrollIntoView({block:"nearest"});
   let succeeded = false;
   try {
-    const result = await performWithAutomaticReadRetry(number);
+    const result = await performWithAutomaticReadRetry(number,run);
+    assertOpeningActive(run);
     setTrailStep(number,"done",result.message,result.evidence);
     $("trailOverall").textContent = result.message;
     updateGuideStatus(result.message);
     succeeded = true;
-    if (reportIsReady()) {
-      // Show the Get Wild-style completion row below all four proven checkpoints
-      // immediately. The existing one-second completed-card pause remains.
-      finishTrail();
-    }
+    if (reportIsReady()) finishTrail(run);
   } catch (error) {
-    trailFailure(number, String(error?.message || error));
+    if (error !== OPENING_CLOSED && openingActive(run)) trailFailure(number,String(error?.message || error));
   } finally {
     busy = false;
     refreshControls();
-    // A closed guide never advances itself. A running RPC finishes before we pause.
-    if (succeeded && guideMode && !completed) void runNext();
+    if (succeeded && openingActive(run) && !completed) void runNext();
   }
 }
-
-$("guideClose").addEventListener("click", () => closeGuide());
-$("guideAgain").addEventListener("click", openGuide);
-$("guideRetry").addEventListener("click", runNext);
-$("retryButton").addEventListener("click", runNext);
-for (let n = 1; n <= 4; n++) $(`stepAction${n}`).addEventListener("click", () => { if (nextStep() === n && !guideMode) void runNext(); });
-// Issue First LEAP shares this page's authoritative request, authority, and
-// historical-price scanner. Re-running Steps 2–4 is a NEW ledger read, not
-// a reuse of the old report's browser snapshot.
+// The module creates the only opening Trail X. Underlying evidence is
+// progressive disclosure, not a second way to trigger the network operation.
+resetTrail();
+openingTrail.open({resetSteps:true});
+refreshControls();
+void runNext();
 window.addEventListener("wildLedgerIssuanceAudit", event => {
   const { resolve, reject } = event.detail || {};
   void (async () => {
@@ -1773,9 +1730,6 @@ window.addEventListener("wildLedgerIssuanceAudit", event => {
     return { session, rows:runContext.requests };
   })().then(resolve, reject);
 });
-resetTrail();
-refreshControls();
-void runNext();
 </script>
 <script type="module">
 import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
