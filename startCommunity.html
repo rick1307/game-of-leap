@@ -386,83 +386,15 @@
   .learn-section .learn-afterword{font-size:.86rem;color:var(--wl-muted);margin-bottom:0}
   @media(max-width:680px){.application-section{gap:22px}}
 
-/* Move 2: Ledger Trail visual standard copied from Get Wild; no payment or wallet logic. */
-.ledger-trail{position:fixed;inset:0;width:100vw;height:100dvh;z-index:40;display:flex;align-items:center;justify-content:center;padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left));background:rgba(0,12,19,.80);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .34s ease,visibility 0s linear .34s}
-.ledger-trail.show{opacity:1;visibility:visible;pointer-events:auto;transition-delay:0s}
-.ledger-trail-panel{position:relative;width:min(470px,100%);max-height:calc(100dvh - 40px);overflow:auto;padding:24px 22px 22px;border:1px solid rgba(121,213,194,.24);border-radius:26px;background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99));color:#f5fbfa;box-shadow:0 34px 90px rgba(0,0,0,.58);opacity:0;transform:translateY(10px) scale(.985);transition:opacity .34s ease,transform .38s cubic-bezier(.2,.8,.2,1)}
-.ledger-trail.show .ledger-trail-panel{opacity:1;transform:none}
-.ledger-trail-panel:before{content:"";display:block;height:3px;margin:-24px -22px 21px;background:linear-gradient(90deg,#29b8b1,#79d5c2,#f4bd58,#ef765d)}
-.trail-topline{display:flex;align-items:center;gap:10px;margin:0 0 6px}
-.trail-close{flex:0 0 28px;width:28px!important;height:28px!important;min-width:28px!important;min-height:28px!important;margin:0!important;padding:0!important;display:grid!important;place-items:center;border:1px solid rgba(236,249,247,.20)!important;border-radius:50%!important;background:rgba(255,255,255,.035)!important;color:rgba(245,251,250,.72)!important;font:500 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;cursor:pointer;-webkit-appearance:none;appearance:none;-webkit-tap-highlight-color:transparent;box-shadow:none!important;transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease}
-.trail-close:hover,.trail-close:focus-visible{background:rgba(255,255,255,.08)!important;border-color:rgba(121,213,194,.42)!important;color:#fff!important;outline:none}
-.trail-close:active{transform:scale(.94)}
-.trail-kicker{padding-left:0;color:#f4bd58;font-size:.64rem;font-weight:950;letter-spacing:.16em;text-transform:uppercase}
-.ledger-trail h2{margin:7px 0 6px;font-size:clamp(1.8rem,8vw,2.8rem);letter-spacing:-.045em}
-.trail-lede{margin:0 0 20px;color:rgba(236,249,247,.64);font-size:.78rem;line-height:1.5}
-.trail-route{display:grid;gap:0;margin:4px 0 18px}
-.trail-step{position:relative;display:grid;grid-template-columns:36px minmax(0,1fr);gap:11px;min-height:58px;align-items:start}
-.trail-marker{position:relative;display:grid;place-items:center;width:28px;height:28px;margin-top:1px;border:1px solid rgba(236,249,247,.22);border-radius:50%;background:#082936;color:rgba(236,249,247,.40);font-size:.76rem;font-weight:950;z-index:1}
-.trail-step:not(:last-child) .trail-marker:after{content:"";position:absolute;top:27px;left:50%;width:2px;height:32px;transform:translateX(-50%);background:linear-gradient(to bottom,rgba(121,213,194,.18),rgba(121,213,194,.05))}
-.trail-copy strong{display:block;padding-top:1px;font-size:.82rem}
-.trail-copy span{display:block;margin-top:3px;color:rgba(236,249,247,.43);font-size:.66rem;line-height:1.35}
-.trail-step.done .trail-marker{border-color:rgba(159,224,176,.48);background:rgba(159,224,176,.12);color:#bdf2c8}
-.trail-step.done:not(:last-child) .trail-marker:after{background:linear-gradient(to bottom,rgba(121,213,194,.75),rgba(121,213,194,.25))}
-.trail-step.done .trail-copy span{color:rgba(189,242,200,.66)}
-.trail-step.active .trail-marker{border-color:rgba(244,189,88,.70);background:rgba(244,189,88,.12);color:#ffe2a7;box-shadow:0 0 0 6px rgba(244,189,88,.055)}
-.trail-step.active .trail-marker:before{content:"";position:absolute;inset:-7px;border:1px solid rgba(244,189,88,.22);border-radius:50%;animation:trailPulse 1.6s ease-out infinite}
-/* Identical active-state activity indicators to Onboarding Checkbook.
-   Both fit inside the EXISTING 28px checkpoint; no marker geometry or
-   outer active-circle pulse is modified. */
-.trail-step.active .trail-activity{
-  display:block;box-sizing:border-box;width:14px;height:14px;
-  border:2px solid transparent;border-top-color:#ffe2a7;border-right-color:#ffe2a7;
-  border-radius:50%;animation:getWildActivitySpin .9s linear infinite;
-}
-.trail-step.active.is-awaiting-wallet .trail-activity{
-  width:8px;height:8px;border:0;background:#ffe2a7;
-  box-shadow:0 0 0 0 rgba(255,226,167,.5);
-  animation:getWildWalletPulse 1.45s ease-in-out infinite;
-}
-@keyframes getWildActivitySpin{to{transform:rotate(360deg)}}
-@keyframes getWildWalletPulse{
-  0%,100%{transform:scale(.72);opacity:.58;box-shadow:0 0 0 0 rgba(255,226,167,.1)}
-  50%{transform:scale(1.13);opacity:1;box-shadow:0 0 0 3px rgba(255,226,167,.13)}
-}
-.trail-step.active .trail-copy strong{color:#ffe2a7}
-.trail-step.active .trail-copy span{color:rgba(255,226,167,.72)}
-.trail-step.failed .trail-marker{border-color:rgba(255,183,170,.58);background:rgba(239,118,93,.12);color:#ffb7aa}
-.trail-step.failed .trail-copy strong,.trail-step.failed .trail-copy span{color:#ffb7aa}
-/* A wallet already assigned to a community is a clear stopping point, not success or failure. */
-.trail-step.blocked .trail-marker{border-color:rgba(244,189,88,.72);background:rgba(244,189,88,.13);color:#ffe2a7}
-.trail-step.blocked .trail-copy strong,.trail-step.blocked .trail-copy span{color:#ffe2a7}
-@keyframes trailPulse{0%{transform:scale(.9);opacity:.8}100%{transform:scale(1.42);opacity:0}}
-.trail-status{margin:5px 0 0;padding:10px 12px;border:1px solid rgba(121,213,194,.12);border-radius:12px;background:rgba(2,24,34,.34);color:rgba(236,249,247,.62);font-size:.68rem;line-height:1.42}
-.trail-status.busy{color:#ffe2a7;border-color:rgba(244,189,88,.18)}
-.trail-status.error{color:#ffb7aa;border-color:rgba(239,118,93,.24)}
-.trail-status.blocked{color:#ffe2a7;border-color:rgba(244,189,88,.40)}
-.trail-status.success{color:#bdf2c8;border-color:rgba(159,224,176,.38);white-space:pre-line}
-/* Only shown when a connected wallet already operates a community. */
-.trail-getwild-link{display:flex;align-items:center;justify-content:center;margin-top:14px;padding:13px 16px;width:100%;border:2px solid #b5f5c5;border-radius:12px;background:#85e6a1;color:#092518;font:900 .83rem/1.35 system-ui,-apple-system,sans-serif;text-align:center;text-decoration:none;box-shadow:0 3px 0 rgba(0,0,0,.25)}
-.trail-getwild-link:hover,.trail-getwild-link:focus-visible{background:#a7f5bd;outline:2px solid #e7ffee;outline-offset:2px}
-.trail-getwild-link[hidden]{display:none!important}
-.trail-action{display:none;margin:0 0 18px;padding:16px;border:1px solid rgba(244,189,88,.30);border-radius:17px;background:linear-gradient(145deg,rgba(244,189,88,.10),rgba(41,184,177,.06));box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
-.trail-action.show{display:block}
-.trail-action strong{display:block;color:#ffe2a7;font-size:1.12rem;letter-spacing:.01em}
-.trail-action p{margin:6px 0 0;color:rgba(255,244,214,.80);font-size:.76rem;line-height:1.45}
-.trail-action img{display:block;width:min(220px,72vw);margin:14px auto 0;padding:7px;border-radius:13px;background:white}
-.trail-action .trail-uri{display:none!important} /* Debug-only WalletConnect URI: intentionally hidden from the user. */
-.trail-complete{display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:center;max-height:0;margin-top:0;opacity:0;overflow:hidden;transition:opacity .25s ease,max-height .25s ease,margin .25s ease}
-.trail-complete.show{max-height:70px;margin-top:12px;opacity:1}
-.trail-complete-check{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(159,224,176,.48);border-radius:50%;background:rgba(159,224,176,.12);color:#bdf2c8;font-size:1rem;font-weight:950}
-.trail-complete-text{color:#bdf2c8;font-size:.8rem;font-weight:850}
-.trail-qr-refresh{display:block;margin:12px auto 0;padding:7px 10px;border:1px solid rgba(244,189,88,.38);border-radius:9px;background:rgba(244,189,88,.12);color:#ffe2a7;font:700 .68rem/1.3 system-ui,-apple-system,sans-serif;cursor:pointer}
-.trail-qr-refresh[hidden]{display:none!important}
-/* QR image visibility matches Get Wild; the wallet steps will supply a QR later. */
-.trail-action img[hidden]{display:none}
-@media(prefers-reduced-motion:reduce){.ledger-trail,.ledger-trail-panel,.trail-step.active .trail-marker:before,.trail-step.active .trail-activity{animation:none}}
+/* Start Community's unique Get Wild destination, shown only when an existing
+   community is detected; all checkpoint and animation styles are shared. */
+.ledger-trail .trail-getwild-link{display:flex;align-items:center;justify-content:center;margin-top:14px;padding:13px 16px;width:100%;border:2px solid #b5f5c5;border-radius:12px;background:#85e6a1;color:#092518;font:900 .83rem/1.35 system-ui,-apple-system,sans-serif;text-align:center;text-decoration:none;box-shadow:0 3px 0 rgba(0,0,0,.25)}
+.ledger-trail .trail-getwild-link:hover,.ledger-trail .trail-getwild-link:focus-visible{background:#a7f5bd;outline:2px solid #e7ffee;outline-offset:2px}
+.ledger-trail .trail-getwild-link[hidden]{display:none!important}
 
 </style>
   <link rel="stylesheet" href="wildLedgerControls.css">
+  <link rel="stylesheet" href="ledgerTrail.css">
 </head>
 <body>
 <main class="shell"><section class="console">
@@ -493,34 +425,7 @@
 </div>
 <footer>Your vision brings people together. Your wallet keeps your community's authority in your hands.</footer>
 </section></main>
-<!-- Move 2: visual-only Ledger Trail. Hidden until later approved wiring moves. -->
-<div class="ledger-trail" id="ledgerTrail" role="dialog" aria-modal="true" aria-labelledby="ledgerTrailTitle" aria-live="polite">
-  <div class="ledger-trail-panel">
-    <div class="trail-topline">
-      <button class="trail-close" id="ledgerTrailClose" type="button" aria-label="Close Ledger Trail">×</button>
-      <div class="trail-kicker">Wild Ledger · Ledger Trail</div>
-    </div>
-    <h2 id="ledgerTrailTitle">Start a Community</h2>
-    <p class="trail-lede">Follow the Trail as Wild Ledger checks your request, asks your wallet to approve when needed, and confirms the result on XRPL.</p>
-    <div class="trail-action" id="trailAction">
-      <strong id="trailActionTitle">OPEN YOUR WALLET</strong>
-      <p id="trailActionCopy">Your wallet QR will appear here when it's time to connect.</p>
-      <img id="trailQrImage" alt="Wallet interaction QR code" hidden>
-      <button class="trail-qr-refresh" id="trailQrRefresh" type="button" hidden>Refresh QR code</button>
-    </div>
-    <div class="trail-route" id="trailRoute">
-      <div class="trail-step" data-trail-step="wallet"><div class="trail-marker">○</div><div class="trail-copy"><strong>Wallet connection</strong><span>Waiting to connect your XRPL wallet.</span></div></div>
-      <div class="trail-step" data-trail-step="request"><div class="trail-marker">○</div><div class="trail-copy"><strong>Check request</strong><span>Waiting to check your request on XRPL.</span></div></div>
-      <div class="trail-step" data-trail-step="prepare"><div class="trail-marker">○</div><div class="trail-copy"><strong>Prepare payment</strong><span>Waiting to prepare the current setup fee.</span></div></div>
-      <div class="trail-step" data-trail-step="approve"><div class="trail-marker">○</div><div class="trail-copy"><strong>Wallet approval</strong><span>Waiting for wallet approval if payment is needed.</span></div></div>
-      <div class="trail-step" data-trail-step="verify"><div class="trail-marker">○</div><div class="trail-copy"><strong>Verify on XRPL</strong><span>Waiting to confirm the validated payment result.</span></div></div>
-    </div>
-    <div class="trail-complete" id="trailComplete"><div class="trail-complete-check">✓</div><div class="trail-complete-text" id="trailCompleteText">Ledger Trail complete.</div></div>
-    <p class="trail-status" id="ledgerTrailStatus">The Ledger Trail is not started yet.</p>
-    <a class="trail-getwild-link" id="trailGetWildLink" href="getWild.html" hidden>Go to Get Wild →</a>
-  </div>
-</div>
-
+<!-- Ledger Trail overlay is created by the shared module. -->
 <iframe name="basinCommunityRequestSink" title="" hidden></iframe>
 <form id="basinCommunityRequestForm" action="https://usebasin.com/f/93034286b67b" method="POST" target="basinCommunityRequestSink" hidden>
 <input name="request_type" value="wild_ledger_community_request"><input id="basinWallet" name="operating_wallet"><input id="basinPaymentHash" name="payment_hash"><input id="basinPaymentLedger" name="payment_ledger"><input id="basinFeeXrp" name="setup_fee_xrp"><input id="basinFeeDrops" name="setup_fee_drops"><input id="basinOwnerWallet" name="owner_wallet">
@@ -535,16 +440,11 @@
     document.dispatchEvent(new Event("wildledger:start-community:proceed"));
   });
 </script>
-<script>
-  // Move 2: close the visual-only Trail if it is shown during later wiring.
-  document.getElementById("ledgerTrailClose").addEventListener("click", function () {
-    document.getElementById("ledgerTrail").classList.remove("show");
-  });
-</script>
 <script src="js/wildLedgerConfig.js"></script>
 <script src="js/communityConfig.js" data-registry-only="true"></script>
 <script type="module">
 import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
+import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { DirectXRPLClient } from "./js/xrplTransport.js";
 import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
 import { resolveWalletAccess } from "./js/communityAccess.js";
@@ -554,35 +454,48 @@ const config=window.WILD_LEDGER_CONFIG||{};const SERVER=String(config.xrplWebSoc
 const WILD_LEDGER_ACTIVE_WALLET_KEY="wildLedger.activeWallet";function saveWildLedgerActiveWallet(account){const value=String(account||"").trim();if(!/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(value))return;try{sessionStorage.setItem(WILD_LEDGER_ACTIVE_WALLET_KEY,value)}catch(_){}}
 const connectButton=$("connectButton"),disconnectButton=$("disconnectButton"),walletChangeWrap=$("walletChangeWrap"),walletConnectStatus=$("walletConnectStatus"),accountStatus=$("accountStatus"),ledgerStatus=$("ledgerStatus"),operatorStatus=$("operatorStatus"),qrWrap=$("qrWrap"),qrImage=$("qrImage"),uriText=$("uriText"),feeStatus=$("feeStatus"),ownerStatus=$("ownerStatus"),memoStatus=$("memoStatus"),paymentStatus=$("paymentStatus"),preparePaymentButton=$("preparePaymentButton"),signPaymentButton=$("signPaymentButton"),submitPaymentButton=$("submitPaymentButton"),paymentPreview=$("paymentPreview"),waitingBox=$("waitingBox"),readyBox=$("readyBox"),readyText=$("readyText"),enterCommunityLink=$("enterCommunityLink"),ownerWalletWarning=$("ownerWalletWarning");
 let signer=null,connectedAccount="",accountVerified=false,ownerWalletBlocked=false,feeState=null,preparedPayment=null,signedBlob="",submitLocked=false,basinSent=false;
-// Move 3: Ledger Trail presents the existing wallet connection; payment logic stays as-is.
-const ledgerTrail=$("ledgerTrail"), trailWalletRow=ledgerTrail.querySelector('[data-trail-step="wallet"]'),
-  trailRequestRow=ledgerTrail.querySelector('[data-trail-step="request"]'),
-  trailPrepareRow=ledgerTrail.querySelector('[data-trail-step="prepare"]'),
-  trailApproveRow=ledgerTrail.querySelector('[data-trail-step="approve"]'),
-  trailVerifyRow=ledgerTrail.querySelector('[data-trail-step="verify"]'),
-  trailComplete=$("trailComplete"),trailCompleteText=$("trailCompleteText"),
-  trailQrImage=$("trailQrImage"), trailQrRefresh=$("trailQrRefresh"),
-  trailAction=$("trailAction"), trailActionTitle=$("trailActionTitle"), trailActionCopy=$("trailActionCopy"),
-  trailStatus=$("ledgerTrailStatus"),trailGetWildLink=$("trailGetWildLink");
-function trailIsOpen(){return ledgerTrail.classList.contains("show")}
-function trailWalletStep(state,detail,awaitingWallet=false){
-  trailWalletRow.className=`trail-step ${state}${awaitingWallet?" is-awaiting-wallet":""}`;
-  const marker=trailWalletRow.querySelector(".trail-marker");
-  marker.textContent=state==="done"?"✓":state==="failed"?"×":state==="active"?"":"○";
-  if(state==="active"){
-    const activity=document.createElement("span");activity.className="trail-activity";
-    activity.setAttribute("aria-hidden","true");marker.appendChild(activity);
+// Move 7: The shared module draws every checkpoint and animation. Start Community
+// still owns all XRPL, WalletConnect, form notification and duplicate-payment checks.
+let trailEpoch=0;
+const trail = createLedgerTrail({
+  title: 'Start a Community',
+  description: 'Follow the Trail as Wild Ledger checks your request, asks your wallet to approve when needed, and confirms the result on XRPL.',
+  steps: [
+    {id:'wallet',title:'Wallet connection',detail:'Waiting to connect your XRPL wallet.'},
+    {id:'request',title:'Check request',detail:'Waiting to check your request on XRPL.'},
+    {id:'prepare',title:'Prepare payment',detail:'Waiting to prepare the current setup fee.'},
+    {id:'approve',title:'Wallet approval',detail:'Waiting for wallet approval if payment is needed.'},
+    {id:'verify',title:'Verify on XRPL',detail:'Waiting to confirm the validated payment result.'}
+  ],
+  onClose:()=>{
+    // X returns to the introduction and stops reads from the closed Trail.
+    trailEpoch++;
+    $('applicationSection').hidden=true;
+    $('proceedButton').setAttribute('aria-expanded','false');
+    qrWrap.classList.remove('show');
+    window.scrollTo({top:0,behavior:'auto'});
   }
-  if(detail)trailWalletRow.querySelector(".trail-copy span").textContent=detail;
+});
+const trailWalletRow='wallet',trailRequestRow='request',trailPrepareRow='prepare',
+  trailApproveRow='approve',trailVerifyRow='verify';
+const trailGetWildLink=document.createElement('a');
+trailGetWildLink.className='trail-getwild-link';
+trailGetWildLink.href='getWild.html';
+trailGetWildLink.textContent='Go to Get Wild →';
+trailGetWildLink.hidden=true;
+trail.element.querySelector('.ledger-trail-panel').append(trailGetWildLink);
+function trailIsOpen(){return trail.element.classList.contains('show')}
+function trailWalletStep(state,detail,awaitingWallet=false){
+  trail.setStep('wallet',state==='active'?(awaitingWallet?'waiting':'working'):(state||'pending'),detail);
 }
-function trailMessage(message,style=""){
-  trailStatus.className=`trail-status${style?` ${style}`:""}`;trailStatus.textContent=message;
+function trailMessage(message,style=''){
+  trail.setStatus(message,style);
 }
 // Move 4: show the existing XRPL request result without changing the XRPL reader.
 let trailRequestPresentation=null;
 // Move 5: the request reader alone decides whether a wallet may reach payment.
 // Keep payment preparation and signing on their existing functions; do not submit here.
-let trailRequestState="",trailPaymentRunning=false,trailEpoch=0,paymentConfirmed=false,lastSubmitError=null,trailSubmissionStarted=false;
+let trailRequestState="",trailPaymentRunning=false,paymentConfirmed=false,lastSubmitError=null,trailSubmissionStarted=false;
 // Keep trying transient XRPL reads for as long as this Trail stays open.
 // Each individual network request still has its existing timeout.
 function xrplIsTemporary(error){return /too busy|server busy|temporar|timeout|timed out|connection|closed|network|unavailable|try again|websocket|socket|slow.down|rate.limit|429|502|503|504/i.test(String(error?.message||error||""))}
@@ -601,63 +514,49 @@ async function trailReadUntilReady(work,epoch,waiting){
   }
   return null;
 }
-function trailRequestStep(state,detail,message,style=""){
+function trailRequestStep(state,detail,message,style=''){
   trailRequestPresentation={message,style};
-  trailRequestRow.className=`trail-step ${state}`;
-  const marker=trailRequestRow.querySelector(".trail-marker");
-  marker.textContent=state==="done"?"✓":state==="failed"||state==="blocked"?"×":state==="active"?"":"○";
-  trailGetWildLink.hidden=state!=="blocked";
-  if(state==="active"){
-    const activity=document.createElement("span");activity.className="trail-activity";
-    activity.setAttribute("aria-hidden","true");marker.appendChild(activity);
-  }
-  trailRequestRow.querySelector(".trail-copy span").textContent=detail;
+  trail.setStep('request',state==='active'?'working':state,detail);
+  trailGetWildLink.hidden=state!=='blocked';
   if(trailIsOpen())trailMessage(message,style);
 }
 function trailResetRequest(){
   trailRequestPresentation=null;
   trailGetWildLink.hidden=true;
-  trailRequestRow.className="trail-step";
-  trailRequestRow.querySelector(".trail-marker").textContent="○";
-  trailRequestRow.querySelector(".trail-copy span").textContent="Waiting to check your request on XRPL.";
+  trail.setStep('request','pending','Waiting to check your request on XRPL.');
 }
 function trailRestoreRequest(){
   if(trailRequestPresentation){
     trailMessage(trailRequestPresentation.message,trailRequestPresentation.style);
   }else{
-    trailMessage("Wallet connected. XRPL request verification has not completed yet.","busy");
+    trailMessage('Wallet connected. XRPL request verification has not completed yet.','busy');
   }
 }
 // Move 5: show the existing payment preparation and signature inside Ledger Trail.
 function trailPaymentStep(row,state,detail,awaitingWallet=false){
-  row.className=`trail-step ${state}${awaitingWallet?" is-awaiting-wallet":""}`;
-  const marker=row.querySelector(".trail-marker");
-  marker.textContent=state==="done"?"✓":state==="failed"?"×":state==="active"?"":"○";
-  if(state==="active"){
-    const activity=document.createElement("span");activity.className="trail-activity";
-    activity.setAttribute("aria-hidden","true");marker.appendChild(activity);
-  }
-  row.querySelector(".trail-copy span").textContent=detail;
+  trail.setStep(row,state==='active'?(awaitingWallet?'waiting':'working'):(state||'pending'),detail);
 }
 function trailResetPaymentSteps(){
-  trailRequestState="";
-  trailComplete.classList.remove("show");
+  trailRequestState='';
   paymentConfirmed=false;lastSubmitError=null;trailSubmissionStarted=false;
-  trailPaymentStep(trailPrepareRow,"","Waiting to prepare the current setup fee.");
-  trailPaymentStep(trailApproveRow,"","Waiting for wallet approval if payment is needed.");
-  trailPaymentStep(trailVerifyRow,"","Waiting to confirm the validated payment result.");
+  trailPaymentStep(trailPrepareRow,'pending','Waiting to prepare the current setup fee.');
+  trailPaymentStep(trailApproveRow,'pending','Waiting for wallet approval if payment is needed.');
+  trailPaymentStep(trailVerifyRow,'pending','Waiting to confirm the validated payment result.');
 }
 function trailShowValidatedPayment(){
-  if(trailRequestState!=="NONE"||!preparedPayment||!signedBlob||!paymentConfirmed)return false;
-  trailPaymentStep(trailPrepareRow,"done",`Prepared ${preparedPayment.feeXrp} XRP to the Owner Wallet.`);
-  trailPaymentStep(trailApproveRow,"done","Payment approved by Bifrost.");
-  trailPaymentStep(trailVerifyRow,"done","Payment validated on XRPL. Owner notified.");
-  trailAction.classList.remove("show");
-  trailQrImage.hidden=true;trailQrImage.removeAttribute("src");
-  trailCompleteText.textContent="Community Request Received";
-  trailComplete.classList.add("show");
-  trailMessage("Your XRP payment has been confirmed.\n\nWe're provisioning your new community. Within 24 hours, you should be able to sign in through Get Wild and access your community.","success");
-  trailGetWildLink.hidden=false;
+  if(trailRequestState!=='NONE'||!preparedPayment||!signedBlob||!paymentConfirmed)return false;
+  trailPaymentStep(trailPrepareRow,'done',`Prepared ${preparedPayment.feeXrp} XRP to the Owner Wallet.`);
+  trailPaymentStep(trailApproveRow,'done','Payment approved by Bifrost.');
+  trail.hidePrompt();
+  // The shared module displays the ordinary final checkmark for exactly 500ms.
+  // Afterward reveal the existing confirmation in progressive disclosure.
+  if(trailIsOpen())trail.finish({message:'Completed',onFinished:()=>{
+    trail.close();
+    $('applicationSection').hidden=false;
+    $('proceedButton').setAttribute('aria-expanded','true');
+    waitingBox.classList.add('show');
+    waitingBox.scrollIntoView({block:'center',behavior:'auto'});
+  }});
   return true;
 }
 async function trailPrepareAndApprove(){
@@ -696,20 +595,22 @@ async function trailPrepareAndApprove(){
     // the signature over that same approved WalletConnect session.
     // A second signer.connect() creates a different, unnecessary pairing.
     if(!signedBlob){
-      trailQrImage.hidden=true;trailQrImage.removeAttribute("src");trailQrRefresh.hidden=true;
-      trailActionTitle.textContent="OPEN BIFROST TO REVIEW PAYMENT";
-      trailActionCopy.textContent=`Open Bifrost now. Review the ${preparedPayment.feeXrp} XRP payment to the Wild Ledger Owner Wallet. Approve it to sign and send the payment, or reject it to stop. Then return to Wild Ledger.`;
-      trailAction.classList.add("show");
+      trail.hidePrompt();
+      trail.showPrompt({heading:'OPEN BIFROST TO REVIEW PAYMENT',
+        detail:`Open Bifrost now. Review the ${preparedPayment.feeXrp} XRP payment to the Wild Ledger Owner Wallet. Approve it to sign and send the payment, or reject it to stop. Then return to Wild Ledger.`});
       trailPaymentStep(trailApproveRow,"active","Waiting for Bifrost to approve or reject the XRP payment.",true);
       trailMessage("Open Bifrost now to review the payment. Wild Ledger is waiting for your choice.","busy");
       await signPayment();
+      // X stops this Trail before a newly signed payment can be submitted.
+      // Reopening resumes with the same signature; it never asks Bifrost twice.
+      if(!trailStillOpen(runEpoch))return;
       if(!signedBlob){
         trailPaymentStep(trailApproveRow,"failed","The wallet did not sign the XRP payment.");
         trailMessage(paymentStatus.textContent||"Payment not approved. No XRP was sent.","error");
         return;
       }
     }
-    trailAction.classList.remove("show");
+    trail.hidePrompt();
     trailPaymentStep(trailApproveRow,"done",`Bifrost signed ${preparedPayment.feeXrp} XRP.`);
     trailPaymentStep(trailVerifyRow,"active","Submitting the signed payment and verifying it on XRPL.");
     trailMessage("Bifrost approved. Submitting once and checking XRPL validation…","busy");
@@ -771,7 +672,7 @@ async function trailPrepareAndApprove(){
     }
     trailMessage(error?.message||String(error),"error");
   }finally{
-    trailAction.classList.remove("show");
+    trail.hidePrompt();
     trailPaymentRunning=false;
     // If a slow request finished after the user closed and reopened the Trail,
     // pick up where it left off instead of leaving the reopened Trail waiting.
@@ -781,35 +682,29 @@ async function trailPrepareAndApprove(){
   }
 }
 function trailWalletPreparing(){
-  trailQrRefresh.hidden=true;trailQrImage.hidden=true;trailQrImage.removeAttribute("src");
-  trailAction.classList.remove("show");
-  trailWalletStep("active","Preparing your Bifrost wallet connection.");
-  trailMessage("Creating the wallet connection QR code…","busy");
+  trail.hidePrompt();
+  trailWalletStep('active','Preparing your Bifrost wallet connection.');
+  trailMessage('Creating the wallet connection QR code…','busy');
 }
 function trailWalletQr(uri,dataUrl){
   if(!trailIsOpen())return;
-  trailQrImage.src=dataUrl;trailQrImage.hidden=false;trailQrRefresh.hidden=true;
-  trailActionTitle.textContent="GO TO BIFROST NOW";
-  trailActionCopy.textContent="Open Bifrost and approve the Wild Ledger wallet connection, then return here.";
-  trailAction.classList.add("show");
-  trailWalletStep("active","Waiting for your wallet to approve the connection.",true);
-  trailMessage("Waiting for Bifrost. The Trail will be here when you return.","busy");
+  trail.showPrompt({heading:'GO TO BIFROST NOW',
+    detail:'Open Bifrost and approve the Wild Ledger wallet connection, then return here.',
+    qrDataUrl:dataUrl});
+  trailWalletStep('active','Waiting for your wallet to approve the connection.',true);
+  trailMessage('Waiting for Bifrost. The Trail will be here when you return.','busy');
 }
 function trailWalletResult(connected,detail){
   if(!trailIsOpen())return;
-  trailQrImage.hidden=true;trailQrImage.removeAttribute("src");trailAction.classList.remove("show");
-  trailQrRefresh.hidden=true;
-  trailWalletStep(connected?"done":"failed",detail);
-  trailMessage(connected?"Wallet connected. Wild Ledger is checking XRPL…":detail,connected?"":"error");
+  trail.hidePrompt();
+  trailWalletStep(connected?'done':'failed',detail);
+  trailMessage(connected?'Wallet connected. Wild Ledger is checking XRPL…':detail,connected?'':'error');
 }
 function trailWalletFailure(message){
   if(!trailIsOpen())return;
-  trailWalletStep("failed","Wallet connection not completed. Refresh the QR code to try again.");
-  trailMessage(message||"Wallet connection not completed.","error");
-  trailActionTitle.textContent="WALLET CONNECTION NOT COMPLETED";
-  trailActionCopy.textContent="Refresh the QR code to try connecting your wallet again.";
-  trailQrImage.hidden=true;trailQrImage.removeAttribute("src");
-  trailQrRefresh.hidden=false;trailAction.classList.add("show");
+  trail.hidePrompt();
+  trailWalletStep('failed','Wallet connection not completed. Close with X to start again.');
+  trailMessage(message||'Wallet connection not completed.','error');
 }
 async function trailVerifyRequestAndAdvance(){
   const epoch=trailEpoch;
@@ -830,22 +725,22 @@ async function trailVerifyRequestAndAdvance(){
   }
 }
 function beginWalletTrail(){
-  ledgerTrail.classList.add("show");
+  trail.open({resetSteps:false});
+  trailGetWildLink.hidden=trailRequestState!=='ASSIGNED';
   if(connectedAccount){
-    trailWalletResult(true,"Wallet connected. Your request status is shown in this Trail.");
+    trailWalletResult(true,'Wallet connected. Your request status is shown in this Trail.');
     trailRestoreRequest();
-    if(!["NONE","ASSIGNED","READY","WAITING"].includes(trailRequestState)){
+    if(!['NONE','ASSIGNED','READY','WAITING'].includes(trailRequestState)){
       void trailVerifyRequestAndAdvance();
     }else if(trailPaymentRunning){
       if(!signedBlob){
-        trailActionTitle.textContent="OPEN BIFROST TO REVIEW PAYMENT";
-        trailActionCopy.textContent=`Open Bifrost now to review the ${preparedPayment?.feeXrp||"current"} XRP payment. Approve or reject it there, then return here.`;
-        trailAction.classList.add("show");
-        trailPaymentStep(trailApproveRow,"active","Waiting for Bifrost to approve or reject the XRP payment.",true);
-        trailMessage("Your existing Bifrost connection is handling the payment request.","busy");
+        trail.showPrompt({heading:'OPEN BIFROST TO REVIEW PAYMENT',
+          detail:`Open Bifrost now to review the ${preparedPayment?.feeXrp||'current'} XRP payment. Approve or reject it there, then return here.`});
+        trailPaymentStep(trailApproveRow,'active','Waiting for Bifrost to approve or reject the XRP payment.',true);
+        trailMessage('Your existing Bifrost connection is handling the payment request.','busy');
       }else{
-        trailPaymentStep(trailVerifyRow,"active","Checking the submitted payment on XRPL.");
-        trailMessage("Checking XRPL payment validation…","busy");
+        trailPaymentStep(trailVerifyRow,'active','Checking the submitted payment on XRPL.');
+        trailMessage('Checking XRPL payment validation…','busy');
       }
     }else if(!trailShowValidatedPayment())void trailPrepareAndApprove();
     return;
@@ -858,16 +753,7 @@ function beginWalletTrail(){
   trailWalletPreparing();
   void connectWallet();
 }
-document.addEventListener("wildledger:start-community:proceed",beginWalletTrail);
-trailQrRefresh.addEventListener("click",()=>{if(connectButton.disabled)return;trailWalletPreparing();void connectWallet()});
-$("ledgerTrailClose").addEventListener("click",()=>{
-  // The Trail closes onto the introduction, never the old Connect Wallet application.
-  trailEpoch++; // Closing the Trail stops automatic retries.
-  $("applicationSection").hidden=true;
-  $("proceedButton").setAttribute("aria-expanded","false");
-  qrWrap.classList.remove("show");
-  window.scrollTo({top:0,behavior:"auto"});
-});
+document.addEventListener('wildledger:start-community:proceed',beginWalletTrail);
 function tone(el,kind,text){el.classList.remove("good","bad","wait");if(kind)el.classList.add(kind);el.textContent=text}
 function actionState(button,state,label){button.classList.remove("next-action","complete-action");if(state==="next")button.classList.add("next-action");if(state==="complete")button.classList.add("complete-action");if(label)button.textContent=label}
 function resetPayment(){preparedPayment=null;signedBlob="";submitLocked=false;paymentConfirmed=false;lastSubmitError=null;trailSubmissionStarted=false;actionState(preparePaymentButton,"","Prepare Payment");actionState(signPaymentButton,"","Send for Signature");actionState(submitPaymentButton,"","Submit Payment");signPaymentButton.disabled=true;submitPaymentButton.disabled=true;paymentPreview.textContent="No payment prepared.";if(accountVerified&&!ownerWalletBlocked&&feeState?.current){preparePaymentButton.disabled=false;actionState(preparePaymentButton,"next")}else{preparePaymentButton.disabled=true}}function applyOwnerWalletBlock(){ownerWalletBlocked=true;showStatusBox(null);ownerWalletWarning.classList.add("show");disconnectButton.classList.add("owner-blocked");tone(operatorStatus,"bad","This is the Wild Ledger Owner Wallet. It cannot submit a new community request.");tone(paymentStatus,"bad","Owner Wallet cannot pay the setup fee to itself. Use a different wallet to continue.");preparedPayment=null;signedBlob="";submitLocked=false;preparePaymentButton.disabled=true;signPaymentButton.disabled=true;submitPaymentButton.disabled=true;actionState(preparePaymentButton,"","Prepare Payment");actionState(signPaymentButton,"","Send for Signature");actionState(submitPaymentButton,"","Submit Payment");paymentPreview.textContent="Connect a different wallet to continue."}

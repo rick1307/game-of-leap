@@ -67,10 +67,14 @@
 .ledger-trail .trail-step.active .trail-copy span{color:rgba(255,226,167,.72)}
 .ledger-trail .trail-step.failed .trail-marker{border-color:rgba(255,183,170,.58);background:rgba(239,118,93,.12);color:#ffb7aa}
 .ledger-trail .trail-step.failed .trail-copy strong, .ledger-trail .trail-step.failed .trail-copy span{color:#ffb7aa}
+.ledger-trail .trail-step.blocked .trail-marker{border-color:rgba(244,189,88,.72);background:rgba(244,189,88,.13);color:#ffe2a7}
+.ledger-trail .trail-step.blocked .trail-copy strong,.ledger-trail .trail-step.blocked .trail-copy span{color:#ffe2a7}
 @keyframes trailPulse{0%{transform:scale(.9);opacity:.8}100%{transform:scale(1.42);opacity:0}}
 .ledger-trail .trail-status{margin:5px 0 0;padding:10px 12px;border:1px solid rgba(121,213,194,.12);border-radius:12px;background:rgba(2,24,34,.34);color:rgba(236,249,247,.62);font-size:.68rem;line-height:1.42}
 .ledger-trail .trail-status.busy{color:#ffe2a7;border-color:rgba(244,189,88,.18)}
 .ledger-trail .trail-status.error{color:#ffb7aa;border-color:rgba(239,118,93,.24)}
+.ledger-trail .trail-status.blocked{color:#ffe2a7;border-color:rgba(244,189,88,.40)}
+.ledger-trail .trail-status.success{color:#bdf2c8;border-color:rgba(159,224,176,.38);white-space:pre-line}
 .ledger-trail .trail-action{display:none;margin:0 0 18px;padding:16px;border:1px solid rgba(244,189,88,.30);border-radius:17px;background:linear-gradient(145deg,rgba(244,189,88,.10),rgba(41,184,177,.06));box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
 /* Get Wild reserves 12px below the prompt through its hidden choice-list block.
    Match that approved vertical geometry without adding unused choice controls. */
