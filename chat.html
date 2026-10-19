@@ -1100,6 +1100,26 @@
         && SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_");
     }
 
+    // TEMPORARY READ-ONLY SUPABASE DIAGNOSTICS — remove after diagnosis.
+    const realtimeDebugPanel = document.createElement("section");
+    realtimeDebugPanel.setAttribute("aria-label", "Temporary Supabase connection diagnostics");
+    realtimeDebugPanel.style.cssText = "position:fixed;bottom:8px;left:8px;right:8px;z-index:2147483647;max-height:36vh;overflow:auto;background:#111827;color:#e5e7eb;border:1px solid #f59e0b;border-radius:8px;padding:10px;font:12px/1.45 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 2px 12px #0009";
+    const realtimeDebugTitle = document.createElement("div");
+    realtimeDebugTitle.textContent = "SUPABASE DEBUG (temporary)";
+    realtimeDebugTitle.style.cssText = "font-weight:bold;color:#fbbf24;margin-bottom:5px";
+    const realtimeDebugLines = document.createElement("div");
+    realtimeDebugPanel.append(realtimeDebugTitle, realtimeDebugLines);
+    document.body.appendChild(realtimeDebugPanel);
+    function realtimeDebug(event, detail = "") {
+      const line = document.createElement("div");
+      const value = typeof detail === "string" ? detail : (detail?.message || detail?.code || String(detail || ""));
+      line.textContent = `${new Date().toLocaleTimeString()}  ${event}${value ? " — " + String(value).slice(0, 300) : ""}`;
+      realtimeDebugLines.appendChild(line);
+      while (realtimeDebugLines.childElementCount > 18) realtimeDebugLines.firstChild.remove();
+      realtimeDebugPanel.scrollTop = realtimeDebugPanel.scrollHeight;
+    }
+    realtimeDebug("Diagnostics loaded; waiting for Lounge entry");
+    realtimeDebug("Realtime config", `URL: ${(() => { try { return new URL(SUPABASE_URL).host; } catch { return "invalid"; } })()} | key type: ${SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_") ? "publishable" : "other"}`);
     function setRoomConnectionState(state, label) {
       roomConnectionDot.classList.toggle("offline", state === "offline");
       roomConnectionDot.classList.toggle("connecting", state === "connecting");
@@ -1253,7 +1273,8 @@
         setRoomConnectionState("offline", "Live-room configuration unavailable");
         return;
       }
-      if (chatChannel) return;
+      if (chatChannel) { realtimeDebug("Existing channel; no new subscription"); return; }
+      realtimeDebug("Starting subscription", `topic: ${CHAT_CHANNEL_TOPIC}`);
       setRoomConnectionState("connecting", "Connecting live room…");
       try {
         if (!supabaseClient) {
@@ -1265,6 +1286,7 @@
           config: { broadcast: { self: false, ack: true }, presence: { key: chatClientId } }
         });
         chatChannel = channel;
+        realtimeDebug("Channel created", "public Broadcast + Presence");
         channel
           .on("broadcast", { event: "chat-message" }, ({ payload }) => {
             if (channel === chatChannel && run === loungeEntryRun && loungeSession)
@@ -1275,14 +1297,18 @@
               updateRoomPresenceCount();
           })
           .subscribe(async (status, error) => {
+            realtimeDebug("Subscription status", `${status}${error ? " | " + (error.message || error.code || String(error)) : ""}`);
+            realtimeDebug("WebSocket", ["CONNECTING", "OPEN", "CLOSING", "CLOSED"][supabaseClient?.realtime?.conn?.readyState] || "not available");
             if (channel !== chatChannel || run !== loungeEntryRun || !loungeSession) return;
             if (status === "SUBSCRIBED") {
               chatRealtimeReady = true;
               setRoomConnectionState("online", "Live room connected");
               try {
                 const presence = await channel.track({ online_at: new Date().toISOString() });
+                realtimeDebug("Presence track", String(presence));
                 if (presence !== "ok") console.warn("Supabase Presence track returned", presence);
               } catch (presenceError) {
+                realtimeDebug("Presence error", presenceError);
                 console.warn("Supabase Presence tracking failed", presenceError);
               }
             } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
@@ -1292,6 +1318,7 @@
             }
           });
       } catch (error) {
+        realtimeDebug("Initialization error", error);
         console.error("Supabase Realtime initialization failed", error);
         chatRealtimeReady = false;
         setRoomConnectionState("offline", "Live room unavailable");
@@ -1305,6 +1332,7 @@
           !chatView.classList.contains("lounge-admitted")) return;
       void initializeRealtimeChat(run).catch(error => {
         if (error?.trailClosed || run !== loungeEntryRun || !loungeSession) return;
+        realtimeDebug("Lounge connection error", error);
         console.error("Lounge Realtime connection:", error);
         chatRealtimeReady = false;
         setRoomConnectionState("offline", "Live room unavailable");
