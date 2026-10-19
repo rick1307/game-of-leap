@@ -871,7 +871,7 @@
   <script src="js/communityConfig.js" data-registry-only="true"></script>
   <script type="module">
     import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
-    import { createClient } from "https://esm.sh/@supabase/supabase-js@2?bundle";
+    import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10?bundle";
     import { DirectXRPLClient, prepareTransaction, textToHex, isClassicAddress } from "./js/xrplTransport.js";
     import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
     import { resolveCommunityAuthority, clearCommunityAuthorityCache } from "./js/communityAuthority.js";
@@ -1100,42 +1100,6 @@
         && SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_");
     }
 
-    // TEMPORARY READ-ONLY SUPABASE DIAGNOSTICS — remove after diagnosis.
-    const realtimeDebugPanel = document.createElement("section");
-    realtimeDebugPanel.setAttribute("aria-label", "Temporary Supabase connection diagnostics");
-    realtimeDebugPanel.style.cssText = "position:fixed;bottom:8px;left:8px;right:8px;z-index:2147483647;max-height:36vh;overflow:auto;background:#111827;color:#e5e7eb;border:1px solid #f59e0b;border-radius:8px;padding:10px;font:12px/1.45 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;box-shadow:0 2px 12px #0009";
-    const realtimeDebugTitle = document.createElement("div");
-    realtimeDebugTitle.textContent = "SUPABASE DEBUG (temporary)";
-    realtimeDebugTitle.style.cssText = "font-weight:bold;color:#fbbf24;margin-bottom:5px";
-    const realtimeDebugLines = document.createElement("div");
-    realtimeDebugPanel.append(realtimeDebugTitle, realtimeDebugLines);
-    document.body.appendChild(realtimeDebugPanel);
-    function realtimeDebug(event, detail = "") {
-      const line = document.createElement("div");
-      const value = typeof detail === "string" ? detail : (detail?.message || detail?.code || String(detail || ""));
-      line.textContent = `${new Date().toLocaleTimeString()}  ${event}${value ? " — " + String(value).slice(0, 300) : ""}`;
-      realtimeDebugLines.appendChild(line);
-      while (realtimeDebugLines.childElementCount > 18) realtimeDebugLines.firstChild.remove();
-      realtimeDebugPanel.scrollTop = realtimeDebugPanel.scrollHeight;
-    }
-    realtimeDebug("Diagnostics loaded; waiting for Lounge entry");
-    realtimeDebug("Realtime config", `URL: ${(() => { try { return new URL(SUPABASE_URL).host; } catch { return "invalid"; } })()} | key type: ${SUPABASE_PUBLISHABLE_KEY.startsWith("sb_publishable_") ? "publishable" : "other"}`);
-    // TEMPORARY DIAGNOSTIC: observe the actual Realtime WebSocket lifecycle.
-    // No credentials, message payloads, or URL query parameters are logged.
-    const NativeRealtimeWebSocket = globalThis.WebSocket;
-    class DiagnosticRealtimeWebSocket extends NativeRealtimeWebSocket {
-      constructor(url, protocols) {
-        super(url, protocols);
-        try {
-          const parsed = new URL(String(url));
-          realtimeDebug("WS attempt", `${parsed.host}${parsed.pathname}`);
-        } catch (_) { realtimeDebug("WS attempt", "URL unavailable"); }
-        this.addEventListener("open", () => realtimeDebug("WS open", "handshake completed"));
-        this.addEventListener("error", () => realtimeDebug("WS error", "browser reported transport error; inspect Safari Web Inspector for HTTP/TLS detail"));
-        this.addEventListener("close", event => realtimeDebug("WS close", `code=${event.code} clean=${event.wasClean} reason=${String(event.reason || "(none)").slice(0, 120)}`));
-      }
-    }
-    realtimeDebug("Browser WebSocket", typeof NativeRealtimeWebSocket);
     function setRoomConnectionState(state, label) {
       roomConnectionDot.classList.toggle("offline", state === "offline");
       roomConnectionDot.classList.toggle("connecting", state === "connecting");
@@ -1266,18 +1230,20 @@
       renderChatMessage({ ...message, isMe: false });
     }
 
-    // Restore the original pre-Trail Supabase channel lifecycle.
-    // Lounge admission and wallet identity are separate from Realtime.
+    // Realtime transport is independent of the wallet/LEAP admission Ledger Trail.
+    // This is a fresh implementation; no private SDK socket internals are inspected.
     function retireRealtimeChannel(channel) {
       if (!channel) return;
       if (chatChannel === channel) chatChannel = null;
-      try { Promise.resolve(channel.untrack()).catch(() => {}); } catch (_) {}
+      chatRealtimeReady = false;
       try {
-        const removal = typeof supabaseClient?.removeChannel === "function"
-          ? supabaseClient.removeChannel(channel) : channel.unsubscribe();
-        Promise.resolve(removal).catch(() => {});
-      } catch (_) {}
+        const result = supabaseClient?.removeChannel(channel) ?? channel.unsubscribe();
+        Promise.resolve(result).catch(error => console.warn("Realtime cleanup", error));
+      } catch (error) {
+        console.warn("Realtime cleanup", error);
+      }
     }
+
     async function initializeRealtimeChat(run) {
       if (run !== loungeEntryRun || !loungeSession ||
           !chatView.classList.contains("lounge-admitted")) return;
@@ -1289,21 +1255,19 @@
         setRoomConnectionState("offline", "Live-room configuration unavailable");
         return;
       }
-      if (chatChannel) { realtimeDebug("Existing channel; no new subscription"); return; }
-      realtimeDebug("Starting subscription", `topic: ${CHAT_CHANNEL_TOPIC}`);
+      if (chatChannel) return;
       setRoomConnectionState("connecting", "Connecting live room…");
       try {
         if (!supabaseClient) {
           supabaseClient = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
             auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
-            realtime: { transport: DiagnosticRealtimeWebSocket }
+            realtime: { params: { eventsPerSecond: 10 } }
           });
         }
         const channel = supabaseClient.channel(CHAT_CHANNEL_TOPIC, {
-          config: { broadcast: { self: false, ack: true }, presence: { key: chatClientId } }
+          config: { private: false, broadcast: { self: false, ack: true }, presence: { key: chatClientId } }
         });
         chatChannel = channel;
-        realtimeDebug("Channel created", "public Broadcast + Presence");
         channel
           .on("broadcast", { event: "chat-message" }, ({ payload }) => {
             if (channel === chatChannel && run === loungeEntryRun && loungeSession)
@@ -1314,43 +1278,38 @@
               updateRoomPresenceCount();
           })
           .subscribe(async (status, error) => {
-            realtimeDebug("Subscription status", `${status}${error ? " | " + (error.message || error.code || String(error)) : ""}`);
-            realtimeDebug("WebSocket", ["CONNECTING", "OPEN", "CLOSING", "CLOSED"][supabaseClient?.realtime?.conn?.readyState] || "not available");
             if (channel !== chatChannel || run !== loungeEntryRun || !loungeSession) return;
             if (status === "SUBSCRIBED") {
               chatRealtimeReady = true;
               setRoomConnectionState("online", "Live room connected");
               try {
-                const presence = await channel.track({ online_at: new Date().toISOString() });
-                realtimeDebug("Presence track", String(presence));
-                if (presence !== "ok") console.warn("Supabase Presence track returned", presence);
+                const result = await channel.track({ online_at: new Date().toISOString() });
+                if (result !== "ok") console.warn("Realtime Presence track:", result);
               } catch (presenceError) {
-                realtimeDebug("Presence error", presenceError);
-                console.warn("Supabase Presence tracking failed", presenceError);
+                console.warn("Realtime Presence unavailable:", presenceError);
               }
-            } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
-              console.error("Supabase Realtime channel status", status, error || "");
+            } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+              chatRealtimeReady = false;
+              setRoomConnectionState("offline", "Live room disconnected");
+              console.error("Realtime subscription:", status, error || "");
+            } else if (status === "CLOSED") {
               chatRealtimeReady = false;
               setRoomConnectionState("offline", "Live room disconnected");
             }
           });
       } catch (error) {
-        realtimeDebug("Initialization error", error);
-        console.error("Supabase Realtime initialization failed", error);
+        console.error("Realtime initialization:", error);
         chatRealtimeReady = false;
         setRoomConnectionState("offline", "Live room unavailable");
       }
     }
 
-    // Room admission has already succeeded by the time this starts.
-    // A Realtime interruption never restarts Bifrost or changes the alias.
     function startLoungeRealtime(run) {
       if (run !== loungeEntryRun || !loungeSession ||
           !chatView.classList.contains("lounge-admitted")) return;
       void initializeRealtimeChat(run).catch(error => {
-        if (error?.trailClosed || run !== loungeEntryRun || !loungeSession) return;
-        realtimeDebug("Lounge connection error", error);
-        console.error("Lounge Realtime connection:", error);
+        if (run !== loungeEntryRun || !loungeSession) return;
+        console.error("Realtime connection:", error);
         chatRealtimeReady = false;
         setRoomConnectionState("offline", "Live room unavailable");
       });
@@ -1359,8 +1318,12 @@
     messageForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const text = messageInput.value.trim();
-      if (!text || !currentNickname || !loungeSession || !chatView.classList.contains("lounge-admitted")) return;
-
+      if (!text || !currentNickname || !loungeSession ||
+          !chatView.classList.contains("lounge-admitted")) return;
+      if (!chatRealtimeReady || !chatChannel) {
+        showChatToast("Live room disconnected. Message not sent; your text is preserved.");
+        return;
+      }
       const message = {
         messageId: globalThis.crypto?.randomUUID?.() || `msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
         senderId: chatClientId,
@@ -1368,29 +1331,17 @@
         text: text.slice(0, 280),
         sentAt: new Date().toISOString()
       };
-
-      if (!chatRealtimeReady || !chatChannel) {
-        renderChatMessage({ ...message, isMe: true });
-        messageInput.value = "";
-        showChatToast("Supabase is not connected yet — this message is only in this browser.");
-        return;
-      }
-
       messageSendButton.disabled = true;
       try {
         const result = await chatChannel.send({
-          type: "broadcast",
-          event: "chat-message",
-          payload: message
+          type: "broadcast", event: "chat-message", payload: message
         });
-        if (result !== "ok") throw new Error(`Realtime send returned ${result || "an unknown result"}.`);
-
+        if (result !== "ok") throw new Error(`Realtime send returned ${result || "unknown"}`);
         renderChatMessage({ ...message, isMe: true });
         messageInput.value = "";
       } catch (error) {
-        console.error("Realtime chat send failed", error);
-        setRoomConnectionState("offline", "Live room send failed");
-        showChatToast("Message was not sent to the live room. Your text is still here so you can try again.");
+        console.error("Realtime send:", error);
+        showChatToast("Message not delivered. Your text is preserved for retry.");
       } finally {
         messageSendButton.disabled = false;
         messageInput.focus();
