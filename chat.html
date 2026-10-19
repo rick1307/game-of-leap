@@ -637,7 +637,7 @@
         <div class="trail-step active"><div class="trail-marker" aria-hidden="true"><span class="trail-activity" aria-hidden="true"></span></div><div class="trail-copy"><strong>Connect Wallet</strong><span>Preparing Bifrost wallet connection.</span></div></div>
         <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Verify LEAP Passport</strong><span>Reading LEAP evidence from the validated XRP Ledger.</span></div></div>
         <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Assign Lounge Alias</strong><span>Wild Ledger assigns a temporary name automatically.</span></div></div>
-        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Establish Lounge Session</strong><span>Waiting for the live room to connect.</span></div></div>
+        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Establish Lounge Session</strong><span>Waiting for verified identity and temporary alias.</span></div></div>
         <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Ready</strong><span>Waiting to open the Lounge.</span></div></div>
       </div>
       <p class="trail-status busy" role="status" aria-live="polite">Preparing your Lounge entry…</p>
@@ -1336,16 +1336,26 @@
                   abort(); return;
                 }
                 if (status === "SUBSCRIBED" && !settled) {
+                  // Match the original Lounge: subscription is live messaging;
+                  // Presence is best-effort and never blocks entry or messaging.
+                  subscribed = true;
+                  chatRealtimeReady = true;
+                  setRoomConnectionState("online", "Live room connected");
+                  complete();
                   try {
-                    const presence = await channel.track({online_at: new Date().toISOString()});
-                    if (settled || channel !== chatChannel) return;
-                    ensureRealtimeRun(run);
-                    if (presence !== "ok") throw new Error("Live-room presence could not be established.");
-                    subscribed = true;
-                    chatRealtimeReady = true;
-                    setRoomConnectionState("online", "Live room connected");
-                    complete();
-                  } catch (e) { complete(e); }
+                    Promise.resolve(channel.track({online_at: new Date().toISOString()}))
+                      .then(presence => {
+                        if (presence !== "ok" && channel === chatChannel && run === loungeEntryRun)
+                          console.warn("Supabase Presence track returned", presence);
+                      })
+                      .catch(error => {
+                        if (channel === chatChannel && run === loungeEntryRun)
+                          console.warn("Supabase Presence tracking failed", error);
+                      });
+                  } catch (error) {
+                    if (channel === chatChannel && run === loungeEntryRun)
+                      console.warn("Supabase Presence tracking failed", error);
+                  }
                 } else if (["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)) {
                   const failure = new Error(error?.message || `Live-room ${status.toLowerCase().replaceAll("_", " ")}.`);
                   if (!settled) complete(failure);
@@ -1373,6 +1383,19 @@
           if (channel && (!chatRealtimeReady || run !== loungeEntryRun)) retireRealtimeChannel(channel);
         }
       }
+    }
+
+    // Room admission has already succeeded by the time this starts.
+    // A Realtime interruption never restarts Bifrost or changes the alias.
+    function startLoungeRealtime(run) {
+      if (run !== loungeEntryRun || !loungeSession ||
+          !chatView.classList.contains("lounge-admitted")) return;
+      void initializeRealtimeChat(run).catch(error => {
+        if (error?.trailClosed || run !== loungeEntryRun || !loungeSession) return;
+        console.error("Lounge Realtime connection:", error);
+        chatRealtimeReady = false;
+        setRoomConnectionState("offline", "Live room unavailable");
+      });
     }
 
     messageForm.addEventListener("submit", async (event) => {
@@ -1416,7 +1439,8 @@
       }
     });
 
-    // Never subscribe or track presence before the verified Lounge entry finishes.
+    // Never subscribe or track presence before verified Lounge admission completes.
+    // Realtime state is independent of admission, just as in the original chat.
 
     // Lounge Entry — wallet is private session identity; alias is disposable display only.
     // Existing public Supabase Broadcast is NOT server-authorized by this browser gate.
@@ -1431,7 +1455,7 @@
         {id:"wallet", title:"Connect Wallet", detail:"Preparing Bifrost wallet connection."},
         {id:"membership", title:"Verify LEAP Passport", detail:"Reading LEAP evidence from the validated XRP Ledger."},
         {id:"alias", title:"Assign Lounge Alias", detail:"Wild Ledger assigns a temporary name automatically."},
-        {id:"session", title:"Establish Lounge Session", detail:"Waiting for the live room to connect."},
+        {id:"session", title:"Establish Lounge Session", detail:"Waiting for verified identity and temporary alias."},
         {id:"ready", title:"Ready", detail:"Waiting to open the Lounge."}
       ],
       onClose: () => { ++loungeEntryRun; void closeLoungeSession(); }
@@ -1616,13 +1640,14 @@
         }
         loungeTrail.setStep("alias","done",`Your temporary Lounge name is ${alias.display}.`);
         currentStep = "session";
-        loungeTrail.setStep("session","working","Opening the live room; LEAP transfer readiness is separate from access.");
-        loungeTrail.setStatus("Establishing live Lounge presence…","busy");
+        loungeTrail.setStep("session","working","Establishing your verified, temporary Lounge session.");
+        loungeTrail.setStatus("Opening your Community Lounge…","busy");
         loungeSession = Object.freeze({wallet:pairing.account, alias, sessionId:chatClientId, communityId:COMMUNITY_BACKEND_ID, leapTransfersEnabled:passport.leapTransfersEnabled});
         currentNickname = alias.display;
-        await initializeRealtimeChat(run);
+        // Establishing the local verified session does NOT require Supabase to
+        // acknowledge a channel or register Presence. Both run once inside.
         ensureLoungeRun(run);
-        loungeTrail.setStep("session","done","Live room connected; temporary alias assigned to this visit.");
+        loungeTrail.setStep("session","done","Verified wallet bound to your temporary Lounge name.");
         currentStep = "ready";
         loungeTrail.setStep("ready","working","Opening the Lounge.");
         loungeTrail.finish({message:"Completed",onFinished: () => {
@@ -1631,6 +1656,7 @@
           chatView.classList.add("lounge-admitted");
           if (loungeSessionName) loungeSessionName.textContent = `You: ${alias.display}`;
           loungeTrail.close();
+          startLoungeRealtime(run); // Nonblocking; reconnect independently if needed.
           messageInput.focus();
           messages.scrollTop = messages.scrollHeight;
         }});
