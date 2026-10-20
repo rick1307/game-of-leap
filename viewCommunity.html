@@ -284,11 +284,6 @@ import { readGetWildSession, clearWildLedgerSessions } from "./js/wildLedgerSess
   const urlRole = String(params.get("role") || "").trim().toLowerCase();
   const operatorRequested = urlRole === "operator" || urlRole === "manager" || getWildSession?.authority === "operator";
 
-  if (operatorRequested && !operatorSession) {
-    window.location.replace("getWild.html?operatorSession=required");
-    return;
-  }
-
   const role = operatorSession ? "operator" : "owner";
   const requestedCommunity = operatorSession
     ? operatorSession.communityId
