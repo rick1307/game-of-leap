@@ -260,7 +260,7 @@
         <div id="entryView">
           <div class="entry-card">
             <h2>Come on in.</h2>
-            <p>Pick a nickname for this visit. It disappears when you leave the Lounge.</p>
+            <p>Pick a nickname for the Lounge. Your browser can remember it for next time.</p>
 
             <form id="entryForm">
               <div class="nickname-row">
@@ -269,7 +269,7 @@
               </div>
             </form>
 
-            <p class="entry-note">No account. No password. Pick a different name next time if you want.</p>
+            <p class="entry-note">Your alias is remembered on this device. You can change it whenever you enter.</p>
           </div>
         </div>
 
@@ -279,59 +279,12 @@
               <span class="online-dot" aria-hidden="true"></span>
               <strong id="roomName">Leaper Lounge</strong>
             </div>
-            <span class="room-count">8 Leapers aboard</span>
+            <span class="room-count" id="roomCount">Connecting…</span>
           </div>
 
-          <div class="messages" id="messages" aria-live="polite">
-            <div class="message">
-              <div class="avatar">R</div>
-              <div class="bubble">
-                <div class="meta">
-                  <button class="name tippable" data-tip-name="Rick">Rick</button>
-                  <span class="bolt" title="LEAP tips enabled">⚡</span>
-                  <span class="time">8:42 PM</span>
-                </div>
-                <div class="text">Welcome aboard. Make yourselves comfortable.</div>
-              </div>
-            </div>
+          <div class="messages" id="messages" aria-live="polite"></div>
 
-            <div class="message">
-              <div class="avatar">SD</div>
-              <div class="bubble">
-                <div class="meta">
-                  <button class="name tippable" data-tip-name="SaltyDog">SaltyDog</button>
-                  <span class="bolt" title="LEAP tips enabled">⚡</span>
-                  <span class="time">8:43 PM</span>
-                </div>
-                <div class="text">That sunset behind the boat is incredible.</div>
-              </div>
-            </div>
-
-            <div class="message">
-              <div class="avatar">PP</div>
-              <div class="bubble">
-                <div class="meta">
-                  <span class="name">PanamaPete</span>
-                  <span class="time">8:44 PM</span>
-                </div>
-                <div class="text">How deep is the water where you're anchored?</div>
-              </div>
-            </div>
-
-            <div class="message">
-              <div class="avatar">FF</div>
-              <div class="bubble">
-                <div class="meta">
-                  <button class="name tippable" data-tip-name="FrogFan">FrogFan</button>
-                  <span class="bolt" title="LEAP tips enabled">⚡</span>
-                  <span class="time">8:45 PM</span>
-                </div>
-                <div class="text">I could watch this all evening.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="legend"><span class="bolt">⚡</span> LEAP tips enabled — tap a lightning-bolt Leaper's name.</div>
+          <div class="legend"><span class="bolt">⚡</span> LEAP Recognition — tap a lightning-bolt Leaper's name.</div>
 
           <form class="composer" id="messageForm">
             <input id="messageInput" maxlength="280" autocomplete="off" placeholder="Say something..." aria-label="Message" />
@@ -341,16 +294,15 @@
       </section>
 
       <div class="prototype-note">
-        <strong class="sans">Prototype only.</strong>
-        This page does not connect to a chat server, wallet, or the XRP Ledger. Messages and LEAP tips are simulated so we can decide what the Lounge should feel like first.
+        <strong class="sans">Live messaging build.</strong> Supabase Broadcast and Presence are used without chat message storage. LEAP Recognition is visual-only in this build; no LEAP is transferred.
       </div>
     </div>
   </main>
 
   <div class="scrim" id="tipScrim" role="dialog" aria-modal="true" aria-labelledby="tipTitle">
     <div class="tip-sheet">
-      <h3 id="tipTitle">Tip <span id="tipName">Leaper</span> ⚡</h3>
-      <p>This Leaper has LEAP transfers enabled.</p>
+      <h3 id="tipTitle">Recognize <span id="tipName">Leaper</span> ⚡</h3>
+      <p>LEAP Recognition is not yet connected.</p>
       <div class="tip-amounts">
         <button class="tip-amount" data-amount="1">1 LEAP</button>
         <button class="tip-amount" data-amount="5">5 LEAP</button>
@@ -362,117 +314,87 @@
     </div>
   </div>
 
-  <div class="toast" id="toast">Prototype tip simulated.</div>
+  <div class="toast" id="toast">LEAP Recognition is not yet connected.</div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
-    // Community context comes from the Member Record URL. The shared Lounge machinery
-    // stays generic; each community supplies its own presentation here.
-    const communityKey = new URLSearchParams(window.location.search).get("community") || "sailing-frogs-leap";
-    const communities = {
-      "sailing-frogs-leap": {
-        communityName: "Sailing Frog's Leap",
-        loungeName: "Leaper Lounge",
-        lede: "A place for Leapers to pull up a chair, pick a name, and join the conversation."
-      }
-    };
-    const community = communities[communityKey] || communities["sailing-frogs-leap"];
-
+    // Supabase browser publishable key (never use a secret key here).
+    // Never use a service_role or secret key in a web page.
+    const SUPABASE_URL = "https://faenazefsogaoghuclis.supabase.co";
+    const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_8CRe36dcXHN_QV7dsVBMLg_xu6rw55M";
+    const communityKey = new URLSearchParams(location.search).get('community') || 'sailing-frogs-leap';
+    const community = {communityName:"Sailing Frog's Leap", loungeName:'Leaper Lounge', lede:'A place for Leapers to pull up a chair, pick a name, and join the conversation.'};
     document.body.dataset.community = communityKey;
-    document.getElementById("communityName").textContent = community.communityName;
-    document.getElementById("loungeName").textContent = community.loungeName;
-    document.getElementById("roomName").textContent = community.loungeName;
-    document.getElementById("loungeLede").textContent = community.lede;
+    for (const [id,value] of Object.entries({communityName:community.communityName,loungeName:community.loungeName,roomName:community.loungeName,loungeLede:community.lede})) document.getElementById(id).textContent=value;
     document.title = `${community.loungeName} — ${community.communityName}`;
-
-    // Deliberately session-only: nickname is never written to localStorage or sessionStorage.
-    let currentNickname = "";
-    let currentTipName = "";
-
-    const entryView = document.getElementById("entryView");
-    const chatView = document.getElementById("chatView");
-    const entryForm = document.getElementById("entryForm");
-    const nicknameInput = document.getElementById("nickname");
-    const messageForm = document.getElementById("messageForm");
-    const messageInput = document.getElementById("messageInput");
-    const messages = document.getElementById("messages");
-    const tipScrim = document.getElementById("tipScrim");
-    const tipName = document.getElementById("tipName");
-    const toast = document.getElementById("toast");
-
-    entryForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const name = nicknameInput.value.trim();
-      if (!name) return;
-
-      currentNickname = name;
-      entryView.style.display = "none";
-      chatView.style.display = "block";
-      messageInput.focus();
-      messages.scrollTop = messages.scrollHeight;
-    });
-
-    messageForm.addEventListener("submit", (event) => {
-      event.preventDefault();
-      const text = messageInput.value.trim();
-      if (!text || !currentNickname) return;
-
-      const row = document.createElement("div");
-      row.className = "message me";
-
-      const initials = currentNickname
-        .split(/\s+/)
-        .map(part => part.charAt(0))
-        .join("")
-        .slice(0,2)
-        .toUpperCase() || "?";
-
-      const time = new Date().toLocaleTimeString([], {hour:"numeric", minute:"2-digit"});
-
-      row.innerHTML = `
-        <div class="avatar"></div>
-        <div class="bubble">
-          <div class="meta">
-            <span class="name"></span>
-            <span class="time"></span>
-          </div>
-          <div class="text"></div>
-        </div>`;
-
-      row.querySelector(".avatar").textContent = initials;
-      row.querySelector(".name").textContent = currentNickname;
-      row.querySelector(".time").textContent = time;
-      row.querySelector(".text").textContent = text;
-
-      messages.appendChild(row);
-      messageInput.value = "";
-      messages.scrollTop = messages.scrollHeight;
-    });
-
-    document.querySelectorAll("[data-tip-name]").forEach(button => {
-      button.addEventListener("click", () => {
-        currentTipName = button.dataset.tipName;
-        tipName.textContent = currentTipName;
-        tipScrim.classList.add("open");
+    const $ = id => document.getElementById(id);
+    const entryView=$('entryView'), chatView=$('chatView'), nicknameInput=$('nickname'), messages=$('messages'), messageInput=$('messageInput'), roomCount=$('roomCount');
+    const aliasKey=`wildLedger:alias:${communityKey}`;
+    try { nicknameInput.value=localStorage.getItem(aliasKey)||''; } catch (_) {}
+    let alias='', channel=null, ready=false, client=null;
+    const clientId = (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random()}`);
+    const seen=new Set();
+    function status(label, online=false) {
+      roomCount.textContent=label;
+      const dot=document.querySelector('.online-dot');
+      dot.style.background=online?'#3ca66c':'#a0a0a0';
+      $('messageForm').querySelector('button[type=submit]').disabled=!online;
+    }
+    function addMessage(data, mine=false) {
+      if (!data || typeof data.text!=='string' || typeof data.alias!=='string' || typeof data.id!=='string' || seen.has(data.id)) return;
+      seen.add(data.id); if(seen.size>500) seen.clear();
+      const row=document.createElement('div'); row.className='message'+(mine?' me':'');
+      row.innerHTML='<div class="avatar"></div><div class="bubble"><div class="meta"><span class="name"></span><span class="time"></span></div><div class="text"></div></div>';
+      row.querySelector('.avatar').textContent=data.alias.split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase()||'?';
+      row.querySelector('.name').textContent=data.alias.slice(0,24);
+      row.querySelector('.time').textContent=new Date(data.at||Date.now()).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+      row.querySelector('.text').textContent=data.text.slice(0,280);
+      messages.append(row); messages.scrollTop=messages.scrollHeight;
+    }
+    function connect() {
+      if (!window.supabase || !SUPABASE_URL.startsWith('https://') || !SUPABASE_PUBLISHABLE_KEY.startsWith('sb_publishable_')) {
+        status('Supabase setup required'); return;
+      }
+      if (!client) client=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
+      if(channel) client.removeChannel(channel);
+      ready=false; status('Connecting…');
+      channel=client.channel(`lounge:${communityKey}`,{config:{broadcast:{self:false},presence:{key:clientId}}});
+      channel.on('broadcast',{event:'message'},({payload})=>addMessage(payload,payload?.sender===clientId));
+      channel.on('presence',{event:'sync'},()=>{
+        if(!ready)return;
+        const count=Object.keys(channel.presenceState()).length;
+        status(`${count} Leaper${count===1?'':'s'} aboard`,true);
       });
-    });
-
-    document.getElementById("closeTip").addEventListener("click", () => {
-      tipScrim.classList.remove("open");
-    });
-
-    tipScrim.addEventListener("click", (event) => {
-      if (event.target === tipScrim) tipScrim.classList.remove("open");
-    });
-
-    document.querySelectorAll(".tip-amount").forEach(button => {
-      button.addEventListener("click", () => {
-        const amount = button.dataset.amount;
-        tipScrim.classList.remove("open");
-        toast.textContent = `${amount} LEAP tip to ${currentTipName} simulated — nothing was sent.`;
-        toast.classList.add("show");
-        setTimeout(() => toast.classList.remove("show"), 2600);
+      channel.subscribe(async state=>{
+        if(state==='SUBSCRIBED') {
+          ready=true;status('Connected',true);
+          try {await channel.track({alias,joinedAt:new Date().toISOString()});} catch(e) {console.error('Presence error',e);}
+        } else if(state==='CHANNEL_ERROR'||state==='TIMED_OUT'||state==='CLOSED') {ready=false;status('Disconnected — reconnecting…');}
       });
+    }
+    $('entryForm').addEventListener('submit',e=>{
+      e.preventDefault(); alias=nicknameInput.value.trim().slice(0,24); if(!alias)return;
+      try {localStorage.setItem(aliasKey,alias);}catch(_){}
+      entryView.style.display='none';chatView.style.display='block';messageInput.focus();connect();
     });
+    $('messageForm').addEventListener('submit',async e=>{
+      e.preventDefault(); const value=messageInput.value.trim(); if(!ready||!value||!channel)return;
+      const payload={id:crypto.randomUUID?crypto.randomUUID():`${Date.now()}-${Math.random()}`,sender:clientId,alias,text:value.slice(0,280),at:Date.now()};
+      try {
+        const result=await channel.send({type:'broadcast',event:'message',payload});
+        if(result!=='ok')throw new Error(String(result));
+        addMessage(payload,true);messageInput.value='';
+      } catch(error) {console.error('Broadcast failed',error);status('Message failed — check connection');}
+    });
+    window.addEventListener('pageshow',()=>{if(alias&&!ready)connect();});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden&&alias&&!ready)connect();});
+    let currentTipName='';
+    document.querySelectorAll('[data-tip-name]').forEach(button=>button.addEventListener('click',()=>{currentTipName=button.dataset.tipName;$('tipName').textContent=currentTipName;$('tipScrim').classList.add('open');}));
+    $('closeTip').addEventListener('click',()=>$('tipScrim').classList.remove('open'));
+    $('tipScrim').addEventListener('click',e=>{if(e.target===$('tipScrim'))$('tipScrim').classList.remove('open');});
+    document.querySelectorAll('.tip-amount').forEach(button=>button.addEventListener('click',()=>{
+      $('tipScrim').classList.remove('open'); const toast=$('toast');toast.textContent='LEAP Recognition is not yet connected — nothing was sent.';toast.classList.add('show');setTimeout(()=>toast.classList.remove('show'),2600);
+    }));
   </script>
 </body>
 </html>
