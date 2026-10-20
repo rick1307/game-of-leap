@@ -253,7 +253,7 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
 
 <script src="js/communityConfig.js" data-registry-only="true"></script>
 <script type="module">
-import { readGetWildSession, clearWildLedgerSessions } from "./js/wildLedgerSession.js";
+import { readUserSession, readOperatorSession, clearWildLedgerSessions } from "./js/wildLedgerSession.js";
 (() => {
   let viewIsLeaving = false;
   const fadeNavigate = (url, { replace = false } = {}) => {
@@ -272,24 +272,24 @@ import { readGetWildSession, clearWildLedgerSessions } from "./js/wildLedgerSess
   const defaultCommunity = Object.values(registry)[0] || null;
   const defaultBackendId = window.WILD_LEDGER_BACKEND_COMMUNITY_ID?.(defaultCommunity) || "";
 
-  // Get Wild's approved session is the only authority for Operator access.
-  const getWildSession = readGetWildSession();
-  const operatorSession = getWildSession?.authority === "operator" &&
-    /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(String(getWildSession.wallet || "")) &&
-    String(getWildSession.communityId || "").trim()
-    ? { communityId: String(getWildSession.communityId).trim().toUpperCase(),
-        communityName: getWildSession.communityName || "",
-        operatorWallet: getWildSession.wallet }
-    : null;
+  // Verified sign-in is the source of authority; URL parameters never grant access.
+  const userSession = readUserSession();
+  const activeOperator = readOperatorSession();
   const urlRole = String(params.get("role") || "").trim().toLowerCase();
-  const operatorRequested = urlRole === "operator" || urlRole === "manager" || getWildSession?.authority === "operator";
-
-  const role = operatorSession ? "operator" : "owner";
-  const requestedCommunity = operatorSession
+  const operatorRequested = urlRole === "operator" || urlRole === "manager";
+  const operatorSession = userSession?.authority === "operator" && activeOperator
+    ? activeOperator : null;
+  const role = userSession?.authority === "owner" && !operatorRequested
+    ? "owner" : operatorSession ? "operator" : null;
+  if (!role) {
+    document.body.textContent = "Operator session unavailable. Return to Get Wild and sign in again.";
+    return;
+  }
+  const requestedCommunity = role === "operator"
     ? operatorSession.communityId
-    : (params.get("community") || sessionStorage.getItem("wildLedgerCommunity") || defaultBackendId);
+    : (params.get("community") || defaultBackendId);
   const community = window.WILD_LEDGER_GET_COMMUNITY?.(requestedCommunity) || null;
-  const requestedId = operatorSession
+  const requestedId = role === "operator"
     ? operatorSession.communityId
     : (window.WILD_LEDGER_BACKEND_COMMUNITY_ID?.(community) || String(requestedCommunity || "").trim().toUpperCase());
 
@@ -347,22 +347,9 @@ import { readGetWildSession, clearWildLedgerSessions } from "./js/wildLedgerSess
       fadeNavigate(link.href);
     }));
 
-  // Operator title is resolved only from the shared Get Wild session.
-  // Owner retains the existing title resolution until its path is designed.
-  let displayName;
-  if (role === "operator") {
-    displayName = String(getWildSession?.communityName || "").trim() || requestedId || "Community";
-  } else {
-    let cachedCommunityName = "";
-    try {
-      const cached = JSON.parse(sessionStorage.getItem("wildLedger.currentCommunityConfig") || "null");
-      if (cached && String(cached.communityId || "").trim().toUpperCase() === String(requestedId || "").trim().toUpperCase()) {
-        cachedCommunityName = String(cached?.config?.communityName || "").trim();
-      }
-    } catch (_) {}
-  
-    displayName = cachedCommunityName || operatorSession?.communityName || community?.communityName || requestedId || "Community";
-  }
+  const displayName = role === "operator"
+    ? operatorSession.communityName
+    : (community?.communityName || requestedId || "Community");
   viewCommunityTitle.textContent = displayName;
   document.title = `${displayName} | Wild Ledger`;
 })();
