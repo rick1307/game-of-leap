@@ -3604,9 +3604,8 @@
         }
 
         const cachedMember = readMemberSession();
-        trail.setStep("member", cachedMember ? "done" : "working", cachedMember ? "Member figures already in session." : "Reading missing member figures.");
+        if (!cachedMember) trail.setStep("member", "working", "Reading missing member figures.");
         trail.setStep("logbook", "working", "Reading XRPL history.");
-        trail.setStep("checks", "working", "Reading pending Checks.");
         resetRecord();
         setTrustlineStatus(null, "checking");
         if (cachedMember) {
@@ -3622,10 +3621,9 @@
         setStatus("");
 
         try {
-          const [linesResult, historyResult, checksResult] = await Promise.allSettled([
+          const [linesResult, historyResult] = await Promise.allSettled([
             cachedMember ? Promise.resolve(null) : queryAccountLines(account),
-            queryAccountHistory(account),
-            queryPendingLeapChecksWithMemos(account)
+            queryAccountHistory(account)
           ]);
 
           if (linesResult.status === "rejected") {
@@ -3639,11 +3637,7 @@
           const safeBalance = Number.isFinite(balance) ? balance : 0;
           const transfersDisabled = lines ? (!leapLine || Number(leapLine.limit) === 0) : false;
 
-          const pending = checksResult.status === "fulfilled"
-            ? checksResult.value
-            : [];
-
-          const firstLeapPending = safeBalance < 1 && pending.length > 0;
+          const firstLeapPending = false;
 
           renderRecord(account, safeBalance);
           if (cachedMember) renderMemberSnapshot(cachedMember);
@@ -3676,16 +3670,9 @@
             });
 
 
-          if (checksResult.status === "fulfilled") {
-            renderPendingChecks(pending);
-          } else {
-            resetPendingChecks();
-          }
-
+          resetPendingChecks();
           const historyLoaded = historyResult.status === "fulfilled";
-          const checksLoaded = checksResult.status === "fulfilled";
           trail.setStep("logbook", historyLoaded ? "done" : "failed", historyLoaded ? "History loaded." : "History unavailable.");
-          trail.setStep("checks", checksLoaded ? "done" : "failed", checksLoaded ? "Checks checked." : "Checks unavailable.");
 
           if (historyLoaded) {
             if (!cachedMember) {
@@ -3712,15 +3699,12 @@
             );
           }
 
-          if (historyLoaded && checksLoaded) {
+          if (historyLoaded) {
             trail.finish({ message: "Member Record ready." });
             setStatus("");
-          } else if (historyLoaded) {
-            setStatus("Pending Check status is temporarily unavailable.", "error");
-          } else if (checksLoaded) {
-            setStatus("Logbook history is temporarily unavailable.", "error");
           } else {
-            setStatus("Logbook and pending Check status are temporarily unavailable.", "error");
+            trail.setStatus("Logbook history is temporarily unavailable.", "error");
+            setStatus("Logbook history is temporarily unavailable.", "error");
           }
         } catch (error) {
           const message = String(error?.message || "");
@@ -3829,21 +3813,18 @@
         if (isGlobalMemberRecord) {
           await loadGlobalMemberRecord(activeWallet);
         } else {
+          // Only missing work becomes a checkpoint. Get Wild already owns wallet/community.
+          const cachedMember = readMemberSession();
+          const steps = [
+            ...(!cachedMember ? [{ id: "member", title: "Member figures", detail: "Reading missing member figures." }] : []),
+            { id: "logbook", title: "Logbook", detail: "Reading XRPL history." }
+          ];
           const trail = createLedgerTrail({
             title: "Member Record",
-            description: "Reading only what is missing from this session.",
-            steps: [
-              { id: "wallet", title: "Wallet", detail: "Checking Get Wild." },
-              { id: "community", title: "Community", detail: "Checking community information." },
-              { id: "member", title: "Member figures", detail: "Checking saved figures." },
-              { id: "logbook", title: "Logbook", detail: "Waiting for XRPL history." },
-              { id: "checks", title: "Pending Checks", detail: "Waiting for XRPL Checks." },
-              { id: "ready", title: "Ready", detail: "Waiting for Member Record." }
-            ]
+            description: "Retrieving only what is missing.",
+            steps
           });
           trail.open();
-          trail.setStep("wallet", "done", "Wallet already available from Get Wild.");
-          trail.setStep("community", "working", "Reading community information.");
           const [authorityResult, catalogResult] = await Promise.allSettled([
             resolveCommunityAuthority({ community, serverUrl: XRPL_WS }),
             loadRecognitionCatalog({
@@ -3874,8 +3855,6 @@
             );
             communityRecognitionCatalog = null;
           }
-
-          trail.setStep("community", authorityResult.status === "fulfilled" && catalogResult.status === "fulfilled" ? "done" : "failed", "Community information checked.");
           await loadCrewRecord(activeWallet, trail);
         }
       }
