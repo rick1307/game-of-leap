@@ -190,6 +190,7 @@ import { resolveWalletAccess } from "./js/communityAccess.js";
 import { readCommunityConfigSchema } from "./js/communityState.js";
 import { communityConfigStoreConfigured, loadCurrentCommunityConfig } from "./js/communityConfigStore.js";
 import { communityConfigV1FromLegacy } from "./js/communityConfigSchema.js";
+import { clearWildLedgerSessions, writeGetWildSession } from "./js/wildLedgerSession.js";
 
 const runtime = window.WILD_LEDGER_CONFIG || {};
 const XRPL_SERVER = String(runtime.xrplWebSocket || "").trim();
@@ -399,17 +400,6 @@ function setStatus(message, tone = "") {
   status.className = `status${tone ? ` ${tone}` : ""}`;
 }
 
-function clearAccessSession() {
-  [
-    "wildLedgerRole",
-    "wildLedgerCommunity",
-    "wildLedgerOperatorWallet",
-    "wildLedgerOperatorSession",
-    "wildLedgerOwnerSession",
-    "wildLedger.currentCommunityConfig"
-  ].forEach(key => sessionStorage.removeItem(key));
-}
-
 function walletMetadata() {
   const live = location.protocol === "http:" || location.protocol === "https:";
   const origin = live ? location.origin : "https://example.invalid";
@@ -477,6 +467,14 @@ function writeOperatorSession(match, configState, config = null) {
   sessionStorage.setItem("wildLedgerOperatorWallet", connectedWallet);
   sessionStorage.setItem("wildLedger.activeWallet", connectedWallet);
   sessionStorage.setItem("wildLedgerOperatorSession", JSON.stringify(session));
+  writeGetWildSession({
+    wallet: activeAccount,
+    authority: "operator",
+    communityId: session.communityId,
+    communityName: session.communityName,
+    configSchema: session.configSchema,
+    config
+  });
   if (config) {
     sessionStorage.setItem("wildLedger.currentCommunityConfig", JSON.stringify({ communityId: session.communityId, schema: session.configSchema, config }));
   } else {
@@ -590,6 +588,7 @@ async function routeConnectedWallet(account) {
       authorityResolvedAt: lastAccess.resolvedAt || establishedAt,
       establishedAt
     }));
+    writeGetWildSession({ wallet: activeAccount, authority: "owner" });
     setTrailStep("session", "done", "Owner session established.");
     setTrailStep("ready", "active", "Opening the Owner Console.");
       setTrailStep("ready", "done", "Owner Console is ready.");
@@ -644,7 +643,7 @@ async function beginWalletConnection() {
   qrPlaceholder.hidden = false;
   qrPlaceholder.textContent = "Creating a fresh wallet connection QR code…";
   setStatus("Starting wallet connection…");
-  clearAccessSession();
+  clearWildLedgerSessions();
   // Open the Trail at once, before the asynchronous wallet pairing URI arrives.
   // Preserve the same overlay when refreshing an existing QR pairing.
   showLedgerTrail();
