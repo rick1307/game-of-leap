@@ -1224,7 +1224,7 @@
         button.className = "recognize-btn";
         button.textContent = "⚡ Great Chat";
         button.title = "Simulate Great Chat Recognition (no LEAP transfer)";
-        button.addEventListener("click", () => openSimRecognition(nickname, row));
+        button.addEventListener("click", () => openSimRecognition(nickname));
         row.querySelector(".meta").appendChild(button);
       }
       row.querySelector(".time").textContent = displayTime;
@@ -1362,13 +1362,15 @@
 
 
     let simRecognitionModal = null;
-    let simRecognitionPending = false;
     const simRecognitionSeen = new Set();
-    function openSimRecognition(nickname, sourceRow) {
+    function openSimRecognition(nickname) {
       if (!SIM_TEST) return;
       if (simRecognitionModal) simRecognitionModal.remove();
       const overlay = document.createElement("div");
       simRecognitionModal = overlay;
+      // Each dialog owns its own state. A cancelled or completed dialog cannot
+      // leave a pending flag behind that blocks a later confirmation.
+      let pending = false;
       overlay.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000b;display:flex;align-items:center;justify-content:center;padding:18px";
       const panel = document.createElement("div");
       panel.style.cssText = "background:#152b3b;color:#fff;border:2px solid #7bd9bd;border-radius:14px;padding:22px;max-width:360px;width:100%;font:16px system-ui";
@@ -1384,24 +1386,32 @@
       const controls=document.createElement("div");
       controls.style.cssText="display:flex;gap:10px;flex-wrap:wrap";
       const confirm=document.createElement("button");
+      confirm.type="button";
       confirm.textContent="Simulate Recognition";
       const cancel=document.createElement("button");
+      cancel.type="button";
       cancel.textContent="Cancel";
-      for (const button of [confirm,cancel]) button.style.cssText="padding:12px;border:0;border-radius:8px;background:#7bd9bd;color:#10211c;font-weight:bold";
-      cancel.onclick=()=>{overlay.remove();simRecognitionModal=null;simSay("Recognition cancelled — nothing sent.");};
-      confirm.onclick=async()=>{
-        if(simRecognitionPending || !chatRealtimeReady || !chatChannel) {simSay("Recognition unavailable: Lounge disconnected or busy.");return;}
-        simRecognitionPending=true;confirm.disabled=true;
+      for (const button of [confirm,cancel]) button.style.cssText="padding:12px;border:0;border-radius:8px;background:#7bd9bd;color:#10211c;font-weight:bold;cursor:pointer;touch-action:manipulation";
+      const close=()=>{overlay.remove();if(simRecognitionModal===overlay)simRecognitionModal=null;};
+      cancel.addEventListener("click",()=>{if(pending)return;close();simSay("Recognition cancelled — nothing sent.");});
+      confirm.addEventListener("click",async()=>{
+        simSay(`Confirmation tapped: ${nickname}`);
+        if(pending)return;
+        if(!chatRealtimeReady || !chatChannel) {simSay("FAIL: Lounge is not connected.");return;}
+        pending=true;confirm.disabled=true;confirm.textContent="Sending simulation…";
         const event={id:globalThis.crypto?.randomUUID?.()||`sim-rec-${Date.now()}`,nickname,amount:amount.value,simulated:true};
         try {
-          const status=await chatChannel.send({type:"broadcast",event:"sim-recognition",payload:event});
+          const status=await Promise.race([
+            chatChannel.send({type:"broadcast",event:"sim-recognition",payload:event}),
+            new Promise((_,reject)=>setTimeout(()=>reject(new Error("Supabase did not respond within 8 seconds")),8000))
+          ]);
           if(status!=="ok")throw new Error(`Broadcast: ${status}`);
           receiveSimRecognition(event);
           simSay(`PASS: ${nickname} recognized with ${amount.value} simulated LEAP. No XRPL action.`);
-          overlay.remove();simRecognitionModal=null;
-        }catch(error){simSay(`FAIL: Recognition announcement ${error.message}`);confirm.disabled=false;}
-        finally{simRecognitionPending=false;}
-      };
+          close();
+        }catch(error){simSay(`FAIL: ${error.message}`);confirm.disabled=false;confirm.textContent="Retry Simulate Recognition";}
+        finally{pending=false;}
+      });
       controls.append(confirm,cancel);panel.append(title,recipient,amountLabel,amount,controls);overlay.appendChild(panel);
       document.body.appendChild(overlay);
     }
