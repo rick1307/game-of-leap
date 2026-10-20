@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Wild Ledger — One-Phone Realtime Test</title>
+<style>
+:root{color-scheme:dark}body{background:#0e1825;color:#f0f4f8;font:16px system-ui,sans-serif;max-width:700px;margin:0 auto;padding:22px 16px}
+h1{font-size:1.5rem}p{line-height:1.5;color:#bfcbd7}button{font:inherit;border:0;border-radius:10px;background:#7bd9bd;color:#10211c;font-weight:700;padding:14px 20px;cursor:pointer}
+button:disabled{opacity:.55}pre{background:#172638;border:1px solid #34475d;border-radius:10px;padding:16px;white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.6 ui-monospace,monospace;min-height:230px}
+strong{color:#fff}.note{font-size:.9rem}.result{font-weight:800;font-size:1.2rem;margin-top:15px}
+</style></head><body>
+<h1>Wild Ledger · One-Phone Live Chat Test</h1>
+<p>One tap creates <strong>three independent Supabase clients</strong>: two simulated participants in the same temporary community room, and one in a different room. It checks connection, message delivery in both directions, Presence, and room isolation.</p>
+<p class="note">No wallet, Ledger Trail, XRP, LEAP, transaction signing, or chat history. The temporary channels are closed when testing finishes. This tests the transport, not the full Lounge admission or UI.</p>
+<button id="go">Run all tests</button>
+<div id="result" class="result" aria-live="polite"></div>
+<pre id="log" aria-live="polite">Ready.</pre>
+<script type="module">
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2?bundle";
+const url = "https://faenazefsogaoghuclis.supabase.co";
+const key = "sb_publishable_8CRe36dcXHN_QV7dsVBMLg_xu6rw55M";
+const btn=document.getElementById("go"), log=document.getElementById("log"), result=document.getElementById("result");
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+const timeout=(p,ms,label)=>Promise.race([p,new Promise((_,reject)=>setTimeout(()=>reject(new Error(label+" timed out after "+ms+"ms")),ms))]);
+const say=s=>{log.textContent+="\n"+s;};
+const assert=(ok,description)=>{say((ok?"PASS ":"FAIL ")+description);if(!ok)throw new Error(description);};
+const id=()=>globalThis.crypto?.randomUUID?.()||`${Date.now()}-${Math.random().toString(36).slice(2)}`;
+btn.onclick=async()=>{
+ btn.disabled=true;result.textContent="Running…";log.textContent="Starting isolated clients…";
+ const run=id(), room=`wild-ledger:one-phone-test-${run}:lounge`, other=`wild-ledger:one-phone-other-${run}:lounge`;
+ const clients=[],channels=[];let receivedA=[],receivedB=[],receivedC=[];
+ const mkClient=()=>{const c=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},realtime:{params:{eventsPerSecond:10}}});clients.push(c);return c;};
+ const subscribe=(client,topic,presenceKey,inbox)=>{
+   const ch=client.channel(topic,{config:{broadcast:{self:false,ack:true},presence:{key:presenceKey}}});
+   channels.push(ch);
+   ch.on("broadcast",{event:"chat-message"},({payload})=>inbox.push(payload));
+   const ready=new Promise((resolve,reject)=>ch.subscribe((status,err)=>{
+     if(status==="SUBSCRIBED")resolve();
+     else if(["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status))reject(new Error(presenceKey+" subscription: "+status+" "+(err?.message||"")));
+   }));
+   return {ch,ready};
+ };
+ try{
+   const a=subscribe(mkClient(),room,"sim-A",receivedA);
+   const b=subscribe(mkClient(),room,"sim-B",receivedB);
+   const c=subscribe(mkClient(),other,"sim-C",receivedC);
+   await timeout(Promise.all([a.ready,b.ready,c.ready]),15000,"Subscriptions");
+   assert(true,"Three independent clients subscribed");
+   await timeout(Promise.all([a.ch.track({alias:"Test A"}),b.ch.track({alias:"Test B"}),c.ch.track({alias:"Test C"})]),8000,"Presence track");
+   const hasPeers=()=>Object.values(a.ch.presenceState()).flat().length>=2 && Object.values(b.ch.presenceState()).flat().length>=2;
+   let presence=false;for(let i=0;i<30;i++){if(hasPeers()){presence=true;break;}await delay(250);}
+   assert(presence,"A and B see two participants through Presence");
+   const send=async(ch,from)=>{const msg={messageId:id(),senderId:from,nickname:from,text:"One-phone test",sentAt:new Date().toISOString()};const reply=await timeout(ch.send({type:"broadcast",event:"chat-message",payload:msg}),8000,"Broadcast "+from);assert(reply==="ok",from+" broadcast acknowledged");return msg;};
+   const msgA=await send(a.ch,"sim-A");
+   let gotB=false;for(let i=0;i<24;i++){if(receivedB.some(m=>m.messageId===msgA.messageId)){gotB=true;break;}await delay(250);}
+   assert(gotB,"B received A's message");
+   const msgB=await send(b.ch,"sim-B");
+   let gotA=false;for(let i=0;i<24;i++){if(receivedA.some(m=>m.messageId===msgB.messageId)){gotA=true;break;}await delay(250);}
+   assert(gotA,"A received B's message");
+   await delay(700);
+   assert(!receivedC.some(m=>[msgA.messageId,msgB.messageId].includes(m.messageId)),"Different community room received neither message");
+   assert(!receivedA.some(m=>m.messageId===msgA.messageId)&&!receivedB.some(m=>m.messageId===msgB.messageId),"No self-echo / duplicate local delivery");
+   result.textContent="PASS — Realtime transport works in this browser";
+ }catch(e){result.textContent="NOT PASSED — See the failing step";say("ERROR "+(e?.message||String(e)));}
+ finally{say("Cleaning up test connections…");await Promise.allSettled(channels.map(ch=>ch.unsubscribe()));await Promise.allSettled(clients.map(c=>c.removeAllChannels()));btn.disabled=false;say("Finished. You can run again.");}
+};
+</script></body></html>
