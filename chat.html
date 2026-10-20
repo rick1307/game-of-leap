@@ -1383,12 +1383,23 @@
     }
     async function startSimBots() {
       if (!SIM_TEST || simBusy || simReady) return;
-      if (!chatRealtimeReady || !chatChannel || !loungeSession) {
-        simSay("WAIT: enter the Lounge and wait for live-room connection first.");
+      if (!loungeSession || !chatView.classList.contains("lounge-admitted")) {
+        simSay("WAIT: enter the Lounge first.");
         return;
       }
       simBusy = true;
       try {
+        // Restore an offline main Lounge independently of the simulated participants.
+        // Do not rerun admission or change Ledger Trail.
+        if (!chatRealtimeReady || !chatChannel) {
+          simSay("Main Lounge offline; reconnecting before joining testers…");
+          if (chatChannel) retireRealtimeChannel(chatChannel);
+          startLoungeRealtime(loungeEntryRun);
+          const deadline = Date.now() + 15000;
+          while (!chatRealtimeReady && Date.now() < deadline) await simWait(250);
+          if (!chatRealtimeReady) throw new Error("Main Lounge reconnection timed out; testers not started.");
+          simSay("Main Lounge reconnected.");
+        }
         for (let i=0; i<2; i++) {
           const alias = `Test Frog ${i+1}`;
           const client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -1446,7 +1457,7 @@
       const clients=simClients.splice(0);
       await Promise.allSettled(channels.map(channel=>channel.unsubscribe()));
       await Promise.allSettled(clients.map(client=>client.removeAllChannels()));
-      simSay("Test participants disconnected.");
+      simSay("Test participants disconnected. Main Lounge was not intentionally disconnected.");
     }
     if (SIM_TEST) {
       installSimPanel();
