@@ -1414,6 +1414,7 @@
 </style>
 <link rel="stylesheet" href="communityTypography.css">
   <link rel="stylesheet" href="wildLedgerControls.css">
+<link rel="stylesheet" href="ledgerTrail.css">
 </head>
 
 <body>
@@ -1551,6 +1552,7 @@
   <script src="js/communityConfig.js"></script>
   <script src="js/starStanding.js"></script>
   <script type="module">
+    import { createLedgerTrail } from "./js/ledgerTrail.js";
     import { readGetWildSession, readMemberSession, writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
     import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityAuthority.js";
     import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog } from "./js/recognitionCatalog.js";
@@ -3591,7 +3593,7 @@
         }
       }
 
-      async function loadCrewRecord(account) {
+      async function loadCrewRecord(account, trail) {
         if (!classicAddressPattern.test(account)) {
           removeMemberSession();
           resetRecord();
@@ -3602,6 +3604,9 @@
         }
 
         const cachedMember = readMemberSession();
+        trail.setStep("member", cachedMember ? "done" : "working", cachedMember ? "Member figures already in session." : "Reading missing member figures.");
+        trail.setStep("logbook", "working", "Reading XRPL history.");
+        trail.setStep("checks", "working", "Reading pending Checks.");
         resetRecord();
         setTrustlineStatus(null, "checking");
         if (cachedMember) {
@@ -3679,6 +3684,8 @@
 
           const historyLoaded = historyResult.status === "fulfilled";
           const checksLoaded = checksResult.status === "fulfilled";
+          trail.setStep("logbook", historyLoaded ? "done" : "failed", historyLoaded ? "History loaded." : "History unavailable.");
+          trail.setStep("checks", checksLoaded ? "done" : "failed", checksLoaded ? "Checks checked." : "Checks unavailable.");
 
           if (historyLoaded) {
             if (!cachedMember) {
@@ -3687,6 +3694,7 @@
               const starLevel = globalThis.WILD_LEDGER_STAR_SYSTEM.countForEarnedLeap(earnedLeap);
               const greatChats = countGreatChats(historyResult.value);
               writeMemberSession({ totalLeap: safeBalance, earnedLeap, starLevel, greatChats });
+              trail.setStep("member", "done", "Member figures saved for this session.");
             }
             renderLogbook(historyResult.value);
             if (cachedMember) renderMemberSnapshot(cachedMember);
@@ -3705,6 +3713,7 @@
           }
 
           if (historyLoaded && checksLoaded) {
+            trail.finish({ message: "Member Record ready." });
             setStatus("");
           } else if (historyLoaded) {
             setStatus("Pending Check status is temporarily unavailable.", "error");
@@ -3820,6 +3829,21 @@
         if (isGlobalMemberRecord) {
           await loadGlobalMemberRecord(activeWallet);
         } else {
+          const trail = createLedgerTrail({
+            title: "Member Record",
+            description: "Reading only what is missing from this session.",
+            steps: [
+              { id: "wallet", title: "Wallet", detail: "Checking Get Wild." },
+              { id: "community", title: "Community", detail: "Checking community information." },
+              { id: "member", title: "Member figures", detail: "Checking saved figures." },
+              { id: "logbook", title: "Logbook", detail: "Waiting for XRPL history." },
+              { id: "checks", title: "Pending Checks", detail: "Waiting for XRPL Checks." },
+              { id: "ready", title: "Ready", detail: "Waiting for Member Record." }
+            ]
+          });
+          trail.open();
+          trail.setStep("wallet", "done", "Wallet already available from Get Wild.");
+          trail.setStep("community", "working", "Reading community information.");
           const [authorityResult, catalogResult] = await Promise.allSettled([
             resolveCommunityAuthority({ community, serverUrl: XRPL_WS }),
             loadRecognitionCatalog({
@@ -3851,7 +3875,8 @@
             communityRecognitionCatalog = null;
           }
 
-          await loadCrewRecord(activeWallet);
+          trail.setStep("community", authorityResult.status === "fulfilled" && catalogResult.status === "fulfilled" ? "done" : "failed", "Community information checked.");
+          await loadCrewRecord(activeWallet, trail);
         }
       }
     })();
