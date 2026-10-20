@@ -869,6 +869,7 @@
 
   <script src="js/wildLedgerConfig.js"></script>
   <script src="js/communityConfig.js" data-registry-only="true"></script>
+  <script src="js/gratitude.js"></script>
   <script type="module">
     import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
     import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.10?bundle";
@@ -1423,40 +1424,13 @@
     }
     // Public Lounge gratitude: receiving XRP is never announced in the chat scroll.
     // A thank-you is posted on behalf of the Community Operator instead.
-    const LOUNGE_THANK_YOUS = Object.freeze([
-      "You're the man, {alias}!", "Much love, {alias}!", "Cheers to you, {alias}!",
-      "Dude, you're awesome, {alias}!", "Big shoutout to {alias}!",
-      "You just made my day, {alias}!", "You're a legend, {alias}!",
-      "Appreciate you, {alias}!", "You rock, {alias}!", "Respect, {alias}!",
-      "That means a lot, {alias}!", "You're good people, {alias}!",
-      "You're a star, {alias}!", "So glad you're here, {alias}!",
-      "Way to go, {alias}!", "You made me smile, {alias}!",
-      "All the love to {alias}!", "You're incredible, {alias}!",
-      "That's the spirit, {alias}!", "High five, {alias}!",
-      "You're a real one, {alias}!", "My kind of people, {alias}!",
-      "I appreciate you, {alias}!", "Thanks for being here, {alias}!",
-      "You are absolutely awesome, {alias}!", "What a legend, {alias}!",
-      "You made this a better day, {alias}!", "Love your energy, {alias}!",
-      "That's what I'm talking about, {alias}!", "You're the best, {alias}!",
-      "Big love to {alias}!", "You are something else, {alias}!",
-      "Right on, {alias}!", "Cheers, my friend {alias}!",
-      "You're making waves, {alias}!", "Keep being you, {alias}!",
-      "You have my gratitude, {alias}!", "You're one of a kind, {alias}!",
-      "Dude, I really appreciate you, {alias}!", "You just brightened the room, {alias}!",
-      "You're pure gold, {alias}!", "Good vibes, {alias}!",
-      "A little love for {alias}!", "Thanks a million, {alias}!",
-      "Couldn't ask for better company, {alias}!", "You are the real deal, {alias}!",
-      "Look at you, {alias}!", "I see you, {alias}!",
-      "You're a gem, {alias}!", "Here's to you, {alias}!"
-    ]);
-    let lastThankYouIndex = -1;
-    function pickThankYouIndex() {
-      const count = LOUNGE_THANK_YOUS.length;
-      const offset = Math.floor(Math.random() * (count - 1)) + 1;
-      const next = (lastThankYouIndex + offset + count) % count;
-      lastThankYouIndex = next;
-      return next;
+    // Message data and no-repeat shuffle live in js/gratitude.js, outside chat.html.
+    // Mixed mode deliberately varies tone; community personality settings come later.
+    const LOUNGE_THANK_YOUS = window.WildLedgerGratitude?.mixed;
+    if (!Array.isArray(LOUNGE_THANK_YOUS) || LOUNGE_THANK_YOUS.length !== 150) {
+      throw new Error("Lounge gratitude library failed to load.");
     }
+    function pickThankYouIndex() { return window.WildLedgerGratitude.drawIndex("mixed"); }
     function postOperatorThankYou(alias, phraseIndex) {
       if (typeof alias !== "string" || !alias.trim() || alias.length > 70) return;
       if (!Number.isInteger(phraseIndex) || phraseIndex < 0 || phraseIndex >= LOUNGE_THANK_YOUS.length) return;
