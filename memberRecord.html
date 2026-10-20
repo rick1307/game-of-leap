@@ -99,15 +99,11 @@
       background:var(--gold);
       color:var(--deep);
     }
-
-    /* Global Member Record mode: the wallet-level shell lives outside any one
-       community. Community-specific history remains available when a
-       ?community=... parameter is present. */
-    body[data-member-record-mode="global"] .leap-journey-banner{display:none;}
-    body[data-member-record-mode="global"] .community-only{display:none !important;}
-    body[data-member-record-mode="global"] .record-grid{grid-template-columns:1fr;}
-    body[data-member-record-mode="global"] .global-balance-stat{grid-column:1 / -1;}
-    body[data-member-record-mode="global"] .lounge-header-action{display:none !important;}
+    
+    
+    
+    
+    
 
     *{box-sizing:border-box}
     html.community-pending body{visibility:hidden}
@@ -686,218 +682,61 @@
     .crew-status.error{color:#ffd3ca}
     .crew-status.success{color:#d7f0dc}
 
-    .pending-checks{
-      display:none;
-      margin-top:18px;
-      padding:17px;
-      border:1px solid rgba(255,203,92,.55);
-      border-radius:18px;
-      background:
-        radial-gradient(circle at 94% 5%,rgba(255,214,104,.20),transparent 34%),
-        linear-gradient(145deg,rgba(112,70,17,.34),rgba(70,45,11,.18));
-      box-shadow:0 14px 30px rgba(0,0,0,.12);
-    }
+    
 
-    .pending-checks.show{display:block}
+    
 
-    .pending-checks-head{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:14px;
-      margin-bottom:7px;
-    }
+    
 
-    .pending-checks-title b{
-      display:block;
-      color:#ffe3a0;
-      font-family:var(--community-display-font);
-      font-size:1.18rem;
-      font-weight:700;
-      line-height:1.10;
-    }
+    
 
-    .pending-checks-title span{
-      display:block;
-      margin-top:4px;
-      color:rgba(255,255,255,.60);
-      font-family:var(--community-ui-font);
-      font-size:.64rem;
-      font-weight:850;
-      line-height:1.15;
-      letter-spacing:.09em;
-      text-transform:uppercase;
-    }
+    
 
-    .pending-check-count{
-      flex:0 0 auto;
-      padding:6px 9px;
-      border-radius:999px;
-      background:#f0b94e;
-      color:#2f2107;
-      font-size:.65rem;
-      font-weight:950;
-      letter-spacing:.055em;
-      text-transform:uppercase;
-      white-space:nowrap;
-      box-shadow:0 6px 14px rgba(0,0,0,.13);
-    }
+    
 
-    .pending-checks-copy{
-      margin:0 0 12px;
-      color:rgba(255,255,255,.80);
-      font-family:var(--community-ui-font);
-      font-size:.78rem;
-      line-height:1.48;
-    }
+    
 
-    .pending-check-list{
-      display:grid;
-      gap:9px;
-    }
+    
 
-    .pending-check-card{
-      position:relative;
-      overflow:hidden;
-      display:grid;
-      grid-template-columns:minmax(0,1fr) 132px;
-      grid-template-areas:"main deadline";
-      gap:18px;
-      align-items:center;
-      padding:13px 14px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.15);
-      background:rgba(255,255,255,.07);
-    }
+    
 
-    .pending-check-card.has-action{
-      grid-template-columns:minmax(0,1fr) 132px 104px;
-      grid-template-areas:"main deadline action";
-    }
+    
 
-    .pending-check-main{grid-area:main}
+    
 
-    .pending-check-card.safe{
-      border-color:rgba(92,210,149,.55);
-      background:linear-gradient(135deg,rgba(48,141,93,.22),rgba(255,255,255,.055));
-    }
+    
 
-    .pending-check-card.warning{
-      border-color:rgba(242,184,73,.68);
-      background:linear-gradient(135deg,rgba(170,112,22,.28),rgba(255,255,255,.055));
-    }
+    
 
-    .pending-check-card.urgent{
-      border-color:rgba(244,104,81,.78);
-      background:linear-gradient(135deg,rgba(163,55,42,.34),rgba(255,255,255,.055));
-      box-shadow:0 0 0 1px rgba(244,104,81,.08),0 10px 24px rgba(63,10,7,.16);
-    }
+    
 
-    .pending-check-card.expired{
-      border-color:rgba(255,150,131,.48);
-      background:linear-gradient(135deg,rgba(102,50,44,.28),rgba(255,255,255,.04));
-    }
+    
 
-    .pending-check-card.no-expiration{
-      border-color:rgba(242,184,73,.55);
-      background:linear-gradient(135deg,rgba(128,91,28,.24),rgba(255,255,255,.05));
-    }
+    
 
-    .pending-check-amount{
-      display:block;
-      color:white;
-      font-family:var(--community-display-font);
-      font-size:1.08rem;
-      line-height:1.15;
-    }
+    
 
-    .pending-check-reason{
-      margin-top:5px;
-      color:#ffe3a0;
-      font-size:.72rem;
-      font-weight:900;
-      line-height:1.35;
-      overflow-wrap:anywhere;
-    }
+    
 
-    .pending-check-status{
-      display:block;
-      margin-top:3px;
-      color:rgba(255,255,255,.73);
-      font-size:.7rem;
-      font-weight:800;
-      line-height:1.35;
-    }
+    
 
-    .pending-check-expiry{
-      margin-top:5px;
-      color:rgba(255,255,255,.55);
-      font-size:.64rem;
-      line-height:1.35;
-    }
+    
 
-    .pending-check-deadline{
-      grid-area:deadline;
-      align-self:center;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      justify-content:center;
-      gap:4px;
-      min-width:0;
-      padding:0 2px;
-      text-align:center;
-    }
+    
 
-    .pending-check-deadline-image{
-      display:block;
-      width:112px;
-      height:112px;
-      object-fit:contain;
-      filter:drop-shadow(0 10px 14px rgba(4,18,22,.22));
-    }
+    
 
-    .pending-check-deadline-copy{
-      color:rgba(255,255,255,.8);
-      font-size:.61rem;
-      font-weight:900;
-      letter-spacing:.09em;
-      line-height:1.1;
-      text-transform:uppercase;
-    }
+    
 
-    .pending-check-deadline-fallback{
-      color:rgba(255,255,255,.72);
-      font-size:.74rem;
-      font-weight:900;
-      text-transform:uppercase;
-    }
+    
 
-    .pending-check-action{
-      grid-area:action;
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      min-width:0;
-      text-align:right;
-    }
+    
 
-    .pending-check-action button{width:100%}
+    
 
-    .pending-check-dismiss{
-      margin-top:0;
-      border-radius:9px;
-      padding:7px 10px;
-      font:inherit;
-      font-size:.65rem;
-      font-weight:900;
-      cursor:pointer;
-      border:1px solid rgba(255,255,255,.2);
-      background:rgba(255,255,255,.08);
-      color:white;
-    }
+    
 
-    .pending-check-dismiss:hover{background:rgba(255,255,255,.14)}
+    
 
     .crew-logbook{
       margin-top:18px;
@@ -1128,25 +967,13 @@
         grid-template-rows:auto auto auto;
       }
       .community-total-row:nth-of-type(3){border-left:0}
-      .community-total-row:nth-of-type(n+3){border-top:1px solid rgba(255,255,255,.08)}
-      .pending-check-card{
-        grid-template-columns:minmax(0,1fr) 100px;
-        grid-template-areas:"main deadline";
-        gap:12px 10px;
-      }
-      .pending-check-card.has-action{
-        grid-template-columns:minmax(0,1fr) 100px;
-        grid-template-areas:
-          "main deadline"
-          "action action";
-      }
-      .pending-check-deadline{padding:0}
-      .pending-check-deadline-image{
-        width:92px;
-        height:92px;
-      }
-      .pending-check-action{justify-content:stretch;text-align:left}
-      .pending-check-action button{width:100%}
+      .community-total-row:nth-of-type(n/**/+3){border-top:1px solid rgba(255,255,255,.08)}
+      
+      
+      
+      
+      
+      
       .crew-state-action{width:100%}
       .crew-logbook{padding:16px 14px 14px}
       .logbook-entry{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}
@@ -1205,158 +1032,51 @@
       z-index:2;
     }
 
-    .wallet-community-ribbon{
-      position:relative;
-      z-index:1;
-      max-height:0;
-      overflow:hidden;
-      background:#071012;
-      border-top:0 solid #b58a32;
-      border-bottom:0 solid #b58a32;
-      box-shadow:0 8px 22px rgba(0,0,0,.12);
-      transition:max-height .72s cubic-bezier(.2,.8,.2,1),border-width .72s cubic-bezier(.2,.8,.2,1);
-    }
+    
 
-    .wallet-community-ribbon.is-visible{
-      max-height:44px;
-      border-top-width:1px;
-      border-bottom-width:1px;
-    }
+    
 
-    .wallet-community-ribbon-inner{
-      width:100%;
-      min-height:42px;
-      display:flex;
-      align-items:stretch;
-      padding:0;
-      transform:translateY(-100%);
-      transition:transform .72s cubic-bezier(.2,.8,.2,1);
-      will-change:transform;
-    }
+    
 
-    .wallet-community-ribbon.is-visible .wallet-community-ribbon-inner{
-      transform:translateY(0);
-    }
+    
 
-    .wallet-community-ribbon-label{
-      position:relative;
-      z-index:2;
-      flex:0 0 auto;
-      display:flex;
-      align-items:center;
-      padding:0 12px 0 14px;
-      border-right:1px solid rgba(218,178,87,.48);
-      background:#0d1a1d;
-      color:#dfb957;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-      font-size:.62rem;
-      font-weight:900;
-      letter-spacing:.12em;
-      line-height:1;
-      text-transform:uppercase;
-      white-space:nowrap;
-      box-shadow:8px 0 18px rgba(0,0,0,.24);
-    }
+    
 
-    .wallet-community-ribbon-track{
-      position:relative;
-      flex:1 1 auto;
-      min-width:0;
-      overflow:hidden;
-      display:flex;
-      align-items:center;
-    }
+    
 
-    .wallet-community-ticker-rail{
-      --ticker-duration:32s;
-      width:max-content;
-      display:flex;
-      align-items:center;
-      will-change:transform;
-      animation:walletCommunityTicker var(--ticker-duration) linear infinite;
-    }
+    
 
-    .wallet-community-ticker-loop,
-    .wallet-community-ticker-unit{
-      display:flex;
-      flex:0 0 auto;
-      align-items:center;
-    }
+    
 
-    .wallet-community-item{
-      flex:0 0 auto;
-      display:inline-flex;
-      align-items:center;
-      gap:8px;
-      min-height:40px;
-      padding:0 18px;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-      font-size:.72rem;
-      font-weight:800;
-      letter-spacing:.035em;
-      line-height:1;
-      text-transform:uppercase;
-      white-space:nowrap;
-    }
+    
 
     /* Alternate by community, not by repeated ticker copy. That makes each
        community visually recognizable while the tape loops continuously. */
-    .wallet-community-item.tone-a{color:#f0c965}
-    .wallet-community-item.tone-b{color:#70d0cf}
+    
+    
 
-    .wallet-community-item.is-current::before{
-      content:"●";
-      color:currentColor;
-      font-size:.55rem;
-      margin-right:1px;
-    }
+    
 
-    .wallet-community-separator{
-      flex:0 0 auto;
-      color:#9e7d34;
-      font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-      font-size:.62rem;
-      line-height:1;
-    }
+    
 
-    .wallet-community-ribbon-track:hover .wallet-community-ticker-rail,
-    .wallet-community-ribbon-track:focus-within .wallet-community-ticker-rail{
-      animation-play-state:paused;
-    }
+    
 
-    @keyframes walletCommunityTicker{
-      from{transform:translate3d(0,0,0)}
-      to{transform:translate3d(-50%,0,0)}
-    }
+    
 
     @media (max-width:700px){
-      .wallet-community-ribbon.is-visible{max-height:44px}
-      .wallet-community-ribbon-inner{min-height:42px}
-      .wallet-community-ribbon-label{
-        padding-left:10px;
-        padding-right:9px;
-        font-size:.56rem;
-        letter-spacing:.09em;
-      }
-      .wallet-community-item{
-        min-height:40px;
-        padding-left:14px;
-        padding-right:14px;
-        font-size:.68rem;
-      }
+      
+      
+      
+      
     }
 
     @media (prefers-reduced-motion:reduce){
-      .wallet-community-ribbon{transition:none}
-      .wallet-community-ribbon-inner{transition:none;transform:none}
-      .wallet-community-ribbon-track{
-        overflow-x:auto;
-        scrollbar-width:none;
-        -webkit-overflow-scrolling:touch;
-      }
-      .wallet-community-ribbon-track::-webkit-scrollbar{display:none}
-      .wallet-community-ticker-rail{animation:none;transform:none}
-      .wallet-community-ticker-loop + .wallet-community-ticker-loop{display:none}
+      
+      
+      
+      
+      
+      
     }
 
 
@@ -1434,16 +1154,6 @@
   </div>
 
 
-  <section
-    class="wallet-community-ribbon"
-    id="walletCommunityRibbon"
-    aria-label="Your Wild Ledger communities"
-    aria-live="polite">
-    <div class="wrap wallet-community-ribbon-inner">
-      <span class="wallet-community-ribbon-label">Your Communities</span>
-      <div class="wallet-community-ribbon-track" id="walletCommunityRibbonTrack"></div>
-    </div>
-  </section>
 
 
   <header>
@@ -1508,22 +1218,6 @@
 
         <p class="crew-status" id="crewRecordStatus" role="status" aria-live="polite"></p>
 
-        <section class="pending-checks community-only" id="pendingChecks" aria-live="polite">
-          <div class="pending-checks-head">
-            <div class="pending-checks-title">
-              <b id="pendingChecksTitle">LEAP Waiting for You</b>
-              <span>Ready in Xaman</span>
-            </div>
-            <div class="pending-check-count" id="pendingCheckCount">0 Waiting</div>
-          </div>
-
-          <p class="pending-checks-copy" id="pendingChecksCopy">
-            Open Xaman → Events to cash your LEAP Checks. New Checks stay visible here for 7 days.
-          </p>
-
-          <div class="pending-check-list" id="pendingCheckList"></div>
-        </section>
-
         <div class="crew-logbook community-only" id="crewLogbook">
           <div class="logbook-head">
             <b>Your Logbook</b>
@@ -1556,14 +1250,7 @@
     import { readGetWildSession, readMemberSession, writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
     
     import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog } from "./js/recognitionCatalog.js";
-    import {
-      ensureWildLedgerCommunityRecord,
-      getCachedWildLedgerCommunityRecord
-    } from "./js/walletCommunityRecord.js";
     (async () => {
-      const memberRecordParams = new URLSearchParams(window.location.search);
-      const requestedCommunity = String(memberRecordParams.get("community") || "").trim();
-      const isGlobalMemberRecord = !requestedCommunity;
 
       const community = window.WILD_LEDGER_COMMUNITY;
       const communityId = window.WILD_LEDGER_COMMUNITY_ID || (community && community.id);
@@ -1583,26 +1270,22 @@
         pageOverlay:"--page-overlay", navBackground:"--nav-background",
         headerBackground:"--header-background", darkFeatureBackground:"--dark-feature-background"
       };
-      if (!isGlobalMemberRecord) {
+      {
         for (const [key, cssVar] of Object.entries(themeVars)) {
           if (theme[key]) rootStyle.setProperty(cssVar, theme[key]);
         }
         document.body.dataset.communityTheme = communityId;
         document.body.dataset.communityLayout = community.layout || "classic";
       }
-      document.body.dataset.memberRecordMode = isGlobalMemberRecord ? "global" : "community";
+      document.body.dataset.memberRecordMode = "community";
 
       const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-      if (!isGlobalMemberRecord && themeColorMeta && theme.themeColor) themeColorMeta.content = theme.themeColor;
+      if (themeColorMeta && theme.themeColor) themeColorMeta.content = theme.themeColor;
 
-      document.title = isGlobalMemberRecord
-        ? "Member Record — Wild Ledger"
-        : `Member Record — ${communityName}`;
+      document.title = `Member Record — ${communityName}`;
       const metaDescription = document.querySelector('meta[name="description"]');
       if (metaDescription) {
-        metaDescription.content = isGlobalMemberRecord
-          ? "See this wallet's Wild Ledger record and community relationships."
-          : `See your ${communityName} member record and validated LEAP history.`;
+        metaDescription.content = `See your ${communityName} member record and validated LEAP history.`;
       }
       const communityNameLabel = document.getElementById("communityNameLabel");
       if (communityNameLabel) communityNameLabel.textContent = communityName;
@@ -1612,21 +1295,20 @@
       if (memberRecordConsole) {
         memberRecordConsole.setAttribute(
           "aria-label",
-          isGlobalMemberRecord ? "Wild Ledger Member Record" : `${communityName} Member Record`
+          `${communityName} Member Record`
         );
       }
       const recordLeapLabel = document.getElementById("recordLeapLabel");
-      if (recordLeapLabel && isGlobalMemberRecord) recordLeapLabel.textContent = "LEAP Balance";
 
       const communityHomeBrand = document.getElementById("communityHomeBrand");
       const communityHomeLink = document.getElementById("communityHomeLink");
-      const homeHref = isGlobalMemberRecord ? "splash.html" : communityHomeHref;
+      const homeHref = communityHomeHref;
       if (communityHomeBrand) communityHomeBrand.href = homeHref;
       if (communityHomeLink) communityHomeLink.href = homeHref;
 
       const bannerDesktop = document.getElementById("communityBannerDesktop");
       const bannerMobile = document.getElementById("communityBannerMobile");
-      if (!isGlobalMemberRecord) {
+      {
         if (bannerDesktop && community.bannerDesktop) bannerDesktop.src = community.bannerDesktop;
         if (bannerMobile && community.bannerMobile) bannerMobile.srcset = community.bannerMobile;
       }
@@ -1646,8 +1328,6 @@
       const LEAP_NAMESPACE = community.leapNamespace;
       const LEAP_HISTORY_KEYS = ["BADGE", "EVENT", "CHALLENGE"];
 
-      const dismissedExpiredChecks = new Set();
-      const PENDING_CHECK_VISIBLE_MS = 7 * 24 * 60 * 60 * 1000;
 
       const XRPL_WS = wildLedger.xrplWebSocket;
 
@@ -1678,38 +1358,19 @@
       const progressFill = document.getElementById("progressFill");
       const progressDividers = document.getElementById("progressDividers");
       const progressRankLabels = document.getElementById("progressRankLabels");
-      const pendingChecks = document.getElementById("pendingChecks");
-      const pendingChecksTitle = document.getElementById("pendingChecksTitle");
-      const pendingCheckCount = document.getElementById("pendingCheckCount");
-      const pendingChecksCopy = document.getElementById("pendingChecksCopy");
-      const pendingCheckList = document.getElementById("pendingCheckList");
 
       const classicAddressPattern = /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/;
 
       let personalLogbookView = "chronological";
       let personalLogbookSort = "newest";
       let currentLogbookRecords = [];
-      let currentPendingLeapChecks = [];
 
-      const walletCommunityRibbon = document.getElementById("walletCommunityRibbon");
-      const walletCommunityRibbonTrack = document.getElementById("walletCommunityRibbonTrack");
 
       function formatWholeLeap(value) {
         const number = Number(value);
         return Number.isFinite(number) ? Math.max(0, Math.trunc(number)).toLocaleString() : "0";
       }
 
-      function relationshipRibbonLabel(relationship) {
-        const parts = [String(relationship?.communityName || relationship?.communityId || "Community")];
-
-        if (relationship?.member) {
-          parts.push(`${formatWholeLeap(relationship.earnedLeap)} LEAP`);
-          if (relationship?.stars) parts.push(String(relationship.stars));
-        }
-
-        if (relationship?.currentOperator) parts.push("Operator");
-        return parts;
-      }
 
       function syncMemberAttention() {
         if (!memberAttention) return;
@@ -1769,136 +1430,9 @@
         syncMemberAttention();
       }
 
-      function renderOperatorJourneyMilestone(record) {
-        removeAttentionCard("operator-journey");
 
-        const journey = record?.operatorJourney || null;
-        const journeyState = String(journey?.state || "").toUpperCase();
-        if (!journey || !journeyState) return;
 
-        if (journeyState === "WAITING") {
-          setAttentionCard({
-            key: "operator-journey",
-            type: "notice",
-            title: "Community request received.",
-            body: "Your request is being processed. No action is required right now. Community setup is usually completed within 24 hours."
-          });
-          return;
-        }
-
-        if (journeyState === "SETUP_REQUIRED") {
-          const communityId = String(journey?.community?.communityId || "").trim().toUpperCase();
-          const communityName = String(journey?.community?.communityName || communityId || "Your community").trim();
-
-          setAttentionCard({
-            key: "operator-journey",
-            type: "action",
-            title: `${communityName} is ready.`,
-            body: `${communityId || "Your community"} has been established on the XRP Ledger. Community setup is your next step.`,
-            buttonLabel: "Finish Community Setup",
-            onClick: () => {
-              if (!communityId) return;
-              const query = new URLSearchParams({
-                community: communityId,
-                role: "operator",
-                mode: "provisioned"
-              });
-              window.location.href = `setup.html?${query.toString()}`;
-            }
-          });
-        }
-      }
-
-      function renderWildLedgerCommunityRibbon(record) {
-        if (!walletCommunityRibbon || !walletCommunityRibbonTrack) return;
-
-        const relationships = Array.isArray(record?.communities)
-          ? record.communities.filter(item => item?.member || item?.currentOperator)
-          : [];
-
-        if (!relationships.length) {
-          walletCommunityRibbon.classList.remove("is-visible");
-          walletCommunityRibbonTrack.replaceChildren();
-          return;
-        }
-
-        relationships.sort((a, b) => {
-          if (!isGlobalMemberRecord) {
-            const aCurrent = String(a?.communityKey || a?.communityId || "").toLowerCase() === String(communityId).toLowerCase();
-            const bCurrent = String(b?.communityKey || b?.communityId || "").toLowerCase() === String(communityId).toLowerCase();
-            if (aCurrent !== bCurrent) return aCurrent ? -1 : 1;
-          }
-          return String(a?.communityName || "").localeCompare(String(b?.communityName || ""));
-        });
-
-        function buildTickerUnit() {
-          const unit = document.createElement("div");
-          unit.className = "wallet-community-ticker-unit";
-
-          relationships.forEach((relationship, relationshipIndex) => {
-            const key = String(relationship?.communityKey || relationship?.communityId || "").trim().toLowerCase();
-            if (!key) return;
-
-            const item = document.createElement("span");
-            item.className = `wallet-community-item ${relationshipIndex % 2 === 0 ? "tone-a" : "tone-b"}`;
-            if (!isGlobalMemberRecord && key === String(communityId).toLowerCase()) item.classList.add("is-current");
-
-            const labelParts = relationshipRibbonLabel(relationship);
-            labelParts.forEach((part, partIndex) => {
-              if (partIndex > 0) {
-                const dot = document.createElement("span");
-                dot.setAttribute("aria-hidden", "true");
-                dot.textContent = "•";
-                item.appendChild(dot);
-              }
-              const span = document.createElement("span");
-              span.textContent = part;
-              item.appendChild(span);
-            });
-
-            unit.appendChild(item);
-
-            const separator = document.createElement("span");
-            separator.className = "wallet-community-separator";
-            separator.setAttribute("aria-hidden", "true");
-            separator.textContent = "◆";
-            unit.appendChild(separator);
-          });
-
-          return unit;
-        }
-
-        // Build two identical loops so the tape can translate by exactly one
-        // loop width and wrap without a visible jump. With only one or two
-        // communities we repeat the unit inside each loop so the tape still
-        // reads like a real continuous market ticker.
-        const repeatsPerLoop = relationships.length === 1 ? 5 : relationships.length === 2 ? 3 : 2;
-        const rail = document.createElement("div");
-        rail.className = "wallet-community-ticker-rail";
-        rail.style.setProperty("--ticker-duration", `${Math.max(30, relationships.length * 7)}s`);
-
-        for (let loopIndex = 0; loopIndex < 2; loopIndex += 1) {
-          const loop = document.createElement("div");
-          loop.className = "wallet-community-ticker-loop";
-          for (let repeatIndex = 0; repeatIndex < repeatsPerLoop; repeatIndex += 1) {
-            loop.appendChild(buildTickerUnit());
-          }
-          rail.appendChild(loop);
-        }
-
-        walletCommunityRibbonTrack.replaceChildren(rail);
-
-        // Let the Member Record paint first, then reveal the wallet's broader
-        // Wild Ledger identity as a smooth secondary layer beneath the banner.
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => walletCommunityRibbon.classList.add("is-visible"));
-        });
-      }
-
-      if (!isGlobalMemberRecord) renderProgressRankScale();
-      const cachedWildLedgerRecord = getCachedWildLedgerCommunityRecord();
-      renderOperatorJourneyMilestone(cachedWildLedgerRecord);
-      renderWildLedgerCommunityRibbon(cachedWildLedgerRecord);
+      renderProgressRankScale();
 
       function getRawActiveWallet() {
         return String(readGetWildSession()?.wallet || "");
@@ -2081,314 +1615,13 @@
       }
 
 
-      function resetPendingChecks() {
-        currentPendingLeapChecks = [];
-        pendingChecks.classList.remove("show");
-        pendingCheckList.replaceChildren();
-        pendingCheckCount.textContent = "0 Waiting";
-        pendingChecksTitle.textContent = "LEAP Waiting for You";
-        pendingChecksCopy.textContent =
-          "Open Xaman → Events to cash your LEAP Checks. New Checks stay visible here for 7 days.";
-      }
 
-      function checkObjectId(check) {
-        if (check?.index) return String(check.index);
-        if (check?.LedgerIndex) return String(check.LedgerIndex);
 
-        return [
-          check?.Account || "",
-          check?.Sequence ?? check?.TicketSequence ?? "",
-          check?.Destination || "",
-          check?.SendMax?.value || "",
-          check?.Expiration || ""
-        ].join(":");
-      }
 
-      function checkExpirationInfo(check) {
-        const expiration = Number(check?.Expiration || 0);
 
-        if (!Number.isFinite(expiration) || expiration <= 0) {
-          const createdAtMs = Number(check?._createdAtMs);
 
-          if (Number.isFinite(createdAtMs) && createdAtMs > 0) {
-            const displayUntilMs = createdAtMs + PENDING_CHECK_VISIBLE_MS;
-            const remainingMs = displayUntilMs - Date.now();
 
-            if (remainingMs <= 0) {
-              return {
-                state:"hidden",
-                label:"",
-                detail:"",
-                expirationMs:displayUntilMs
-              };
-            }
 
-            const daysLeft = Math.max(1, Math.ceil(remainingMs / 86400000));
-
-            return {
-              state:"no-expiration",
-              label:`${daysLeft} day${daysLeft === 1 ? "" : "s"} left`,
-              detail:"Cash this Check within 7 days of issuance.",
-              expirationMs:displayUntilMs
-            };
-          }
-
-          return {
-            state:"no-expiration",
-            label:"Waiting",
-            detail:"This Check remains available in Xaman until it is cashed or canceled.",
-            expirationMs:null
-          };
-        }
-
-        const expirationMs = Date.UTC(2000, 0, 1) + expiration * 1000;
-        const remainingMs = expirationMs - Date.now();
-        const formattedDate = new Intl.DateTimeFormat(undefined, {
-          month:"short",
-          day:"numeric",
-          year:"numeric"
-        }).format(new Date(expirationMs));
-
-        if (remainingMs <= 0) {
-          return {
-            state:"expired",
-            label:"Expired",
-            detail:`Expired ${formattedDate}`,
-            expirationMs
-          };
-        }
-
-        const hoursLeft = Math.ceil(remainingMs / 3600000);
-        const daysLeft = Math.ceil(remainingMs / 86400000);
-
-        if (hoursLeft <= 48) {
-          return {
-            state:"urgent",
-            label:hoursLeft <= 1 ? "Less than 1 hour left" : `${hoursLeft} hours left`,
-            detail:`Expires ${formattedDate}`,
-            expirationMs
-          };
-        }
-
-        if (daysLeft <= 7) {
-          return {
-            state:"warning",
-            label:`${daysLeft} day${daysLeft === 1 ? "" : "s"} left`,
-            detail:`Expires ${formattedDate}`,
-            expirationMs
-          };
-        }
-
-        return {
-          state:"safe",
-          label:`${daysLeft} days left`,
-          detail:`Expires ${formattedDate}`,
-          expirationMs
-        };
-      }
-
-      function formatCheckAmount(check) {
-        const raw = Number(check?.SendMax?.value);
-
-        if (!Number.isFinite(raw)) {
-          return "LEAP Check";
-        }
-
-        const value = Number.isInteger(raw)
-          ? String(raw)
-          : String(Number(raw.toFixed(6)));
-
-        return `${value} LEAP`;
-      }
-
-      function pendingCheckReason(check) {
-        const facts = Array.isArray(check?._leapFacts)
-          ? check._leapFacts
-          : [];
-
-        if (!facts.length) return "";
-
-        const labels = {
-          BADGE:"Badge",
-          EVENT:"Event",
-          CHALLENGE:"Challenge"
-        };
-
-        return facts
-          .map(fact => {
-            const label = labels[fact.key] || fact.key;
-            return `${label} · ${displayValue(fact.value)}`;
-          })
-          .join(" • ");
-      }
-
-      function pendingCheckDeadlineDisplay(timing) {
-        const label = String(timing?.label || "").trim();
-        const match = label.match(/^(\d+)\s+day(?:s)?\s+left$/i);
-
-        if (match) {
-          const days = Math.max(1, Math.min(7, Number(match[1])));
-          return {
-            image:`images/days-${days}.png`,
-            alt:`${days} day${days === 1 ? "" : "s"} left`,
-            copy:"Days Left"
-          };
-        }
-
-        if (timing?.state === "expired") {
-          return { image:"", alt:"", copy:"Expired" };
-        }
-
-        return { image:"", alt:"", copy:"Days Left" };
-      }
-
-      function renderPendingChecks(checks = currentPendingLeapChecks) {
-        currentPendingLeapChecks = Array.isArray(checks) ? checks : [];
-
-        const dismissed = dismissedExpiredChecks;
-        const visible = [];
-
-        for (const check of currentPendingLeapChecks) {
-          const timing = checkExpirationInfo(check);
-          const id = checkObjectId(check);
-
-          if (timing.state === "hidden") {
-            continue;
-          }
-
-          if (timing.state === "expired" && dismissed.has(id)) {
-            continue;
-          }
-
-          visible.push({ check, timing, id });
-        }
-
-        if (!visible.length) {
-          resetPendingChecks();
-          return;
-        }
-
-        const activeCount = visible.filter(item => item.timing.state !== "expired").length;
-        const expiredCount = visible.length - activeCount;
-
-        pendingChecks.classList.add("show");
-        pendingCheckList.replaceChildren();
-
-        if (activeCount > 0) {
-          pendingChecksTitle.textContent = "LEAP Waiting for You";
-
-          const parts = [`${activeCount} WAITING`];
-          if (expiredCount) parts.push(`${expiredCount} EXPIRED`);
-          pendingCheckCount.textContent = parts.join(" • ");
-
-          pendingChecksCopy.textContent =
-            "Open Xaman → Events to cash your LEAP Checks. New Checks stay visible here for 7 days. Your Member Record updates when the LEAP reaches your wallet.";
-        } else {
-          pendingChecksTitle.textContent =
-            expiredCount === 1 ? "Expired LEAP Check" : "Expired LEAP Checks";
-          pendingCheckCount.textContent = `${expiredCount} EXPIRED`;
-          pendingChecksCopy.textContent =
-            "These Checks can no longer be cashed. You can dismiss each notice after you’ve seen it.";
-        }
-
-        visible.sort((a, b) => {
-          const aExpired = a.timing.state === "expired";
-          const bExpired = b.timing.state === "expired";
-
-          if (aExpired !== bExpired) return aExpired ? 1 : -1;
-
-          const aTime = a.timing.expirationMs ?? Number.MAX_SAFE_INTEGER;
-          const bTime = b.timing.expirationMs ?? Number.MAX_SAFE_INTEGER;
-          return aTime - bTime;
-        });
-
-        for (const { check, timing, id } of visible) {
-          const card = document.createElement("div");
-          card.className = `pending-check-card ${timing.state}`;
-
-          const main = document.createElement("div");
-          main.className = "pending-check-main";
-
-          const amount = document.createElement("strong");
-          amount.className = "pending-check-amount";
-          amount.textContent = formatCheckAmount(check);
-
-          const reasonText = pendingCheckReason(check);
-
-          if (reasonText) {
-            const reason = document.createElement("div");
-            reason.className = "pending-check-reason";
-            reason.textContent = reasonText;
-            main.append(amount, reason);
-          } else {
-            main.appendChild(amount);
-          }
-
-          const cardStatus = document.createElement("span");
-          cardStatus.className = "pending-check-status";
-          cardStatus.textContent =
-            timing.state === "expired"
-              ? "This Check can no longer be cashed."
-              : "Waiting to be cashed in Xaman → Events.";
-
-          const expiry = document.createElement("div");
-          expiry.className = "pending-check-expiry";
-          expiry.textContent = timing.detail;
-
-          main.append(cardStatus, expiry);
-
-          const deadline = document.createElement("div");
-          deadline.className = "pending-check-deadline";
-
-          const deadlineDisplay = pendingCheckDeadlineDisplay(timing);
-
-          if (deadlineDisplay.image) {
-            const deadlineImage = document.createElement("img");
-            deadlineImage.className = "pending-check-deadline-image";
-            deadlineImage.src = deadlineDisplay.image;
-            deadlineImage.alt = deadlineDisplay.alt;
-            deadlineImage.width = 112;
-            deadlineImage.height = 112;
-            deadline.appendChild(deadlineImage);
-          }
-
-          const deadlineCopy = document.createElement("span");
-          deadlineCopy.className = deadlineDisplay.image
-            ? "pending-check-deadline-copy"
-            : "pending-check-deadline-fallback";
-          deadlineCopy.textContent = deadlineDisplay.copy;
-
-          deadline.appendChild(deadlineCopy);
-
-          if (timing.state === "expired") {
-            card.classList.add("has-action");
-
-            const action = document.createElement("div");
-            action.className = "pending-check-action";
-
-            const dismiss = document.createElement("button");
-            dismiss.type = "button";
-            dismiss.className = "pending-check-dismiss";
-            dismiss.dataset.checkId = id;
-            dismiss.textContent = "Dismiss";
-            action.appendChild(dismiss);
-
-            card.append(main, deadline, action);
-          } else {
-            card.append(main, deadline);
-          }
-
-          pendingCheckList.appendChild(card);
-        }
-      }
-
-      function dismissExpiredCheck(checkId) {
-        if (!checkId) return;
-
-        const dismissed = dismissedExpiredChecks;
-        dismissed.add(checkId);
-        renderPendingChecks(currentPendingLeapChecks);
-      }
 
       function renderProgressRankScale() {
         const system = globalThis.WILD_LEDGER_STAR_SYSTEM;
@@ -2424,7 +1657,6 @@
         progressFill.style.width = "0%";
 
         setTrustlineStatus(null, "unavailable");
-        resetPendingChecks();
         resetLogbook();
       }
 
@@ -3506,62 +2738,6 @@
         progressFill.style.width = "0%";
       }
 
-      async function loadGlobalMemberRecord(account) {
-        if (!classicAddressPattern.test(account)) {
-          resetRecord();
-          setTrustlineStatus(null, "unavailable");
-          setStateMessage(
-            "No active Wild Ledger wallet.",
-            "Open a Member Record from a community first so Wild Ledger knows which public XRPL wallet this browser session is viewing.",
-            "warn"
-          );
-          setStatus("");
-          return;
-        }
-
-        resetRecord();
-        setTrustlineStatus(null, "checking");
-        setStateMessage(
-          "Reading your Wild Ledger record…",
-          "Checking the XRP Ledger while the rest of the page stays available.",
-          "loading"
-        );
-        setStatus("");
-
-        try {
-          const lines = await queryAccountLines(account);
-          const leapLine = lines.find(isLeapLine);
-          const balance = leapLine ? Number(leapLine.balance) : 0;
-          const safeBalance = Number.isFinite(balance) ? balance : 0;
-          const transfersDisabled = !leapLine || Number(leapLine.limit) === 0;
-
-          renderRecord(account, safeBalance);
-          setTrustlineStatus(leapLine);
-
-          if (transfersDisabled) {
-            setStateMessage("", "", "", true);
-          } else {
-            setStateMessage();
-          }
-
-          void ensureWildLedgerCommunityRecord({ wallet: account })
-            .then(record => { renderOperatorJourneyMilestone(record); renderWildLedgerCommunityRibbon(record); })
-            .catch(error => {
-              console.warn(
-                "Wild Ledger cross-community record could not be built in the background:",
-                error
-              );
-            });
-        } catch (error) {
-          console.error(error);
-          setTrustlineStatus(null, "unavailable");
-          setStateMessage(
-            "Wild Ledger record is temporarily unavailable.",
-            "The XRP Ledger could not be read right now. Your session wallet has not been changed.",
-            "warn"
-          );
-        }
-      }
 
       function renderMemberSnapshot(member) {
         earnedEl.textContent = String(member.earnedLeap);
@@ -3643,24 +2819,12 @@
           }
 
 
-          // Step 2: build the wallet's cross-community Wild Ledger record once
-          // in the background. This never blocks the current Member Record.
-          // Once complete, the compact public-ledger summary is rendered.
-          void ensureWildLedgerCommunityRecord({ wallet: account })
-            .then(record => { renderOperatorJourneyMilestone(record); renderWildLedgerCommunityRibbon(record); })
-            .catch(error => {
-              console.warn(
-                "Wild Ledger cross-community record could not be built in the background:",
-                error
-              );
-            });
 
 
           // Catalog is needed to interpret recognition history, but never
           // blocks starting the XRPL Logbook request or its visible spinner.
           if (catalogPromise) await catalogPromise;
-          resetPendingChecks();
-          const historyLoaded = historyResult.status === "fulfilled";
+            const historyLoaded = historyResult.status === "fulfilled";
           trail.setStep("logbook", historyLoaded ? "done" : "failed", historyLoaded ? "History loaded." : "History unavailable.");
 
           if (historyLoaded) {
@@ -3726,17 +2890,6 @@
         }
       }
 
-      pendingCheckList.addEventListener("click", event => {
-        const dismissButton = event.target.closest(".pending-check-dismiss");
-        if (!dismissButton) return;
-        dismissExpiredCheck(dismissButton.dataset.checkId || "");
-      });
-
-      setInterval(() => {
-        if (currentPendingLeapChecks.length) {
-          renderPendingChecks(currentPendingLeapChecks);
-        }
-      }, 60000);
 
 
       personalChronologicalButton.addEventListener("click", () => {
@@ -3766,31 +2919,18 @@
         resetRecord();
         setTrustlineStatus(null, "checking");
         setStateMessage(
-          isGlobalMemberRecord ? "Reading your Wild Ledger record…" : "Reading your Member Record…",
+          "Reading your Member Record…",
           "Checking the XRP Ledger.",
           "loading"
         );
         setStatus("");
       } else {
-        if (rawActiveWallet && !isGlobalMemberRecord) {
-          // Invalid wallet identity: no Member snapshot can be trusted.
-          removeMemberSession();
-        } else if (!isGlobalMemberRecord) {
-          // No Get Wild wallet: discard any previous Member snapshot.
-          removeMemberSession();
-        }
+        // No valid Get Wild wallet: discard any previous Member snapshot.
+        removeMemberSession();
 
         resetRecord();
         setTrustlineStatus(null, "unavailable");
-        if (isGlobalMemberRecord) {
-          setStateMessage(
-            "No active Wild Ledger wallet in this session.",
-            "Open your Member Record from a community first. Wild Ledger will then carry that public XRPL wallet through this browser session.",
-            "warn"
-          );
-        } else {
-          setStateMessage("", "", "", false, true);
-        }
+        setStateMessage("", "", "", false, true);
         setStatus("");
       }
 
@@ -3799,9 +2939,7 @@
       document.documentElement.classList.remove("community-pending");
 
       if (activeWallet) {
-        if (isGlobalMemberRecord) {
-          await loadGlobalMemberRecord(activeWallet);
-        } else {
+        {
           // Only missing work becomes a checkpoint. Get Wild already owns wallet/community.
           const cachedMember = readMemberSession();
           const steps = [
