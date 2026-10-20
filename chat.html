@@ -672,7 +672,7 @@
       <div class="prototype-role-switch" aria-label="Prototype view" data-test-only hidden>
         <span class="prototype-role-label">Prototype view</span>
         <button class="role-toggle" type="button" data-role-view="member" aria-pressed="false">Member</button>
-        <button class="role-toggle" type="button" data-role-view="manager" aria-pressed="true">Community Manager</button>
+        <button class="role-toggle" type="button" data-role-view="manager" aria-pressed="true">Community Operator</button>
       </div>
 
       <section class="panel" id="loungePanel" aria-label="Community Lounge prototype">
@@ -691,8 +691,8 @@
               <div class="avatar" id="managerSampleAvatar">M</div>
               <div class="bubble">
                 <div class="meta">
-                  <span class="name" id="managerSampleName">Community Manager</span>
-                  <button class="manager-tip" id="managerSampleTip" type="button" data-manager-tip-name="" data-test-only hidden>Tip Community Manager in XRP</button>
+                  <span class="name" id="managerSampleName">Community Operator</span>
+                  <button class="manager-tip" id="managerSampleTip" type="button" data-community-tip="" data-test-only hidden>Tip Community Operator in XRP</button>
                   <span class="bolt-status" data-transfer-status="enabled">
                     <button class="bolt-trigger" type="button" aria-label="Great Chats enabled"><span class="bolt" aria-hidden="true">⚡</span></button>
                     <span class="bolt-popover" role="tooltip"><strong>Great Chats enabled</strong></span>
@@ -779,8 +779,8 @@
 
   <div class="scrim" id="xrpTipScrim" role="dialog" aria-modal="true" aria-labelledby="xrpTipTitle">
     <div class="tip-sheet">
-      <h3 id="xrpTipTitle">Tip <span id="xrpManagerName">Community Manager</span> in XRP</h3>
-      <p>Voluntary appreciation for <span id="xrpManagerNameSecondary">Community Manager</span>.</p>
+      <h3 id="xrpTipTitle">Tip <span id="xrpManagerName">Community Operator</span> in XRP</h3>
+      <p>Voluntary appreciation for <span id="xrpManagerNameSecondary">Community Operator</span>.</p>
       <div class="xrp-entry">
         <input id="xrpAmount" type="text" inputmode="decimal" autocomplete="off" placeholder="XRP amount" aria-label="XRP tip amount" />
         <button class="primary" id="prepareXrpTip" type="button" disabled>Prepare XRP Tip</button>
@@ -818,7 +818,7 @@
   <div class="scrim" id="recognitionScrim" role="dialog" aria-modal="true" aria-labelledby="recognitionTitle">
     <div class="tip-sheet">
       <h3 id="recognitionTitle">Great Chat for <span id="recognitionName">Leaper</span></h3>
-      <p>Community Manager recognition is a direct LEAP Payment to a prepared member wallet.</p>
+      <p>Community Operator recognition is a direct LEAP Payment to a prepared member wallet.</p>
       <div class="recognition-code" id="recognitionCode">COMMUNITY-LEAP/BADGE = GREAT-CHAT</div>
       <div class="recognition-amounts" role="group" aria-label="Choose LEAP amount">
         <button class="recognition-amount" type="button" data-recognition-amount="1">1 LEAP</button>
@@ -861,7 +861,7 @@
     <div class="appreciation-card">
       <div class="appreciation-icon" aria-hidden="true">✦</div>
       <div class="appreciation-title">Thanks, <span id="appreciationTipper">Member</span>!</div>
-      <div class="appreciation-copy"><span id="appreciationAmount">2</span> XRP sent to <span id="appreciationRecipient">Community Manager</span></div>
+      <div class="appreciation-copy"><span id="appreciationAmount">2</span> XRP sent to <span id="appreciationRecipient">Community Operator</span></div>
     </div>
   </div>
 
@@ -885,7 +885,6 @@
     let supabaseClient = null;
     let chatChannel = null;
     let chatRealtimeReady = false;
-    let currentXrpManagerName = "";
     let preparedXrpTipTx = null;
     let xrpTipSigner = null;
     let connectedXrpTipAccount = "";
@@ -930,7 +929,6 @@
     const SUPABASE_PUBLISHABLE_KEY = String(runtimeConfig.supabasePublishableKey || "sb_publishable_8CRe36dcXHN_QV7dsVBMLg_xu6rw55M").trim();
     const COMMUNITY_BACKEND_ID = String(community?.backendId || "").trim().toUpperCase();
     const COMMUNITY_NAME = String(community?.communityName || "Community").trim();
-    const MANAGER_NAME = String(community?.managerName || community?.operatorName || "Community Manager").trim();
     const MEMBER_SINGULAR = String(community?.memberSingular || "member").trim();
     const MEMBER_PLURAL = String(community?.memberPlural || `${MEMBER_SINGULAR}s`).trim();
     const LOUNGE_MEMBER_LABEL = MEMBER_SINGULAR ? MEMBER_SINGULAR.charAt(0).toUpperCase() + MEMBER_SINGULAR.slice(1) : "Member";
@@ -1052,17 +1050,16 @@
       if (loungePanel) loungePanel.setAttribute("aria-label", `${LOUNGE_NAME} prototype`);
       if (roomTitle) roomTitle.textContent = LOUNGE_NAME;
       if (backLink) backLink.href = `memberRecord.html?community=${encodeURIComponent(COMMUNITY_BACKEND_ID)}`;
-      if (managerSampleAvatar) managerSampleAvatar.textContent = initialsFor(MANAGER_NAME);
-      if (managerSampleName) managerSampleName.textContent = MANAGER_NAME;
+      if (managerSampleAvatar) managerSampleAvatar.textContent = initialsFor(COMMUNITY_NAME);
+      if (managerSampleName) managerSampleName.textContent = COMMUNITY_NAME;
       if (managerSampleTip) {
-        managerSampleTip.dataset.managerTipName = MANAGER_NAME;
-        managerSampleTip.textContent = `Tip ${MANAGER_NAME} in XRP`;
+        managerSampleTip.textContent = `Tip ${COMMUNITY_NAME} in XRP`;
       }
       applyDemoParticipants();
     if (!TEST_MODE) messages.querySelectorAll(":scope > .message").forEach(node => node.remove());
-      if (xrpManagerName) xrpManagerName.textContent = MANAGER_NAME;
-      if (xrpManagerNameSecondary) xrpManagerNameSecondary.textContent = MANAGER_NAME;
-      if (appreciationRecipient) appreciationRecipient.textContent = MANAGER_NAME;
+      if (xrpManagerName) xrpManagerName.textContent = COMMUNITY_NAME;
+      if (xrpManagerNameSecondary) xrpManagerNameSecondary.textContent = COMMUNITY_NAME;
+      if (appreciationRecipient) appreciationRecipient.textContent = COMMUNITY_NAME;
       if (recognitionCode) recognitionCode.textContent = `${NAMESPACE}/BADGE = GREAT-CHAT`;
       if (celebrationName) celebrationName.textContent = LOUNGE_MEMBER_LABEL;
       if (appreciationTipper) appreciationTipper.textContent = LOUNGE_MEMBER_LABEL;
@@ -1452,7 +1449,7 @@
       const heading = document.createElement("h2");
       heading.textContent = "✦ Simulated XRP Tip";
       const detail = document.createElement("p");
-      detail.textContent = `Tip ${MANAGER_NAME} — no wallet signing or XRP transfer.`;
+      detail.textContent = `Tip ${COMMUNITY_NAME} — no wallet signing or XRP transfer.`;
       const label = document.createElement("label");
       label.textContent = "XRP amount (simulation only)";
       const amount = document.createElement("input");
@@ -1484,7 +1481,7 @@
         }
         if (!chatRealtimeReady || !chatChannel) {feedback.textContent="Lounge is disconnected.";return;}
         pending=true;confirm.disabled=true;confirm.textContent="Sending test announcement…";
-        const payload = {id:globalThis.crypto?.randomUUID?.()||`sim-tip-${Date.now()}`,tipper:currentNickname,recipient:MANAGER_NAME,amount:value,simulated:true};
+        const payload = {id:globalThis.crypto?.randomUUID?.()||`sim-tip-${Date.now()}`,tipper:currentNickname,recipient:COMMUNITY_NAME,amount:value,simulated:true};
         try {
           const status=await Promise.race([
             chatChannel.send({type:"broadcast",event:"sim-xrp-tip",payload}),
@@ -1879,11 +1876,10 @@
       void closeLoungeSession();
     });
 
-    document.querySelectorAll("[data-manager-tip-name]").forEach(button => {
+    document.querySelectorAll("[data-community-tip]").forEach(button => {
       button.addEventListener("click", () => {
-        currentXrpManagerName = button.dataset.managerTipName || MANAGER_NAME;
-        xrpManagerName.textContent = currentXrpManagerName;
-        xrpManagerNameSecondary.textContent = currentXrpManagerName;
+        xrpManagerName.textContent = COMMUNITY_NAME;
+        xrpManagerNameSecondary.textContent = COMMUNITY_NAME;
         xrpAmount.value = "";
         xrpTestSender.value = "";
         preparedXrpTipTx = null;
