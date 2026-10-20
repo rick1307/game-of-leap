@@ -1554,7 +1554,7 @@
   <script type="module">
     import { createLedgerTrail } from "./js/ledgerTrail.js";
     import { readGetWildSession, readMemberSession, writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
-    import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityAuthority.js";
+    
     import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog } from "./js/recognitionCatalog.js";
     import {
       ensureWildLedgerCommunityRecord,
@@ -1640,7 +1640,7 @@
       const LEAP_CURRENCY = wildLedger.leapCurrency;
       const LEAP_TRANSFER_LIMIT = wildLedger.leapTransferLimit;
       const LEGACY_DISTRIBUTORS = new Set(Array.isArray(wildLedger.leapDistributors) ? wildLedger.leapDistributors : []);
-      let communityAuthority = null;
+
       let communityRecognitionCatalog = null;
 
       const LEAP_NAMESPACE = community.leapNamespace;
@@ -2547,22 +2547,8 @@
         return Number.isFinite(n) ? n : null;
       }
 
-      function beforeAuthorityActivation(entry, tx = entry?.tx_json || entry?.tx || entry?.transaction || entry || {}) {
-        if (!communityAuthority?.initialStatement) return true;
-        const ledger = entryLedgerIndex(entry, tx);
-        if (!Number.isFinite(ledger)) return false;
-        const txIndex = entryTransactionIndex(entry);
-        const initialLedger = Number(communityAuthority.initialStatement.ledger);
-        const initialIndex = Number.isFinite(communityAuthority.initialStatement.txIndex) ? Number(communityAuthority.initialStatement.txIndex) : -1;
-        const index = Number.isFinite(txIndex) ? txIndex : -1;
-        return ledger < initialLedger || (ledger === initialLedger && index < initialIndex);
-      }
-
       function officialRecognitionSource(entry, tx = entry?.tx_json || entry?.tx || entry?.transaction || entry || {}) {
-        const ledger = entryLedgerIndex(entry, tx);
-        const txIndex = entryTransactionIndex(entry);
-        if (communityAuthority && isAuthorizedAtLedger(communityAuthority, tx.Account, ledger, txIndex)) return true;
-        return beforeAuthorityActivation(entry, tx) && LEGACY_DISTRIBUTORS.has(tx.Account);
+        return LEGACY_DISTRIBUTORS.has(tx.Account);
       }
 
       function recognitionFactAvailableAtEntry(fact, entry, tx = entry?.tx_json || entry?.tx || entry?.transaction || entry || {}) {
@@ -3593,7 +3579,7 @@
         }
       }
 
-      async function loadCrewRecord(account, trail) {
+      async function loadCrewRecord(account, trail, catalogPromise) {
         if (!classicAddressPattern.test(account)) {
           removeMemberSession();
           resetRecord();
@@ -3670,6 +3656,9 @@
             });
 
 
+          // Catalog is needed to interpret recognition history, but never
+          // blocks starting the XRPL Logbook request or its visible spinner.
+          if (catalogPromise) await catalogPromise;
           resetPendingChecks();
           const historyLoaded = historyResult.status === "fulfilled";
           trail.setStep("logbook", historyLoaded ? "done" : "failed", historyLoaded ? "History loaded." : "History unavailable.");
@@ -3825,37 +3814,21 @@
             steps
           });
           trail.open();
-          const [authorityResult, catalogResult] = await Promise.allSettled([
-            resolveCommunityAuthority({ community, serverUrl: XRPL_WS }),
-            loadRecognitionCatalog({
-              community,
-              serverUrl: XRPL_WS,
-              issuer: LEAP_ISSUER,
-              currency: LEAP_CURRENCY,
-              includeIgnored: true
-            })
-          ]);
-
-          if (authorityResult.status === "fulfilled") {
-            communityAuthority = authorityResult.value;
-          } else {
-            console.warn(
-              "Community authority could not be fully resolved for Member Record:",
-              authorityResult.reason
-            );
-            communityAuthority = null;
-          }
-
-          if (catalogResult.status === "fulfilled") {
-            communityRecognitionCatalog = catalogResult.value;
-          } else {
-            console.warn(
-              "Recognition definitions could not be fully resolved for Member Record:",
-              catalogResult.reason
-            );
+          // Begin the Logbook request immediately. Recognition definitions can
+          // load concurrently, without delaying the visible Ledger Trail.
+          const catalogPromise = loadRecognitionCatalog({
+            community,
+            serverUrl: XRPL_WS,
+            issuer: LEAP_ISSUER,
+            currency: LEAP_CURRENCY,
+            includeIgnored: true
+          }).then(catalog => {
+            communityRecognitionCatalog = catalog;
+          }).catch(error => {
+            console.warn("Recognition definitions unavailable:", error);
             communityRecognitionCatalog = null;
-          }
-          await loadCrewRecord(activeWallet, trail);
+          });
+          await loadCrewRecord(activeWallet, trail, catalogPromise);
         }
       }
     })();
