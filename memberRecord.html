@@ -2909,8 +2909,8 @@
         - Only the wallet established by Get Wild may load.
 
         Paint rule:
-        - Render the Member Record shell immediately.
-        - Let XRPL work happen after the card is already visible.
+        - Mount the Ledger Trail before revealing the page.
+        - Do not wait for XRPL work before the first visible paint.
       */
       const rawActiveWallet = getRawActiveWallet();
       const activeWallet = getActiveWallet();
@@ -2934,10 +2934,8 @@
         setStatus("");
       }
 
-      // Everything above is synchronous. Reveal the fully styled card now,
-      // before any network or XRP Ledger request is awaited.
-      document.documentElement.classList.remove("community-pending");
-
+      // Keep the page hidden until the Ledger Trail overlay is mounted.
+      // No network request is awaited before the first visible paint.
       if (activeWallet) {
         {
           // Only missing work becomes a checkpoint. Get Wild already owns wallet/community.
@@ -2952,6 +2950,8 @@
             steps
           });
           trail.open();
+          // Reveal the page and its already-mounted Trail in the same paint.
+          document.documentElement.classList.remove("community-pending");
           // Begin the Logbook request immediately. Recognition definitions can
           // load concurrently, without delaying the visible Ledger Trail.
           const catalogPromise = loadRecognitionCatalog({
@@ -2968,6 +2968,9 @@
           });
           await loadCrewRecord(activeWallet, trail, catalogPromise);
         }
+      } else {
+        // No Trail is needed without a valid Get Wild wallet.
+        document.documentElement.classList.remove("community-pending");
       }
     })();
   </script>
