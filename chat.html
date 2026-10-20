@@ -1450,6 +1450,20 @@
       heading.textContent = "✦ Simulated XRP Tip";
       const detail = document.createElement("p");
       detail.textContent = `Tip ${COMMUNITY_NAME} — no wallet signing or XRP transfer.`;
+      const senderLabel = document.createElement("label");
+      senderLabel.textContent = "Simulated sender";
+      const sender = document.createElement("select");
+      sender.style.cssText = "display:block;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;color:#111;background:white;border-radius:8px";
+      for (let i = 0; i < simChannels.length; i++) {
+        const option = document.createElement("option");
+        option.value = String(i);
+        option.textContent = `Test Frog ${i + 1}`;
+        sender.appendChild(option);
+      }
+      if (!simReady || simChannels.length !== 2 || !chatRealtimeReady) {
+        sender.disabled = true;
+        detail.textContent = "Join both test frogs and connect the Lounge before simulating a tip.";
+      }
       const label = document.createElement("label");
       label.textContent = "XRP amount (simulation only)";
       const amount = document.createElement("input");
@@ -1480,15 +1494,20 @@
           return;
         }
         if (!chatRealtimeReady || !chatChannel) {feedback.textContent="Lounge is disconnected.";return;}
+        const senderIndex = Number(sender.value);
+        if (!simReady || !Number.isInteger(senderIndex) || senderIndex < 0 || senderIndex >= simChannels.length) {
+          feedback.textContent = "Join the test frogs and select a simulated sender first.";
+          return;
+        }
         pending=true;confirm.disabled=true;confirm.textContent="Sending test announcement…";
-        const payload = {id:globalThis.crypto?.randomUUID?.()||`sim-tip-${Date.now()}`,tipper:currentNickname,recipient:COMMUNITY_NAME,amount:value,simulated:true};
+        const payload = {id:globalThis.crypto?.randomUUID?.()||`sim-tip-${Date.now()}`,tipper:`Test Frog ${senderIndex + 1}`,recipient:COMMUNITY_NAME,amount:value,simulated:true};
         try {
           const status=await Promise.race([
-            chatChannel.send({type:"broadcast",event:"sim-xrp-tip",payload}),
+            simChannels[senderIndex].send({type:"broadcast",event:"sim-xrp-tip",payload}),
             new Promise((_,reject)=>setTimeout(()=>reject(new Error("Broadcast timed out after 8 seconds")),8000))
           ]);
           if(status!=="ok")throw new Error(`Broadcast returned ${status}`);
-          receiveSimXrpTip(payload);
+          // Broadcast originates from the selected frog; the main Lounge receives it.
           close();
         } catch(error) {
           feedback.textContent=`Test failed: ${error.message}`;
@@ -1496,7 +1515,8 @@
           confirm.disabled=false;confirm.textContent="Retry Simulate Tip";
         } finally {pending=false;}
       };
-      controls.append(confirm,cancel);panel.append(heading,detail,label,amount,feedback,controls);overlay.appendChild(panel);document.body.appendChild(overlay);
+      confirm.disabled = sender.disabled;
+      controls.append(confirm,cancel);panel.append(heading,detail,senderLabel,sender,label,amount,feedback,controls);overlay.appendChild(panel);document.body.appendChild(overlay);
     }
     // Optional one-phone integration test. Enabled ONLY with ?sim=1.
     // Simulated participants connect through independent Realtime clients.
@@ -1519,7 +1539,7 @@
       if (!SIM_TEST || simPanel) return;
       simPanel = document.createElement("section");
       simPanel.style.cssText = "background:#12293a;border:2px solid #68d9b5;border-radius:12px;padding:14px;margin:16px 0;color:white;font:14px system-ui;position:relative;z-index:3";
-      simPanel.innerHTML = '<strong>ONE-PHONE LOUNGE TEST — SIMULATED PARTICIPANTS + GREAT CHAT</strong><p style="margin:8px 0">Two independent Supabase clients join this actual community room. Their messages will be visible to other connected users; use a test community.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-sim="start">Join 2 testers</button><button type="button" data-sim="reply">Send test replies</button><button type="button" data-sim="leave">Leave / disconnect</button><button type="button" data-sim="tip">Simulate XRP Tip</button></div><pre data-sim-log style="white-space:pre-wrap;max-height:160px;overflow:auto;font-size:12px"></pre>';
+      simPanel.innerHTML = '<strong>ONE-PHONE LOUNGE TEST — CHAT, RECOGNITION + XRP TIPS</strong><p style="margin:8px 0">Two independent Supabase clients join this actual community room. Their messages will be visible to other connected users; use a test community.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-sim="start">Join 2 testers</button><button type="button" data-sim="reply">Send test replies</button><button type="button" data-sim="leave">Leave / disconnect</button><button type="button" data-sim="tip">Simulate XRP Tip</button></div><pre data-sim-log style="white-space:pre-wrap;max-height:160px;overflow:auto;font-size:12px"></pre>';
       simLog = simPanel.querySelector("[data-sim-log]");
       for (const button of simPanel.querySelectorAll("button")) {
         button.style.cssText = "padding:9px;border-radius:7px;background:#7bd9bd;color:#10211c;border:0;font-weight:700";
