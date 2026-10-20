@@ -42,6 +42,7 @@ button{
   letter-spacing:.035em;cursor:pointer
 }
 button.secondary{background:#fff;color:var(--accent);border:1px solid var(--line)}
+.get-wild-button{max-width:400px;margin-top:28px;background:var(--accent);color:#fff;font-size:17px;min-height:56px}
 button:hover{filter:brightness(1.07)}
 button:disabled{opacity:.48;cursor:default;filter:none}
 .status{min-height:22px;margin:14px 0 0;font-size:13px;color:var(--muted);line-height:1.48}
@@ -88,46 +89,21 @@ footer{padding-top:34px;text-align:center;color:var(--muted);font-size:13px}
       <div class="eyebrow">Wild Ledger access</div>
       <h1>Get Wild.</h1>
       <p>Scan once. Wild Ledger reads the XRPL address returned by your wallet, checks validated authority, and opens the workspace that address operates.</p>
+      <button id="refreshQr" type="button" class="get-wild-button">Get Wild</button>
     </section>
 
-    <section class="access-grid" aria-label="Wild Ledger wallet entry">
-      <div class="card">
-        <div class="eyebrow">Wallet entry</div>
-        <h2>Scan the QR code</h2>
-        <p class="card-copy">No Access ID. No password. Do not type or paste an XRPL address.</p>
-
-        <div class="qr-shell" id="qrShell">
-          <div class="qr-placeholder" id="qrPlaceholder">Press Get Wild to begin wallet connection.</div>
-          <img id="qrImage" alt="Wild Ledger wallet connection QR code" hidden />
-        </div>
-
-        <button class="secondary" id="refreshQr" type="button">Get Wild</button>
-        <p class="status" id="accessStatus" role="status" aria-live="polite">Ready when you are.</p>
-
-        <div class="connected" id="connectedBox" hidden>
-          <strong>Address returned by wallet</strong>
-          <span id="connectedAddress"></span>
-        </div>
-
-        <div class="choice-box" id="communityChoices" hidden>
-          <div class="choice-title">Choose a community</div>
-          <div class="choice-list" id="communityChoiceList"></div>
-        </div>
+    <div class="wallet-runtime" hidden aria-hidden="true">
+      <div id="qrShell">
+        <div id="qrPlaceholder">Press Get Wild to begin wallet connection.</div>
+        <img id="qrImage" alt="Wallet connection QR code" hidden />
       </div>
-
-      <aside class="system">
-        <div class="eyebrow">One QR. Ledger-routed.</div>
-        <h2>The wallet address determines the path.</h2>
-        <p>The QR connection supplies the XRPL address. Wild Ledger does not ask the user to identify a role or community.</p>
-        <div class="route">
-          <div class="route-label">Routing model</div>
-          <div class="route-row"><span class="dot"></span><span><strong>Current Owner Wallet</strong> → Owner Console</span></div>
-          <div class="route-row"><span class="dot"></span><span><strong>Current Operating Wallet</strong> → its community</span></div>
-          <div class="route-row"><span class="dot"></span><span><strong>Newly provisioned community</strong> → Community Setup</span></div>
-          <div class="route-row"><span class="dot"></span><span><strong>CONFIG pointer</strong> → <code>WILD-LEDGER/STATE/&lt;ID&gt;/CONFIG=&lt;VERSION&gt;</code></span></div>
-        </div>
-      </aside>
-    </section>
+      <p class="status" id="accessStatus" role="status" aria-live="polite"></p>
+      <div id="connectedBox" hidden><span id="connectedAddress"></span></div>
+    </div>
+    <div class="choice-box" id="communityChoices" hidden>
+      <div class="choice-title">Choose a community</div>
+      <div class="choice-list" id="communityChoiceList"></div>
+    </div>
   </main>
 
   <footer>Wild Ledger · Powered by LEAP</footer>
