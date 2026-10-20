@@ -219,8 +219,10 @@
 
 /* Wild Ledger cinematic view dissolve — local demo */
 html{background:#071d2a}
+body{animation:wildViewIn .34s ease both}
 body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
-@media(prefers-reduced-motion:reduce){body.wl-view-leaving{transition:none}}
+@keyframes wildViewIn{from{opacity:0}to{opacity:1}}
+@media(prefers-reduced-motion:reduce){body{animation:none}body.wl-view-leaving{transition:none}}
 </style>
 <link rel="stylesheet" href="wildLedgerControls.css">
   <link rel="stylesheet" href="wildLedgerBackend.css">
@@ -386,15 +388,12 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
       fadeNavigate(link.href);
     }));
 
-  let cachedCommunityName = "";
+  // Title comes only from the shared Get Wild session.
+  let getWildSession = null;
   try {
-    const cached = JSON.parse(sessionStorage.getItem("wildLedger.currentCommunityConfig") || "null");
-    if (cached && String(cached.communityId || "").trim().toUpperCase() === String(requestedId || "").trim().toUpperCase()) {
-      cachedCommunityName = String(cached?.config?.communityName || "").trim();
-    }
+    getWildSession = JSON.parse(sessionStorage.getItem("wildLedger.getWild") || "null");
   } catch (_) {}
-
-  const displayName = cachedCommunityName || operatorSession?.communityName || community?.communityName || requestedId || "Community";
+  const displayName = String(getWildSession?.communityName || "").trim();
   viewCommunityTitle.textContent = displayName;
   document.title = `${displayName} | Wild Ledger`;
 })();
