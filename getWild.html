@@ -82,52 +82,6 @@ footer{padding-top:34px;text-align:center;color:var(--muted);font-size:13px}
 <link rel="stylesheet" href="ledgerTrail.css">
 </head>
 <body>
-<!-- First-paint copy of Get Wild's shared Ledger Trail. It is already visible
-     while external JavaScript loads and is replaced before the live Trail opens. -->
-<div id="getWildBoot" class="ledger-trail show" role="dialog" aria-modal="true" aria-labelledby="getWildBootTitle">
-  <div class="ledger-trail-panel" tabindex="-1">
-    <div class="trail-topline">
-      <button id="getWildBootClose" class="trail-close" type="button" aria-label="Close Ledger Trail">×</button>
-      <div class="trail-kicker">Wild Ledger · Ledger Trail</div>
-    </div>
-    <h2 id="getWildBootTitle">Log In</h2>
-    <p class="trail-lede">Stay on the Trail while Wild Ledger hands off to your wallet, reads validated XRPL state, and opens the right workspace.</p>
-    <div class="trail-route">
-      <div class="trail-step active"><div class="trail-marker" aria-hidden="true"><span class="trail-activity" aria-hidden="true"></span></div><div class="trail-copy"><strong>Wallet connection</strong><span>Preparing a fresh Bifrost pairing QR code.</span></div></div>
-      <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Discover authority</strong><span>Waiting to read validated Wild Ledger authority.</span></div></div>
-      <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Route</strong><span>Waiting to determine the Owner or community path.</span></div></div>
-      <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Confirm authority</strong><span>Waiting to confirm the current authority before entry.</span></div></div>
-      <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>CONFIG</strong><span>Waiting to read the current community CONFIG state.</span></div></div>
-      <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Session</strong><span>Waiting to establish the working Wild Ledger session.</span></div></div>
-      <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Ready</strong><span>Waiting to open the destination.</span></div></div>
-    </div>
-    <p class="trail-status busy" role="status" aria-live="polite">Creating a fresh wallet connection QR code…</p>
-  </div>
-</div>
-<script>
-  // The X (and Escape) work even before the shared module finishes loading.
-  window.__wildLedgerGetWildBootDismissed = false;
-  (() => {
-    const boot = document.getElementById("getWildBoot");
-    function cleanup() {
-      document.removeEventListener("keydown", onKeyDown);
-      boot.remove();
-    }
-    function dismiss() {
-      window.__wildLedgerGetWildBootDismissed = true;
-      cleanup();
-    }
-    function onKeyDown(event) {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        dismiss();
-      }
-    }
-    document.getElementById("getWildBootClose").addEventListener("click", dismiss);
-    document.addEventListener("keydown", onKeyDown);
-    window.__wildLedgerGetWildBootCleanup = cleanup;
-  })();
-</script>
 <div class="wrap">
   <main>
     <section class="hero">
@@ -143,12 +97,12 @@ footer{padding-top:34px;text-align:center;color:var(--muted);font-size:13px}
         <p class="card-copy">No Access ID. No password. Do not type or paste an XRPL address.</p>
 
         <div class="qr-shell" id="qrShell">
-          <div class="qr-placeholder" id="qrPlaceholder">Creating a fresh wallet connection QR code…</div>
+          <div class="qr-placeholder" id="qrPlaceholder">Press Get Wild to begin wallet connection.</div>
           <img id="qrImage" alt="Wild Ledger wallet connection QR code" hidden />
         </div>
 
-        <button class="secondary" id="refreshQr" type="button">Create a Fresh QR Code</button>
-        <p class="status" id="accessStatus" role="status" aria-live="polite">Starting wallet connection…</p>
+        <button class="secondary" id="refreshQr" type="button">Get Wild</button>
+        <p class="status" id="accessStatus" role="status" aria-live="polite">Ready when you are.</p>
 
         <div class="connected" id="connectedBox" hidden>
           <strong>Address returned by wallet</strong>
@@ -255,14 +209,7 @@ function clearTrailChoices() {
 }
 function showLedgerTrail() {
   clearTrailChoices();
-  const boot = document.getElementById("getWildBoot");
-  if (boot) trail.element.classList.add("get-wild-first-paint");
   trail.open();
-  if (boot) {
-    // New Trail is fully opaque before removing the first-paint copy.
-    window.__wildLedgerGetWildBootCleanup?.();
-    requestAnimationFrame(() => trail.element.classList.remove("get-wild-first-paint"));
-  }
 }
 function setTrailStep(step, state, detail = "") {
   if (state === "active") activeTrailStep = step;
@@ -723,14 +670,7 @@ if (params.get("operatorSession") === "required") {
   setStatus("Scan a fresh QR code to open the current Operating Wallet session.");
 }
 
-if (!window.__wildLedgerGetWildBootDismissed) {
-  beginWalletConnection();
-} else {
-  // The user closed the first-paint Trail before the JavaScript module loaded.
-  // Respect X: do not initiate a delayed, unseen WalletConnect pairing.
-  qrPlaceholder.textContent = "Wallet connection paused. Create a fresh QR code when ready.";
-  setStatus("Wallet connection paused. Create a fresh QR code when ready.");
-}
+// Do not start a wallet connection or Ledger Trail until the user presses Get Wild.
 </script>
 </body>
 </html>
