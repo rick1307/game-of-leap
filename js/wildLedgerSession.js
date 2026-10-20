@@ -21,7 +21,8 @@ export function clearWildLedgerSessions() {
 export function writeUserSession({ wallet, authority, communityId }) {
   if (typeof wallet !== "string" || !wallet.trim()) throw new Error("User wallet is required.");
   if (!["owner", "operator", "member"].includes(authority)) throw new Error("Invalid user authority.");
-  if (typeof communityId !== "string" || !communityId.trim()) throw new Error("Active community ID is required.");
+  if (authority !== "owner" && (typeof communityId !== "string" || !communityId.trim())) throw new Error("Active community ID is required.");
+  if (authority === "owner" && communityId == null) communityId = null;
   const user = { wallet, authority, communityId };
   sessionStorage.setItem(USER_KEY, JSON.stringify(user));
   // Member data belongs to the wallet/community for which it was fetched.
@@ -33,7 +34,7 @@ export function readUserSession() {
   const user = readObject(USER_KEY);
   return user && typeof user.wallet === "string" &&
     ["owner", "operator", "member"].includes(user.authority) &&
-    typeof user.communityId === "string" ? user : null;
+    (typeof user.communityId === "string" || (user.authority === "owner" && user.communityId === null)) ? user : null;
 }
 
 export function updateUserSession(changes) {
