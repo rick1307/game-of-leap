@@ -1551,7 +1551,7 @@
   <script src="js/communityConfig.js"></script>
   <script src="js/starStanding.js"></script>
   <script type="module">
-    import { writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
+    import { readGetWildSession, writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
     import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityAuthority.js";
     import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog } from "./js/recognitionCatalog.js";
     import {
@@ -1644,22 +1644,8 @@
       const LEAP_NAMESPACE = community.leapNamespace;
       const LEAP_HISTORY_KEYS = ["BADGE", "EVENT", "CHALLENGE"];
 
-      const SFL_WALLET_STORAGE_KEY = community.walletStorageKey || `${communityId}.xrpl.wallet`;
-      const SFL_ACTIVE_WALLET_KEY = community.activeWalletKey || `${communityId}.xrpl.activeWallet`;
-      const WILD_LEDGER_ACTIVE_WALLET_KEY = "wildLedger.activeWallet";
-      const SFL_LEAP_SESSION_KEY = `${communityId}.leap.session`;
-      const SFL_DISMISSED_EXPIRED_CHECKS_KEY = `${communityId}.leap.dismissedExpiredChecks`;
+      const dismissedExpiredChecks = new Set();
       const PENDING_CHECK_VISIBLE_MS = 7 * 24 * 60 * 60 * 1000;
-
-      // Remove any address-bearing values left by older community-specific
-      // versions that used localStorage. Global mode does not impersonate the
-      // fallback community selected by communityConfig.js.
-      if (!isGlobalMemberRecord) {
-        try {
-          localStorage.removeItem(SFL_WALLET_STORAGE_KEY);
-          localStorage.removeItem(SFL_LEAP_SESSION_KEY);
-        } catch (_) {}
-      }
 
       const XRPL_WS = wildLedger.xrplWebSocket;
 
@@ -1810,7 +1796,6 @@
             buttonLabel: "Finish Community Setup",
             onClick: () => {
               if (!communityId) return;
-              try { sessionStorage.setItem("wildLedgerRole", "operator"); } catch (_) {}
               const query = new URLSearchParams({
                 community: communityId,
                 role: "operator",
@@ -1914,82 +1899,15 @@
       renderWildLedgerCommunityRibbon(cachedWildLedgerRecord);
 
       function getRawActiveWallet() {
-        try {
-          return sessionStorage.getItem(
-            isGlobalMemberRecord ? WILD_LEDGER_ACTIVE_WALLET_KEY : SFL_ACTIVE_WALLET_KEY
-          ) || "";
-        } catch (_) {
-          return "";
-        }
+        return String(readGetWildSession()?.wallet || "");
       }
 
       function getActiveWallet() {
         const value = getRawActiveWallet();
-        return value && classicAddressPattern.test(value) ? value : "";
+        return classicAddressPattern.test(value) ? value : "";
       }
 
-      function saveWallet(account) {
-        if (!classicAddressPattern.test(account)) return;
-
-        if (!isGlobalMemberRecord) {
-          try {
-            sessionStorage.setItem(SFL_WALLET_STORAGE_KEY, account);
-          } catch (_) {}
-
-          try {
-            sessionStorage.setItem(SFL_ACTIVE_WALLET_KEY, account);
-          } catch (_) {}
-        }
-
-        // Wild Ledger-wide session identity. This is intentionally session-only:
-        // it lets future cross-community features know which public XRPL wallet
-        // this browser session is currently viewing without creating a database
-        // or changing any community-specific wallet behavior.
-        try {
-          sessionStorage.setItem(WILD_LEDGER_ACTIVE_WALLET_KEY, account);
-        } catch (_) {}
-      }
-
-      function clearActiveWallet() {
-        try {
-          sessionStorage.removeItem(SFL_ACTIVE_WALLET_KEY);
-        } catch (_) {}
-      }
-
-      function clearRememberedWallet() {
-        try {
-          sessionStorage.removeItem(SFL_WALLET_STORAGE_KEY);
-        } catch (_) {}
-      }
-
-      function saveLeapSession(account, balance) {
-        if (!classicAddressPattern.test(account) || !(balance >= 1)) return;
-
-        const leapSession = {
-          wallet: account,
-          leapBalance: balance,
-          verifiedAt: new Date().toISOString()
-        };
-
-        try {
-          sessionStorage.setItem(SFL_LEAP_SESSION_KEY, JSON.stringify(leapSession));
-        } catch (_) {}
-      }
-
-      function clearLeapSession() {
-        try {
-          sessionStorage.removeItem(SFL_LEAP_SESSION_KEY);
-        } catch (_) {}
-      }
-
-      function clearIdentityState({ forgetWallet = false } = {}) {
-        clearActiveWallet();
-        clearLeapSession();
-
-        if (forgetWallet) {
-          clearRememberedWallet();
-        }
-      }
+      // Wallet identity is owned exclusively by Get Wild.
 
       function setStatus(message, kind = "") {
         status.textContent = message;
@@ -2080,7 +1998,6 @@
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
           event.preventDefault();
-          try { sessionStorage.setItem("wildLedger.chatTransition", "1"); } catch (_) {}
           document.body.classList.add("wl-lounge-exit");
           await new Promise(resolve => setTimeout(resolve, 280));
           window.location.href = href;
@@ -2161,30 +2078,6 @@
         logbookEntries.textContent = message;
       }
 
-      function getDismissedExpiredChecks() {
-        try {
-          const parsed = JSON.parse(
-            localStorage.getItem(SFL_DISMISSED_EXPIRED_CHECKS_KEY) || "[]"
-          );
-
-          return new Set(
-            Array.isArray(parsed)
-              ? parsed.filter(value => typeof value === "string" && value)
-              : []
-          );
-        } catch (_) {
-          return new Set();
-        }
-      }
-
-      function saveDismissedExpiredChecks(values) {
-        try {
-          localStorage.setItem(
-            SFL_DISMISSED_EXPIRED_CHECKS_KEY,
-            JSON.stringify([...values])
-          );
-        } catch (_) {}
-      }
 
       function resetPendingChecks() {
         currentPendingLeapChecks = [];
@@ -2350,7 +2243,7 @@
       function renderPendingChecks(checks = currentPendingLeapChecks) {
         currentPendingLeapChecks = Array.isArray(checks) ? checks : [];
 
-        const dismissed = getDismissedExpiredChecks();
+        const dismissed = dismissedExpiredChecks;
         const visible = [];
 
         for (const check of currentPendingLeapChecks) {
@@ -2490,9 +2383,8 @@
       function dismissExpiredCheck(checkId) {
         if (!checkId) return;
 
-        const dismissed = getDismissedExpiredChecks();
+        const dismissed = dismissedExpiredChecks;
         dismissed.add(checkId);
-        saveDismissedExpiredChecks(dismissed);
         renderPendingChecks(currentPendingLeapChecks);
       }
 
@@ -3649,7 +3541,6 @@
 
           renderRecord(account, safeBalance);
           setTrustlineStatus(leapLine);
-          saveWallet(account);
 
           if (transfersDisabled) {
             setStateMessage("", "", "", true);
@@ -3678,7 +3569,7 @@
 
       async function loadCrewRecord(account) {
         if (!classicAddressPattern.test(account)) {
-          clearIdentityState({ forgetWallet:true });
+          removeMemberSession();
           resetRecord();
           setTrustlineStatus(null, "unavailable");
           setStateMessage("", "", "", false, true);
@@ -3736,12 +3627,10 @@
             setStateMessage();
           }
 
-          saveWallet(account);
 
           // Step 2: build the wallet's cross-community Wild Ledger record once
           // in the background. This never blocks the current Member Record.
-          // Once complete, the compact public-ledger summary is reused from
-          // sessionStorage for the rest of this browser tab/session.
+          // Once complete, the compact public-ledger summary is rendered.
           void ensureWildLedgerCommunityRecord({ wallet: account })
             .then(record => { renderOperatorJourneyMilestone(record); renderWildLedgerCommunityRibbon(record); })
             .catch(error => {
@@ -3751,7 +3640,6 @@
               );
             });
 
-          saveLeapSession(account, safeBalance);
 
           if (checksResult.status === "fulfilled") {
             renderPendingChecks(pending);
@@ -3792,10 +3680,11 @@
         } catch (error) {
           const message = String(error?.message || "");
 
+          removeMemberSession();
           resetRecord();
 
           if (message.includes("actNotFound")) {
-            clearIdentityState({ forgetWallet:true });
+            removeMemberSession();
 
             setStateMessage(
               "That XRPL account was not found.",
@@ -3847,7 +3736,7 @@
         Member Record entry rule:
         - No arbitrary address lookup.
         - No localStorage fallback.
-        - Only the active wallet handed off by index.html or join.html may load.
+        - Only the wallet established by Get Wild may load.
 
         Paint rule:
         - Render the Member Record shell immediately.
@@ -3867,12 +3756,11 @@
         setStatus("");
       } else {
         if (rawActiveWallet && !isGlobalMemberRecord) {
-          // A malformed community-specific active identity is stale identity state.
-          clearIdentityState({ forgetWallet:true });
+          // Invalid wallet identity: no Member snapshot can be trusted.
+          removeMemberSession();
         } else if (!isGlobalMemberRecord) {
-          // Direct/manual community page load: no active identity. Do not touch the
-          // remembered wallet; index.html may still use it for returning crew.
-          clearLeapSession();
+          // No Get Wild wallet: discard any previous Member snapshot.
+          removeMemberSession();
         }
 
         resetRecord();
@@ -3891,10 +3779,6 @@
 
       // Everything above is synchronous. Reveal the fully styled card now,
       // before any network or XRP Ledger request is awaited.
-      if (sessionStorage.getItem("wildLedger.memberRecordTransition") === "1") {
-        sessionStorage.removeItem("wildLedger.memberRecordTransition");
-        document.body.classList.add("wl-member-record-enter");
-      }
       document.documentElement.classList.remove("community-pending");
 
       if (activeWallet) {
