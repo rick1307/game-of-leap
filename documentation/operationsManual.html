@@ -8,6 +8,13 @@
 :root{--bg:#0b1220;--panel:#111b2e;--panel2:#16233a;--text:#eef4ff;--muted:#a9b7cc;--line:#2a3a55;--accent:#8fd3ff;--good:#8ee6b0}
 *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.55}
 main{max-width:900px;margin:0 auto;padding:40px 20px 72px}.eyebrow{color:var(--accent);font-weight:700;letter-spacing:.08em;text-transform:uppercase;font-size:.78rem}h1{font-size:clamp(2rem,6vw,3.7rem);line-height:1.02;margin:.35rem 0 .8rem}.intro{color:var(--muted);max-width:680px;margin-bottom:32px}.section{margin:28px 0 36px}.section h2{font-size:1.35rem;margin:0 0 12px}.section-note{color:var(--muted);margin:-4px 0 14px}.card{border:1px solid var(--line);border-radius:14px;background:var(--panel);margin:10px 0;overflow:hidden}.card summary{cursor:pointer;list-style:none;padding:18px 20px;font-weight:750;display:flex;gap:12px;align-items:center}.card summary::-webkit-details-marker{display:none}.num{width:28px;height:28px;border-radius:999px;background:var(--panel2);display:inline-grid;place-items:center;color:var(--accent);font-size:.85rem;flex:0 0 auto}.body{padding:0 20px 20px 60px;color:var(--muted)}.body strong{color:var(--text)}.northstar{font-size:1.08rem;color:var(--text)}.northstar p{margin:.45rem 0}.placeholder{opacity:.7}.placeholder .body{font-style:italic}.card-art{display:block;width:100%;height:auto;border-bottom:1px solid var(--line)}.status-btn{display:inline-block;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:9px;background:var(--panel2);color:var(--muted);font-weight:700;cursor:not-allowed;opacity:.65}footer{margin-top:48px;color:var(--muted);font-size:.9rem;border-top:1px solid var(--line);padding-top:18px}
+
+.vocab-table{width:100%;border-collapse:collapse;font-size:.95rem}
+.vocab-table th,.vocab-table td{text-align:left;vertical-align:top;padding:12px 14px;border-bottom:1px solid var(--line)}
+.vocab-table th{width:34%;color:var(--text);font-weight:750}
+.vocab-table td{color:var(--muted)}
+.vocab-table tr:last-child th,.vocab-table tr:last-child td{border-bottom:0}
+@media(max-width:600px){.vocab-card .body{padding:0 12px 16px}.vocab-table th,.vocab-table td{padding:10px 8px;font-size:.85rem}.vocab-table th{width:36%}}
 </style>
 </head>
 <body><main>
@@ -205,6 +212,49 @@ main{max-width:900px;margin:0 auto;padding:40px 20px 72px}.eyebrow{color:var(--a
 <p>The more consequential and permanent an action is, the less willing Wild Ledger should be to hide that action behind abstraction.</p>
 </div>
 </details>
+<details class="card vocab-card">
+<summary>Vocabulary</summary>
+<div class="body">
+<p>Wild Ledger terms, alphabetically arranged. Each definition describes what the term means in this system.</p>
+<table class="vocab-table">
+<thead><tr><th scope="col">Term</th><th scope="col">Meaning in Wild Ledger</th></tr></thead>
+<tbody>
+<tr><th scope="row">Badge</th><td>A repeatable type of LEAP Recognition while active; Great Chat is the standard repeatable Badge.</td></tr>
+<tr><th scope="row">Challenge</th><td>A defined objective whose completion may earn LEAP Recognition; a particular Challenge ID counts once per member.</td></tr>
+<tr><th scope="row">CheckCash</th><td>The XRPL transaction that cashes an issued Check and delivers its LEAP to the recipient.</td></tr>
+<tr><th scope="row">CheckCreate</th><td>The XRPL transaction that creates a Check; creating a Check alone does not deliver LEAP or create Earned LEAP.</td></tr>
+<tr><th scope="row">Community Authority</th><td>The permanent binding between a Community ID and its authorized Community Operating Wallet, established under the protocol.</td></tr>
+<tr><th scope="row">Community ID</th><td>The unique identifier of a Wild Ledger community, permanently bound to its Community Operating Wallet.</td></tr>
+<tr><th scope="row">Community Operator</th><td>The person or entity running an independent community, deciding what participation to recognize and managing its operations.</td></tr>
+<tr><th scope="row">Community Setup Fee</th><td>An XRP payment to the Wild Ledger Owner associated with requesting a new community.</td></tr>
+<tr><th scope="row">Earned LEAP</th><td>Recognition credit derived from qualifying LEAP awards, not simply the LEAP balance a wallet holds.</td></tr>
+<tr><th scope="row">Event</th><td>A particular participation opportunity that may earn recognition; an individual Event ID counts once per member.</td></tr>
+<tr><th scope="row">Great Chat</th><td>The standard repeatable Badge for recognizing worthwhile participation in the Leaper Lounge.</td></tr>
+<tr><th scope="row">Join Request Price</th><td>The XRP price an Operator sets for submitting a request to join their community; payment does not guarantee acceptance and is Operator revenue.</td></tr>
+<tr><th scope="row">LEAP</th><td>The XRPL-issued token Wild Ledger communities distribute through participation and recognition.</td></tr>
+<tr><th scope="row">LEAP Distributor</th><td>The wallet role responsible for protocol-authorized distribution, including community LEAP allocations.</td></tr>
+<tr><th scope="row">LEAP Issuer</th><td>The distinct XRPL issuer wallet that defines and issues the LEAP token.</td></tr>
+<tr><th scope="row">LEAP Passport</th><td>The wallet-associated community identity and participation information presented through the Ledger Trail.</td></tr>
+<tr><th scope="row">LEAP Recognition</th><td>A protocol-qualified award of LEAP for a stated Badge, Event, or Challenge. It gives Operators a purposeful reason to distribute LEAP and can increase Earned LEAP.</td></tr>
+<tr><th scope="row">Leaper Lounge</th><td>The live, ephemeral community chat room; messaging and presence use Supabase Realtime, while XRP and LEAP transactions use XRPL separately.</td></tr>
+<tr><th scope="row">Ledger Trail</th><td>Wild Ledger&#x27;s mechanism for guiding people through wallet and ledger actions, exposing deeper detail as needed: progressive disclosure.</td></tr>
+<tr><th scope="row">Ledger-Derived Evidence</th><td>Validated XRPL history interpreted under Wild Ledger&#x27;s protocol rules to establish durable community facts.</td></tr>
+<tr><th scope="row">Onboarding Checkbook</th><td>The workflow for tracking membership-related LEAP Checks, including those awaiting issuance or cashing.</td></tr>
+<tr><th scope="row">Operating Wallet</th><td>The permanently authorized XRPL wallet through which a Community Operator exercises community authority.</td></tr>
+<tr><th scope="row">Operator Checkbook</th><td>The Operator-facing tools for preparing, reviewing, issuing, and managing LEAP Checks.</td></tr>
+<tr><th scope="row">Replenishment</th><td>An additional 1,000 LEAP of community operating inventory earned upon reaching 500 qualifying Spread Score points.</td></tr>
+<tr><th scope="row">Spread Score</th><td>The community&#x27;s measure of qualifying net outward LEAP distribution; an outside wallet contributes at most 20 lifetime points.</td></tr>
+<tr><th scope="row">Star Standing</th><td>A member&#x27;s standing derived from qualifying Earned LEAP under Wild Ledger&#x27;s recognition rules.</td></tr>
+<tr><th scope="row">Trust Line</th><td>An XRPL account relationship that permits holding a specified issued token such as LEAP, subject to XRPL rules.</td></tr>
+<tr><th scope="row">Wild Ledger</th><td>A community platform built around distributing LEAP through engagement, using XRPL as the durable record.</td></tr>
+<tr><th scope="row">Wild Ledger Owner</th><td>The platform-level authority responsible for community establishment and associated setup processes.</td></tr>
+<tr><th scope="row">XRP Ledger (XRPL)</th><td>The blockchain that validates and preserves XRP payments, LEAP transfers, Checks, and protocol evidence.</td></tr>
+<tr><th scope="row">XRP Tip</th><td>A voluntary XRP payment to a Community Operator, distinct from an outward LEAP Recognition award.</td></tr>
+</tbody>
+</table>
+</div>
+</details>
+
 </section>
 
 <section class="section">
