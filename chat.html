@@ -1348,6 +1348,111 @@
       }
     });
 
+
+    // Optional one-phone integration test. Enabled ONLY with ?sim=1.
+    // Simulated participants connect through independent Realtime clients.
+    // No XRPL transactions or wallet actions occur in this test.
+    const SIM_TEST = chatParams.get("sim") === "1";
+    let simClients = [];
+    let simChannels = [];
+    let simReady = false;
+    let simBusy = false;
+    let simLog = null;
+    let simPanel = null;
+    const simWait = ms => new Promise(resolve => setTimeout(resolve, ms));
+    const simSay = message => {
+      if (simLog) {
+        simLog.textContent += `${new Date().toLocaleTimeString()} ${message}\n`;
+        simLog.scrollTop = simLog.scrollHeight;
+      }
+    };
+    function installSimPanel() {
+      if (!SIM_TEST || simPanel) return;
+      simPanel = document.createElement("section");
+      simPanel.style.cssText = "background:#12293a;border:2px solid #68d9b5;border-radius:12px;padding:14px;margin:16px 0;color:white;font:14px system-ui;position:relative;z-index:3";
+      simPanel.innerHTML = '<strong>ONE-PHONE LOUNGE TEST — SIMULATED PARTICIPANTS</strong><p style="margin:8px 0">Two independent Supabase clients join this actual community room. Their messages will be visible to other connected users; use a test community.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-sim="start">Join 2 testers</button><button type="button" data-sim="reply">Send test replies</button><button type="button" data-sim="leave">Leave / disconnect</button></div><pre data-sim-log style="white-space:pre-wrap;max-height:160px;overflow:auto;font-size:12px"></pre>';
+      simLog = simPanel.querySelector("[data-sim-log]");
+      for (const button of simPanel.querySelectorAll("button")) {
+        button.style.cssText = "padding:9px;border-radius:7px;background:#7bd9bd;color:#10211c;border:0;font-weight:700";
+      }
+      (messageForm.parentElement || chatView).insertBefore(simPanel, messageForm);
+      simPanel.querySelector('[data-sim="start"]').addEventListener("click", () => void startSimBots());
+      simPanel.querySelector('[data-sim="reply"]').addEventListener("click", () => void simSendReplies());
+      simPanel.querySelector('[data-sim="leave"]').addEventListener("click", () => void stopSimBots());
+      simSay("Ready. Enter the Lounge normally, then join the testers.");
+    }
+    async function startSimBots() {
+      if (!SIM_TEST || simBusy || simReady) return;
+      if (!chatRealtimeReady || !chatChannel || !loungeSession) {
+        simSay("WAIT: enter the Lounge and wait for live-room connection first.");
+        return;
+      }
+      simBusy = true;
+      try {
+        for (let i=0; i<2; i++) {
+          const alias = `Test Frog ${i+1}`;
+          const client = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+            auth: {persistSession:false,autoRefreshToken:false,detectSessionInUrl:false},
+            realtime: {params:{eventsPerSecond:10}}
+          });
+          simClients.push(client);
+          const botId = `one-phone-${chatClientId}-${i}`;
+          const channel = client.channel(CHAT_CHANNEL_TOPIC, {
+            config: {private:false,broadcast:{self:false,ack:true},presence:{key:botId}}
+          });
+          simChannels.push(channel);
+          channel.on("broadcast",{event:"chat-message"},({payload}) => {
+            if (payload?.senderId === chatClientId) simSay(`${alias} RECEIVED your message: ${String(payload.text||"").slice(0,80)}`);
+          });
+          await Promise.race([
+            new Promise((resolve,reject) => channel.subscribe((status,error) => {
+              if (status === "SUBSCRIBED") resolve();
+              if (["CHANNEL_ERROR","TIMED_OUT","CLOSED"].includes(status)) reject(new Error(`${alias}: ${status} ${error?.message||""}`));
+            })),
+            new Promise((_,reject)=>setTimeout(()=>reject(new Error(`${alias}: connection timed out`)),15000))
+          ]);
+          const tracked = await channel.track({alias,online_at:new Date().toISOString(),simulated:true});
+          if (tracked !== "ok") throw new Error(`${alias} Presence: ${tracked}`);
+          simSay(`${alias} connected and present`);
+        }
+        simReady=true;
+        await simSendReplies();
+      } catch(error) {
+        simSay("ERROR "+error.message);
+        await stopSimBots();
+      } finally {simBusy=false;}
+    }
+    async function simSendReplies() {
+      if (!simChannels.length) {simSay("Join testers first.");return;}
+      for (let i=0;i<simChannels.length;i++) {
+        const alias=`Test Frog ${i+1}`;
+        const payload = {
+          messageId:globalThis.crypto?.randomUUID?.() || `sim-${Date.now()}-${i}`,
+          senderId:`one-phone-${chatClientId}-${i}`,
+          nickname:alias,
+          text:`Ribbit! ${alias} checking in from the one-phone test.`,
+          sentAt:new Date().toISOString()
+        };
+        try {
+          const status=await simChannels[i].send({type:"broadcast",event:"chat-message",payload});
+          simSay(`${alias} sent reply: ${status}`);
+        } catch(error) {simSay(`${alias} send ERROR: ${error.message}`);}
+        await simWait(300);
+      }
+    }
+    async function stopSimBots() {
+      simReady=false;
+      const channels=simChannels.splice(0);
+      const clients=simClients.splice(0);
+      await Promise.allSettled(channels.map(channel=>channel.unsubscribe()));
+      await Promise.allSettled(clients.map(client=>client.removeAllChannels()));
+      simSay("Test participants disconnected.");
+    }
+    if (SIM_TEST) {
+      installSimPanel();
+      window.addEventListener("pagehide",()=>{void stopSimBots();});
+    }
+
     // Never subscribe or track presence before verified Lounge admission completes.
     // Realtime state is independent of admission, just as in the original chat.
 
