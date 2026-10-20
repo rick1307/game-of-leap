@@ -1278,6 +1278,9 @@
         });
         chatChannel = channel;
         channel
+          .on("broadcast", { event: "sim-xrp-tip" }, ({ payload }) => {
+            if (channel === chatChannel && run === loungeEntryRun && loungeSession) receiveSimXrpTip(payload);
+          })
           .on("broadcast", { event: "sim-recognition" }, ({ payload }) => {
             if (channel === chatChannel && run === loungeEntryRun && loungeSession) receiveSimRecognition(payload);
           })
@@ -1421,6 +1424,83 @@
       simRecognitionSeen.add(event.id);
       handleRecognitionAwarded({nickname:`${event.nickname.slice(0,70)} (SIMULATED)`,amount:event.amount});
     }
+    // Test-only XRP tipping. No wallet, XRPL client, or signer is invoked.
+    const simTipSeen = new Set();
+    let simTipDialog = null;
+    function receiveSimXrpTip(payload) {
+      if (!SIM_TEST || !payload || payload.simulated !== true || typeof payload.id !== "string" || simTipSeen.has(payload.id)) return;
+      if (typeof payload.tipper !== "string" || typeof payload.recipient !== "string" || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(String(payload.amount)) || Number(payload.amount) <= 0) return;
+      simTipSeen.add(payload.id);
+      const event = document.createElement("div");
+      event.className = "system-event appreciation-event";
+      const pill = document.createElement("div");
+      pill.className = "system-event-pill";
+      pill.textContent = `✦ SIMULATED XRP tip: ${payload.tipper.slice(0,70)} → ${payload.recipient.slice(0,70)} · ${formatXrpAmount(payload.amount)} XRP (no transfer)`;
+      event.appendChild(pill);
+      messages.appendChild(event);
+      messages.scrollTop = messages.scrollHeight;
+      simSay(`PASS: simulated ${payload.amount} XRP tip announcement displayed; no XRPL action.`);
+    }
+    function openSimXrpTip() {
+      if (!SIM_TEST || !loungeSession) return;
+      if (simTipDialog) simTipDialog.remove();
+      const overlay = document.createElement("div");
+      simTipDialog = overlay;
+      overlay.style.cssText = "position:fixed;inset:0;z-index:99999;background:#000b;display:flex;align-items:center;justify-content:center;padding:18px";
+      const panel = document.createElement("div");
+      panel.style.cssText = "background:#152b3b;color:white;border:2px solid #7bd9bd;border-radius:14px;padding:22px;max-width:360px;width:100%;font:16px system-ui";
+      const heading = document.createElement("h2");
+      heading.textContent = "✦ Simulated XRP Tip";
+      const detail = document.createElement("p");
+      detail.textContent = `Tip ${MANAGER_NAME} — no wallet signing or XRP transfer.`;
+      const label = document.createElement("label");
+      label.textContent = "XRP amount (simulation only)";
+      const amount = document.createElement("input");
+      amount.type = "text";
+      amount.inputMode = "decimal";
+      amount.placeholder = "e.g. 2.5";
+      amount.style.cssText = "display:block;width:100%;box-sizing:border-box;padding:12px;margin:10px 0;color:#111;background:white;border-radius:8px";
+      const feedback = document.createElement("p");
+      feedback.setAttribute("role","status");
+      const controls = document.createElement("div");
+      controls.style.cssText = "display:flex;gap:10px;flex-wrap:wrap";
+      const confirm = document.createElement("button");
+      confirm.type = "button";
+      confirm.textContent = "Simulate Tip";
+      const cancel = document.createElement("button");
+      cancel.type = "button";
+      cancel.textContent = "Cancel";
+      for (const b of [confirm,cancel]) b.style.cssText = "padding:12px;border:0;border-radius:8px;background:#7bd9bd;color:#10211c;font-weight:bold;touch-action:manipulation";
+      let pending = false;
+      const close = () => {overlay.remove();if(simTipDialog===overlay)simTipDialog=null;};
+      cancel.onclick = () => {if(pending)return;close();simSay("XRP tip cancelled. Nothing transferred.");};
+      confirm.onclick = async () => {
+        simSay("Simulate Tip button tapped.");
+        if (pending) return;
+        const value = amount.value.trim();
+        if (!/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(value) || Number(value)<=0) {
+          feedback.textContent = "Enter a positive XRP amount (up to 6 decimal places).";
+          return;
+        }
+        if (!chatRealtimeReady || !chatChannel) {feedback.textContent="Lounge is disconnected.";return;}
+        pending=true;confirm.disabled=true;confirm.textContent="Sending test announcement…";
+        const payload = {id:globalThis.crypto?.randomUUID?.()||`sim-tip-${Date.now()}`,tipper:currentNickname,recipient:MANAGER_NAME,amount:value,simulated:true};
+        try {
+          const status=await Promise.race([
+            chatChannel.send({type:"broadcast",event:"sim-xrp-tip",payload}),
+            new Promise((_,reject)=>setTimeout(()=>reject(new Error("Broadcast timed out after 8 seconds")),8000))
+          ]);
+          if(status!=="ok")throw new Error(`Broadcast returned ${status}`);
+          receiveSimXrpTip(payload);
+          close();
+        } catch(error) {
+          feedback.textContent=`Test failed: ${error.message}`;
+          simSay(`FAIL: simulated tip ${error.message}`);
+          confirm.disabled=false;confirm.textContent="Retry Simulate Tip";
+        } finally {pending=false;}
+      };
+      controls.append(confirm,cancel);panel.append(heading,detail,label,amount,feedback,controls);overlay.appendChild(panel);document.body.appendChild(overlay);
+    }
     // Optional one-phone integration test. Enabled ONLY with ?sim=1.
     // Simulated participants connect through independent Realtime clients.
     // No XRPL transactions or wallet actions occur in this test.
@@ -1442,7 +1522,7 @@
       if (!SIM_TEST || simPanel) return;
       simPanel = document.createElement("section");
       simPanel.style.cssText = "background:#12293a;border:2px solid #68d9b5;border-radius:12px;padding:14px;margin:16px 0;color:white;font:14px system-ui;position:relative;z-index:3";
-      simPanel.innerHTML = '<strong>ONE-PHONE LOUNGE TEST — SIMULATED PARTICIPANTS + GREAT CHAT</strong><p style="margin:8px 0">Two independent Supabase clients join this actual community room. Their messages will be visible to other connected users; use a test community.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-sim="start">Join 2 testers</button><button type="button" data-sim="reply">Send test replies</button><button type="button" data-sim="leave">Leave / disconnect</button></div><pre data-sim-log style="white-space:pre-wrap;max-height:160px;overflow:auto;font-size:12px"></pre>';
+      simPanel.innerHTML = '<strong>ONE-PHONE LOUNGE TEST — SIMULATED PARTICIPANTS + GREAT CHAT</strong><p style="margin:8px 0">Two independent Supabase clients join this actual community room. Their messages will be visible to other connected users; use a test community.</p><div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" data-sim="start">Join 2 testers</button><button type="button" data-sim="reply">Send test replies</button><button type="button" data-sim="leave">Leave / disconnect</button><button type="button" data-sim="tip">Simulate XRP Tip</button></div><pre data-sim-log style="white-space:pre-wrap;max-height:160px;overflow:auto;font-size:12px"></pre>';
       simLog = simPanel.querySelector("[data-sim-log]");
       for (const button of simPanel.querySelectorAll("button")) {
         button.style.cssText = "padding:9px;border-radius:7px;background:#7bd9bd;color:#10211c;border:0;font-weight:700";
@@ -1451,6 +1531,7 @@
       simPanel.querySelector('[data-sim="start"]').addEventListener("click", () => void startSimBots());
       simPanel.querySelector('[data-sim="reply"]').addEventListener("click", () => void simSendReplies());
       simPanel.querySelector('[data-sim="leave"]').addEventListener("click", () => void stopSimBots());
+      simPanel.querySelector('[data-sim="tip"]').addEventListener("click", openSimXrpTip);
       simSay("Ready. Enter the Lounge normally, then join the testers.");
     }
     async function startSimBots() {
@@ -1484,6 +1565,9 @@
             config: {private:false,broadcast:{self:false,ack:true},presence:{key:botId}}
           });
           simChannels.push(channel);
+          channel.on("broadcast",{event:"sim-xrp-tip"},({payload}) => {
+            if(payload?.simulated)simSay(`${alias} RECEIVED simulated XRP tip announcement: ${payload.amount} XRP (no transfer)`);
+          });
           channel.on("broadcast",{event:"sim-recognition"},({payload}) => {
             if(payload?.simulated)simSay(`${alias} RECEIVED simulated Recognition for ${payload.nickname}: ${payload.amount} LEAP (no transfer)`);
           });
