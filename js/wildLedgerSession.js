@@ -1,7 +1,15 @@
-// Central sessionStorage management for Wild Ledger pages.
-// No wallet connection, XRPL, or browser persistence beyond this tab.
+// Wild Ledger: all application sessionStorage access belongs here.
+// One active wallet and community per browser tab. No persistent browser storage.
 const PREFIX = /^wildledger(?:[._-]|$)/i;
-const GET_WILD_KEY = "wildLedger.getWild";
+const USER_KEY = "wildLedger.user";
+const MEMBER_KEY = "wildLedger.member";
+
+function readObject(key) {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(key) || "null");
+    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
+  } catch (_) { return null; }
+}
 
 export function clearWildLedgerSessions() {
   for (let i = sessionStorage.length - 1; i >= 0; i--) {
@@ -10,56 +18,92 @@ export function clearWildLedgerSessions() {
   }
 }
 
-export function writeGetWildSession({ wallet, authority, communityId = "", communityName = "", configSchema = null, config = null }) {
-  const savedConfig = config && typeof config === "object" && !Array.isArray(config)
-    ? { ...config }
-    : {};
-  const session = { wallet, authority, communityId, communityName, configSchema, config: savedConfig };
-  sessionStorage.setItem(GET_WILD_KEY, JSON.stringify(session));
-  return session;
+export function writeUserSession({ wallet, authority, communityId }) {
+  if (typeof wallet !== "string" || !wallet.trim()) throw new Error("User wallet is required.");
+  if (!["owner", "operator", "member"].includes(authority)) throw new Error("Invalid user authority.");
+  if (typeof communityId !== "string" || !communityId.trim()) throw new Error("Active community ID is required.");
+  const user = { wallet, authority, communityId };
+  sessionStorage.setItem(USER_KEY, JSON.stringify(user));
+  // Member data belongs to the wallet/community for which it was fetched.
+  sessionStorage.removeItem(MEMBER_KEY);
+  return user;
 }
 
-export function readGetWildSession() {
-  const raw = sessionStorage.getItem(GET_WILD_KEY);
-  if (!raw) return null;
-  try {
-    const value = JSON.parse(raw);
-    return value && typeof value === "object" && !Array.isArray(value) ? value : null;
-  } catch (_) {
-    return null;
-  }
+export function readUserSession() {
+  const user = readObject(USER_KEY);
+  return user && typeof user.wallet === "string" &&
+    ["owner", "operator", "member"].includes(user.authority) &&
+    typeof user.communityId === "string" ? user : null;
 }
 
-export function updateGetWildSession(changes) {
-  const current = readGetWildSession();
+export function updateUserSession(changes) {
+  const current = readUserSession();
   if (!current) return null;
-  return writeGetWildSession({ ...current, ...changes });
-}
-
-export function removeGetWildSession() {
-  sessionStorage.removeItem(GET_WILD_KEY);
-}
-
-// Member Record snapshot. A missing object means the reads are not complete.
-const MEMBER_KEY = "wildLedger.member";
-export function writeMemberSession({ totalLeap, earnedLeap, starLevel, greatChats }) {
-  const values = [totalLeap, earnedLeap, starLevel, greatChats];
-  if (!values.every(value => typeof value === "number" && Number.isFinite(value))) {
-    throw new Error("Member session requires verified numeric values.");
+  const next = { ...current, ...changes };
+  if (next.wallet === current.wallet && next.communityId === current.communityId) {
+    // Updating authority does not invalidate the member's cached ledger record.
+    const member = readMemberSession();
+    const user = writeUserSession(next);
+    if (member) sessionStorage.setItem(MEMBER_KEY, JSON.stringify(member));
+    return user;
   }
-  const record = { totalLeap, earnedLeap, starLevel, greatChats };
-  sessionStorage.setItem(MEMBER_KEY, JSON.stringify(record));
-  return record;
+  return writeUserSession(next);
 }
+
+export function removeUserSession() {
+  sessionStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(MEMBER_KEY);
+}
+
+const isNumber = n => typeof n === "number" && Number.isFinite(n);
+const isArray = a => Array.isArray(a);
+
+export function writeMemberSession({ totalLeap, earnedLeap, starLevel, greatChats, history }) {
+  if (![totalLeap, earnedLeap, starLevel, greatChats].every(isNumber)) {
+    throw new Error("Member session requires four verified numeric values.");
+  }
+  if (!history || ![history.badges, history.challenges, history.events].every(isArray)) {
+    throw new Error("Member history requires badges, challenges, and events arrays.");
+  }
+  const member = {
+    totalLeap, earnedLeap, starLevel, greatChats,
+    history: {
+      badges: [...history.badges],
+      challenges: [...history.challenges],
+      events: [...history.events]
+    }
+  };
+  sessionStorage.setItem(MEMBER_KEY, JSON.stringify(member));
+  return member;
+}
+
 export function readMemberSession() {
-  try {
-    const value = JSON.parse(sessionStorage.getItem(MEMBER_KEY) || "null");
-    return value && typeof value === "object" &&
-      [value.totalLeap, value.earnedLeap, value.starLevel, value.greatChats].every(
-        n => typeof n === "number" && Number.isFinite(n)
-      ) ? value : null;
-  } catch (_) { return null; }
+  const member = readObject(MEMBER_KEY);
+  return member &&
+    [member.totalLeap, member.earnedLeap, member.starLevel, member.greatChats].every(isNumber) &&
+    member.history &&
+    [member.history.badges, member.history.challenges, member.history.events].every(isArray)
+    ? member : null;
 }
+
+export function updateMemberSession(changes) {
+  const current = readMemberSession();
+  if (!current) return null;
+  return writeMemberSession({
+    ...current, ...changes,
+    history: { ...current.history, ...(changes.history || {}) }
+  });
+}
+
 export function removeMemberSession() {
   sessionStorage.removeItem(MEMBER_KEY);
 }
+
+// Compatibility for existing pages that import the earlier Get Wild API.
+// These functions use wildLedger.user; they do NOT create a getWild storage object.
+export function writeGetWildSession({ wallet, authority, communityId }) {
+  return writeUserSession({ wallet, authority, communityId });
+}
+export function readGetWildSession() { return readUserSession(); }
+export function updateGetWildSession(changes) { return updateUserSession(changes); }
+export function removeGetWildSession() { return removeUserSession(); }
