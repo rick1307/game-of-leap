@@ -1551,7 +1551,7 @@
   <script src="js/communityConfig.js"></script>
   <script src="js/starStanding.js"></script>
   <script type="module">
-    import { readGetWildSession, writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
+    import { readGetWildSession, readMemberSession, writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
     import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityAuthority.js";
     import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog } from "./js/recognitionCatalog.js";
     import {
@@ -3575,6 +3575,22 @@
         }
       }
 
+      function renderMemberSnapshot(member) {
+        earnedEl.textContent = String(member.earnedLeap);
+        earnedNoteEl.textContent = `in ${communityName}`;
+        greatChatsEl.textContent = String(member.greatChats);
+        const standing = globalThis.WILD_LEDGER_STAR_SYSTEM.standingForEarnedLeap(member.earnedLeap);
+        progressLabel.textContent = standing.display;
+        progressLabel.setAttribute("aria-label", standing.ariaLabel);
+        if (standing.nextThreshold === null) {
+          progressValue.textContent = "100+ LEAP";
+          progressFill.style.width = "100%";
+        } else {
+          progressValue.textContent = `${standing.remaining} LEAP to next star`;
+          progressFill.style.width = `${Math.max(0, Math.min(100, (member.earnedLeap / standing.nextThreshold) * 100))}%`;
+        }
+      }
+
       async function loadCrewRecord(account) {
         if (!classicAddressPattern.test(account)) {
           removeMemberSession();
@@ -3585,9 +3601,14 @@
           return;
         }
 
-        removeMemberSession();
+        const cachedMember = readMemberSession();
         resetRecord();
         setTrustlineStatus(null, "checking");
+        if (cachedMember) {
+          renderRecord(account, cachedMember.totalLeap);
+          renderMemberSnapshot(cachedMember);
+          setLoungeReady(true);
+        }
         setStateMessage(
           "Reading your Member Record…",
           "Checking the XRP Ledger.",
@@ -3597,7 +3618,7 @@
 
         try {
           const [linesResult, historyResult, checksResult] = await Promise.allSettled([
-            queryAccountLines(account),
+            cachedMember ? Promise.resolve(null) : queryAccountLines(account),
             queryAccountHistory(account),
             queryPendingLeapChecksWithMemos(account)
           ]);
@@ -3607,11 +3628,11 @@
           }
 
           const lines = linesResult.value;
-          const leapLine = lines.find(isLeapLine);
-          setTrustlineStatus(leapLine);
-          const balance = leapLine ? Number(leapLine.balance) : 0;
+          const leapLine = lines ? lines.find(isLeapLine) : null;
+          if (lines) setTrustlineStatus(leapLine);
+          const balance = lines ? (leapLine ? Number(leapLine.balance) : 0) : cachedMember.totalLeap;
           const safeBalance = Number.isFinite(balance) ? balance : 0;
-          const transfersDisabled = !leapLine || Number(leapLine.limit) === 0;
+          const transfersDisabled = lines ? (!leapLine || Number(leapLine.limit) === 0) : false;
 
           const pending = checksResult.status === "fulfilled"
             ? checksResult.value
@@ -3620,6 +3641,7 @@
           const firstLeapPending = safeBalance < 1 && pending.length > 0;
 
           renderRecord(account, safeBalance);
+          if (cachedMember) renderMemberSnapshot(cachedMember);
           setLoungeReady(true);
 
           if (firstLeapPending) {
@@ -3629,7 +3651,7 @@
               "success",
               transfersDisabled
             );
-          } else if (Number(leapLine?.limit) === 0) {
+          } else if (lines && Number(leapLine?.limit) === 0) {
             setStateMessage("", "", "", true);
           } else {
             setStateMessage();
@@ -3659,19 +3681,24 @@
           const checksLoaded = checksResult.status === "fulfilled";
 
           if (historyLoaded) {
-            renderEarnedLeap(historyResult.value);
-            const earnedLeap = earnedLeapTotal(historyResult.value);
-            const starLevel = globalThis.WILD_LEDGER_STAR_SYSTEM.countForEarnedLeap(earnedLeap);
-            const greatChats = countGreatChats(historyResult.value);
-            writeMemberSession({ totalLeap: safeBalance, earnedLeap, starLevel, greatChats });
+            if (!cachedMember) {
+              renderEarnedLeap(historyResult.value);
+              const earnedLeap = earnedLeapTotal(historyResult.value);
+              const starLevel = globalThis.WILD_LEDGER_STAR_SYSTEM.countForEarnedLeap(earnedLeap);
+              const greatChats = countGreatChats(historyResult.value);
+              writeMemberSession({ totalLeap: safeBalance, earnedLeap, starLevel, greatChats });
+            }
             renderLogbook(historyResult.value);
+            if (cachedMember) renderMemberSnapshot(cachedMember);
           } else {
-            greatChatsEl.textContent = "—";
-            earnedEl.textContent = "—";
-            earnedNoteEl.textContent = `in ${communityName}`;
-            progressLabel.textContent = "Star progress";
-            progressValue.textContent = "—";
-            progressFill.style.width = "0%";
+            if (!cachedMember) {
+              greatChatsEl.textContent = "—";
+              earnedEl.textContent = "—";
+              earnedNoteEl.textContent = `in ${communityName}`;
+              progressLabel.textContent = "Star progress";
+              progressValue.textContent = "—";
+              progressFill.style.width = "0%";
+            }
             resetLogbook(
               "Current balance loaded, but the logbook could not be read right now."
             );
@@ -3689,8 +3716,7 @@
         } catch (error) {
           const message = String(error?.message || "");
 
-          removeMemberSession();
-          resetRecord();
+          if (!cachedMember) resetRecord();
 
           if (message.includes("actNotFound")) {
             removeMemberSession();
