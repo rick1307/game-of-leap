@@ -42,12 +42,12 @@ export function removeGetWildSession() {
 
 // Member Record snapshot. A missing object means the reads are not complete.
 const MEMBER_KEY = "wildLedger.member";
-export function writeMemberSession({ totalLeap, earnedLeap, starLevel }) {
-  const values = [totalLeap, earnedLeap, starLevel];
+export function writeMemberSession({ totalLeap, earnedLeap, starLevel, greatChats }) {
+  const values = [totalLeap, earnedLeap, starLevel, greatChats];
   if (!values.every(value => typeof value === "number" && Number.isFinite(value))) {
     throw new Error("Member session requires verified numeric values.");
   }
-  const record = { totalLeap, earnedLeap, starLevel };
+  const record = { totalLeap, earnedLeap, starLevel, greatChats };
   sessionStorage.setItem(MEMBER_KEY, JSON.stringify(record));
   return record;
 }
@@ -55,7 +55,7 @@ export function readMemberSession() {
   try {
     const value = JSON.parse(sessionStorage.getItem(MEMBER_KEY) || "null");
     return value && typeof value === "object" &&
-      [value.totalLeap, value.earnedLeap, value.starLevel].every(
+      [value.totalLeap, value.earnedLeap, value.starLevel, value.greatChats].every(
         n => typeof n === "number" && Number.isFinite(n)
       ) ? value : null;
   } catch (_) { return null; }
