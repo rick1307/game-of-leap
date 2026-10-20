@@ -1421,22 +1421,77 @@
       simRecognitionSeen.add(event.id);
       handleRecognitionAwarded({nickname:`${event.nickname.slice(0,70)} (SIMULATED)`,amount:event.amount});
     }
+    // Public Lounge gratitude: receiving XRP is never announced in the chat scroll.
+    // A thank-you is posted on behalf of the Community Operator instead.
+    const LOUNGE_THANK_YOUS = Object.freeze([
+      "You're the man, {alias}!", "Much love, {alias}!", "Cheers to you, {alias}!",
+      "Dude, you're awesome, {alias}!", "Big shoutout to {alias}!",
+      "You just made my day, {alias}!", "You're a legend, {alias}!",
+      "Appreciate you, {alias}!", "You rock, {alias}!", "Respect, {alias}!",
+      "That means a lot, {alias}!", "You're good people, {alias}!",
+      "You're a star, {alias}!", "So glad you're here, {alias}!",
+      "Way to go, {alias}!", "You made me smile, {alias}!",
+      "All the love to {alias}!", "You're incredible, {alias}!",
+      "That's the spirit, {alias}!", "High five, {alias}!",
+      "You're a real one, {alias}!", "My kind of people, {alias}!",
+      "I appreciate you, {alias}!", "Thanks for being here, {alias}!",
+      "You are absolutely awesome, {alias}!", "What a legend, {alias}!",
+      "You made this a better day, {alias}!", "Love your energy, {alias}!",
+      "That's what I'm talking about, {alias}!", "You're the best, {alias}!",
+      "Big love to {alias}!", "You are something else, {alias}!",
+      "Right on, {alias}!", "Cheers, my friend {alias}!",
+      "You're making waves, {alias}!", "Keep being you, {alias}!",
+      "You have my gratitude, {alias}!", "You're one of a kind, {alias}!",
+      "Dude, I really appreciate you, {alias}!", "You just brightened the room, {alias}!",
+      "You're pure gold, {alias}!", "Good vibes, {alias}!",
+      "A little love for {alias}!", "Thanks a million, {alias}!",
+      "Couldn't ask for better company, {alias}!", "You are the real deal, {alias}!",
+      "Look at you, {alias}!", "I see you, {alias}!",
+      "You're a gem, {alias}!", "Here's to you, {alias}!"
+    ]);
+    let lastThankYouIndex = -1;
+    function pickThankYouIndex() {
+      const count = LOUNGE_THANK_YOUS.length;
+      const offset = Math.floor(Math.random() * (count - 1)) + 1;
+      const next = (lastThankYouIndex + offset + count) % count;
+      lastThankYouIndex = next;
+      return next;
+    }
+    function postOperatorThankYou(alias, phraseIndex) {
+      if (typeof alias !== "string" || !alias.trim() || alias.length > 70) return;
+      if (!Number.isInteger(phraseIndex) || phraseIndex < 0 || phraseIndex >= LOUNGE_THANK_YOUS.length) return;
+      const message = LOUNGE_THANK_YOUS[phraseIndex].replace("{alias}", alias.trim());
+      renderChatMessage({nickname:COMMUNITY_NAME,text:message,sentAt:new Date().toISOString(),isMe:true});
+    }
     // Test-only XRP tipping. No wallet, XRPL client, or signer is invoked.
     const simTipSeen = new Set();
     let simTipDialog = null;
     function receiveSimXrpTip(payload) {
       if (!SIM_TEST || !payload || payload.simulated !== true || typeof payload.id !== "string" || simTipSeen.has(payload.id)) return;
-      if (typeof payload.tipper !== "string" || typeof payload.recipient !== "string" || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(String(payload.amount)) || Number(payload.amount) <= 0) return;
+      if (typeof payload.tipper !== "string" || !/^Test Frog [12]$/.test(payload.tipper) || typeof payload.recipient !== "string" || payload.recipient !== COMMUNITY_NAME || !/^(?:0|[1-9]\d*)(?:\.\d{1,6})?$/.test(String(payload.amount)) || Number(payload.amount) <= 0) return;
+      if (!Number.isInteger(payload.phraseIndex) || payload.phraseIndex < 0 || payload.phraseIndex >= LOUNGE_THANK_YOUS.length) return;
       simTipSeen.add(payload.id);
-      const event = document.createElement("div");
-      event.className = "system-event appreciation-event";
-      const pill = document.createElement("div");
-      pill.className = "system-event-pill";
-      pill.textContent = `✦ SIMULATED XRP tip: ${payload.tipper.slice(0,70)} → ${payload.recipient.slice(0,70)} · ${formatXrpAmount(payload.amount)} XRP (no transfer)`;
-      event.appendChild(pill);
-      messages.appendChild(event);
-      messages.scrollTop = messages.scrollHeight;
-      simSay(`PASS: simulated ${payload.amount} XRP tip announcement displayed; no XRPL action.`);
+      if (loungeSession?.role !== "operator" && loungeSession?.role !== "owner") {
+        // Only an authorized host client can speak on behalf of the community.
+        return;
+      }
+      const text = LOUNGE_THANK_YOUS[payload.phraseIndex].replace("{alias}", payload.tipper);
+      const message = {
+        messageId: `gratitude-${payload.id}`,
+        senderId: chatClientId,
+        nickname: COMMUNITY_NAME,
+        text,
+        sentAt: new Date().toISOString()
+      };
+      void (async () => {
+        try {
+          if (!chatRealtimeReady || !chatChannel) throw new Error("Lounge disconnected");
+          const result = await chatChannel.send({type:"broadcast",event:"chat-message",payload:message});
+          if (result !== "ok") throw new Error(`Broadcast returned ${result}`);
+          renderChatMessage({...message,isMe:true});
+          simSay(`PASS: Operator publicly thanked ${payload.tipper}; simulated ${payload.amount} XRP, no transfer or XRP announcement in scroll.`);
+        } catch (error) { simSay(`FAIL: public thank-you not sent: ${error.message}`); }
+      })();
     }
     function openSimXrpTip() {
       if (!SIM_TEST || !loungeSession) return;
@@ -1500,7 +1555,7 @@
           return;
         }
         pending=true;confirm.disabled=true;confirm.textContent="Sending test announcement…";
-        const payload = {id:globalThis.crypto?.randomUUID?.()||`sim-tip-${Date.now()}`,tipper:`Test Frog ${senderIndex + 1}`,recipient:COMMUNITY_NAME,amount:value,simulated:true};
+        const payload = {id:globalThis.crypto?.randomUUID?.()||`sim-tip-${Date.now()}`,tipper:`Test Frog ${senderIndex + 1}`,recipient:COMMUNITY_NAME,amount:value,phraseIndex:pickThankYouIndex(),simulated:true};
         try {
           const status=await Promise.race([
             simChannels[senderIndex].send({type:"broadcast",event:"sim-xrp-tip",payload}),
@@ -1583,13 +1638,13 @@
           });
           simChannels.push(channel);
           channel.on("broadcast",{event:"sim-xrp-tip"},({payload}) => {
-            if(payload?.simulated)simSay(`${alias} RECEIVED simulated XRP tip announcement: ${payload.amount} XRP (no transfer)`);
+            if(payload?.simulated)simSay(`${alias} RECEIVED simulated XRP tip event: ${payload.amount} XRP (no transfer)`);
           });
           channel.on("broadcast",{event:"sim-recognition"},({payload}) => {
             if(payload?.simulated)simSay(`${alias} RECEIVED simulated Recognition for ${payload.nickname}: ${payload.amount} LEAP (no transfer)`);
           });
           channel.on("broadcast",{event:"chat-message"},({payload}) => {
-            if (payload?.senderId === chatClientId) simSay(`${alias} RECEIVED your message: ${String(payload.text||"").slice(0,80)}`);
+            if (payload?.senderId === chatClientId) simSay(`${alias} RECEIVED Operator message: ${String(payload.text||"").slice(0,80)}`);
           });
           await Promise.race([
             new Promise((resolve,reject) => channel.subscribe((status,error) => {
@@ -2306,44 +2361,9 @@
       return numeric.toLocaleString([], { maximumFractionDigits: 6 });
     }
 
-    function addXrpSystemEvent({ tipper, amount, recipient }) {
-      const row = document.createElement("div");
-      row.className = "system-event appreciation-event";
-
-      const pill = document.createElement("div");
-      pill.className = "system-event-pill";
-      pill.textContent = `✦ ${tipper} sent ${formatXrpAmount(amount)} XRP to ${recipient}.`;
-
-      row.appendChild(pill);
-      messages.appendChild(row);
-      messages.scrollTop = messages.scrollHeight;
-    }
-
-    function playXrpCelebration({ tipper, amount, recipient }) {
-      appreciationTipper.textContent = tipper;
-      appreciationAmount.textContent = formatXrpAmount(amount);
-      appreciationRecipient.textContent = recipient;
-      appreciationRipples.textContent = "";
-
-      for (let i = 0; i < 3; i += 1) {
-        const ripple = document.createElement("span");
-        ripple.className = "appreciation-ripple";
-        ripple.style.setProperty("--ripple-delay", `${i * 0.15}s`);
-        appreciationRipples.appendChild(ripple);
-      }
-
-      if (xrpCelebrationTimer) clearTimeout(xrpCelebrationTimer);
-      xrpCelebration.classList.remove("show");
-      void xrpCelebration.offsetWidth;
-      xrpCelebration.classList.add("show");
-      xrpCelebrationTimer = setTimeout(() => {
-        xrpCelebration.classList.remove("show");
-      }, 1820);
-    }
-
     function handleXrpTipCelebrated(event) {
-      playXrpCelebration(event);
-      addXrpSystemEvent(event);
+      // Public social response is gratitude, not a receipt or a tip celebration.
+      postOperatorThankYou(String(event?.tipper || ""), pickThankYouIndex());
     }
 
     function addRecognitionSystemEvent({ nickname, amount }) {
