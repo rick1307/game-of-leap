@@ -120,7 +120,7 @@ import { resolveWalletAccess } from "./js/communityAccess.js";
 import { readCommunityConfigSchema } from "./js/communityState.js";
 import { communityConfigStoreConfigured, loadCurrentCommunityConfig } from "./js/communityConfigStore.js";
 import { communityConfigV1FromLegacy } from "./js/communityConfigSchema.js";
-import { clearWildLedgerSessions, writeGetWildSession } from "./js/wildLedgerSession.js";
+import { clearWildLedgerSessions, writeUserSession } from "./js/wildLedgerSession.js";
 
 const runtime = window.WILD_LEDGER_CONFIG || {};
 const XRPL_SERVER = String(runtime.xrplWebSocket || "").trim();
@@ -389,13 +389,10 @@ function writeOperatorSession(match, configState, config = null) {
 
 
 
-  writeGetWildSession({
+  writeUserSession({
     wallet: activeAccount,
     authority: "operator",
-    communityId: session.communityId,
-    communityName: session.communityName,
-    configSchema: session.configSchema,
-    config
+    communityId: session.communityId
   });
 
   return session;
@@ -494,7 +491,7 @@ async function routeConnectedWallet(account) {
     setTrailStep("config", "done", "Owner Console entry does not require a community CONFIG read.");
 
     setTrailStep("session", "active", "Establishing the verified Owner session for this browser tab.");
-    writeGetWildSession({ wallet: activeAccount, authority: "owner" });
+    writeUserSession({ wallet: activeAccount, authority: "owner" });
     setTrailStep("session", "done", "Owner session established.");
     setTrailStep("ready", "active", "Opening the Owner Console.");
       setTrailStep("ready", "done", "Owner Console is ready.");
