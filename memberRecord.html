@@ -1551,6 +1551,7 @@
   <script src="js/communityConfig.js"></script>
   <script src="js/starStanding.js"></script>
   <script type="module">
+    import { writeMemberSession, removeMemberSession } from "./js/wildLedgerSession.js";
     import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityAuthority.js";
     import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog } from "./js/recognitionCatalog.js";
     import {
@@ -3685,6 +3686,7 @@
           return;
         }
 
+        removeMemberSession();
         resetRecord();
         setTrustlineStatus(null, "checking");
         setStateMessage(
@@ -3762,6 +3764,9 @@
 
           if (historyLoaded) {
             renderEarnedLeap(historyResult.value);
+            const earnedLeap = earnedLeapTotal(historyResult.value);
+            const starLevel = globalThis.WILD_LEDGER_STAR_SYSTEM.countForEarnedLeap(earnedLeap);
+            writeMemberSession({ totalLeap: safeBalance, earnedLeap, starLevel });
             renderLogbook(historyResult.value);
           } else {
             greatChatsEl.textContent = "—";
