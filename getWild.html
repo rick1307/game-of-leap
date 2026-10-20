@@ -120,7 +120,7 @@ import { resolveWalletAccess } from "./js/communityAccess.js";
 import { readCommunityConfigSchema } from "./js/communityState.js";
 import { communityConfigStoreConfigured, loadCurrentCommunityConfig } from "./js/communityConfigStore.js";
 import { communityConfigV1FromLegacy } from "./js/communityConfigSchema.js";
-import { clearWildLedgerSessions, writeUserSession } from "./js/wildLedgerSession.js";
+import { clearWildLedgerSessions, writeUserSession, writeOperatorSession as saveOperatorSession } from "./js/wildLedgerSession.js";
 
 const runtime = window.WILD_LEDGER_CONFIG || {};
 const XRPL_SERVER = String(runtime.xrplWebSocket || "").trim();
@@ -391,8 +391,11 @@ function writeOperatorSession(match, configState, config = null) {
 
   writeUserSession({
     wallet: activeAccount,
-    authority: "operator",
-    communityId: session.communityId
+    authority: "operator"
+  });
+  saveOperatorSession({
+    communityId: session.communityId,
+    communityName: session.communityName
   });
 
   return session;
