@@ -1776,61 +1776,76 @@
         const passport = await ledgerReadUntilSuccess(run,
           () => readLeapPassport(pairing.account), "Reading LEAP wallet state");
         ensureLoungeRun(run);
+        // Determine the signed-in wallet's public Lounge identity from the
+        // existing XRPL-derived community record, never from a personal name.
+        // Owner > current Community Operator > anonymous member/visitor alias.
+        const identityRecord = await ledgerReadUntilSuccess(run, async () => {
+          const result = await ensureWildLedgerCommunityRecord({wallet:pairing.account,force:true});
+          if (!result || !Array.isArray(result.communities) ||
+              typeof result.isWildLedgerOwner !== "boolean") {
+            throw new Error("XRPL read incomplete: wallet role evidence unavailable.");
+          }
+          return result;
+        }, "Verifying wallet role");
+        ensureLoungeRun(run);
+        const operatorCommunities = identityRecord.communities.filter(item => item.currentOperator);
+        const destinationOperator = operatorCommunities.find(item =>
+          String(item.communityId || "").toUpperCase() === COMMUNITY_BACKEND_ID);
+        const currentOperator = destinationOperator || operatorCommunities[0] || null;
+        const loungeIdentityRole = identityRecord.isWildLedgerOwner
+          ? "owner" : currentOperator ? "operator" : "member";
+        const officialLoungeName = loungeIdentityRole === "owner"
+          ? "Wild Ledger"
+          : loungeIdentityRole === "operator"
+            ? String(currentOperator.communityName || currentOperator.communityId || "Community").trim()
+            : "";
         let passportDetail = "Canonical LEAP holder verified for all community Lounges.";
         if (!passport.holdsLeap) {
-          // Historical membership survives spending current LEAP. Current
-          // Operators also retain access to their own Lounge. Never mistake
-          // destination-community membership for a condition of entry.
-          const record = await ledgerReadUntilSuccess(run, async () => {
-            const result = await ensureWildLedgerCommunityRecord({wallet:pairing.account,force:true});
-            if (!result || !Array.isArray(result.communities)) {
-              throw new Error("XRPL read incomplete: ecosystem community record unavailable.");
-            }
-            const relationships = result.communities;
-            if (!relationships.some(item => item.member || item.currentOperator)) {
-              const interruptions = (result.warnings || []).filter(message => interruptedXRPL(new Error(message)));
-              if (interruptions.length) throw new Error("XRPL connection interrupted: " + interruptions.join("; "));
-            }
-            return result;
-          },"Reading LEAP history");
-          ensureLoungeRun(run);
-          const hasHistoricalMembership = record.communities.some(item => item.member);
-          const operatesDestination = record.communities.some(item =>
-            String(item.communityId || "").toUpperCase() === COMMUNITY_BACKEND_ID && item.currentOperator);
-          if (!hasHistoricalMembership && !operatesDestination) {
+          const hasHistoricalMembership = identityRecord.communities.some(item => item.member);
+          const operatesDestination = Boolean(destinationOperator);
+          if (!hasHistoricalMembership && !operatesDestination && !identityRecord.isWildLedgerOwner) {
+            const interruptions = (identityRecord.warnings || []).filter(message => interruptedXRPL(new Error(message)));
+            if (interruptions.length) throw new Error("XRPL connection interrupted: " + interruptions.join("; "));
             throw new Error("No LEAP passport found for this wallet yet. Receive your first LEAP to enter Wild Ledger Lounges.");
           }
-          passportDetail = hasHistoricalMembership
-            ? "Existing LEAP community membership verified; all Lounges are open."
-            : "Current Community Operator verified.";
+          passportDetail = identityRecord.isWildLedgerOwner
+            ? "Wild Ledger Owner verified."
+            : operatesDestination
+              ? "Current Community Operator verified."
+              : "Existing LEAP community membership verified; all Lounges are open.";
         }
         // This is NOT an admission condition. A dim lightning bolt is a prompt
         // to enable direct LEAP receipt; it must never block a LEAP passport.
         loungeTrail.setStep("membership","done",passportDetail);
         currentStep = "alias";
         loungeTrail.setStep("alias","working","Assigning your Lounge name…");
-        // Alias identity lives only in this tab for the current visit; no directory.
-        // Until authenticated server presence exists, collisions cannot be guaranteed globally.
-        const alias = generateLoungeAlias({locale:"en"});
+        // Official wallet roles display their verified organization/community
+        // names. Only members and visitors receive generated aliases.
+        const alias = loungeIdentityRole === "member"
+          ? generateLoungeAlias({locale:"en"})
+          : {display:officialLoungeName};
         ensureLoungeRun(run);
         const aliasRow = loungeTrail.element.querySelector('[data-trail-step="alias"] .trail-copy strong');
         if (aliasRow) {
-          aliasRow.textContent = "Assigned Lounge Alias: ";
+          aliasRow.textContent = loungeIdentityRole === "member"
+            ? "Assigned Lounge Alias: " : "Verified Lounge Identity: ";
           const name = document.createElement("span");
           name.className = "lounge-alias-word";
           name.textContent = alias.display;
           aliasRow.appendChild(name);
         }
-        loungeTrail.setStep("alias","done",`Your temporary Lounge name is ${alias.display}.`);
+        loungeTrail.setStep("alias","done",loungeIdentityRole === "member"
+          ? `Your temporary Lounge name is ${alias.display}.`
+          : `Verified ${loungeIdentityRole === "owner" ? "Owner" : "Community Operator"}: ${alias.display}.`);
         currentStep = "session";
         loungeTrail.setStep("session","working","Establishing your verified, temporary Lounge session.");
         loungeTrail.setStatus("Opening your Community Lounge…","busy");
-        loungeSession = Object.freeze({wallet:pairing.account, alias, sessionId:chatClientId, communityId:COMMUNITY_BACKEND_ID, leapTransfersEnabled:passport.leapTransfersEnabled});
+        loungeSession = Object.freeze({wallet:pairing.account, alias, role:loungeIdentityRole, sessionId:chatClientId, communityId:COMMUNITY_BACKEND_ID, leapTransfersEnabled:passport.leapTransfersEnabled});
         currentNickname = alias.display;
         // Establishing the local verified session does NOT require Supabase to
         // acknowledge a channel or register Presence. Both run once inside.
         ensureLoungeRun(run);
-        loungeTrail.setStep("session","done","Verified wallet bound to your temporary Lounge name.");
+        loungeTrail.setStep("session","done","Verified wallet bound to your Lounge display identity.");
         currentStep = "ready";
         loungeTrail.setStep("ready","working","Opening the Lounge.");
         loungeTrail.finish({message:"Completed",onFinished: () => {
