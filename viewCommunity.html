@@ -388,12 +388,28 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
       fadeNavigate(link.href);
     }));
 
-  // Title comes only from the shared Get Wild session.
-  let getWildSession = null;
-  try {
-    getWildSession = JSON.parse(sessionStorage.getItem("wildLedger.getWild") || "null");
-  } catch (_) {}
-  const displayName = String(getWildSession?.communityName || "").trim();
+  // Operator title is resolved only from the shared Get Wild session.
+  // Owner retains the existing title resolution until its path is designed.
+  let displayName;
+  if (role === "operator") {
+    let getWildSession = null;
+    try {
+      getWildSession = JSON.parse(sessionStorage.getItem("wildLedger.getWild") || "null");
+    } catch (_) {}
+    displayName = getWildSession?.authority === "operator"
+      ? String(getWildSession.communityName || "").trim()
+      : "";
+  } else {
+    let cachedCommunityName = "";
+    try {
+      const cached = JSON.parse(sessionStorage.getItem("wildLedger.currentCommunityConfig") || "null");
+      if (cached && String(cached.communityId || "").trim().toUpperCase() === String(requestedId || "").trim().toUpperCase()) {
+        cachedCommunityName = String(cached?.config?.communityName || "").trim();
+      }
+    } catch (_) {}
+  
+    displayName = cachedCommunityName || operatorSession?.communityName || community?.communityName || requestedId || "Community";
+  }
   viewCommunityTitle.textContent = displayName;
   document.title = `${displayName} | Wild Ledger`;
 })();
