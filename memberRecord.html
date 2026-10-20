@@ -3403,6 +3403,15 @@
         }
       }
 
+      function countGreatChats(records) {
+        if (!Array.isArray(records)) return 0;
+        return records.filter(record => !record?.recognitionIgnored).reduce((count, record) => {
+          return count + (Array.isArray(record.facts) ? record.facts : []).filter(
+            fact => fact?.key === "BADGE" && fact?.value === "GREAT-CHAT"
+          ).length;
+        }, 0);
+      }
+
       function renderLogbook(records = currentLogbookRecords) {
         currentLogbookRecords = Array.isArray(records) ? records : [];
 
@@ -3416,12 +3425,11 @@
           CHALLENGE:new Set(),
           EVENT:new Set()
         };
-        let greatChatCount = 0;
+        const greatChatCount = countGreatChats(currentLogbookRecords);
 
         for (const record of sorted) {
           for (const fact of record.facts) {
             if (fact?.key === "BADGE" && fact?.value === "GREAT-CHAT") {
-              greatChatCount += 1;
               continue;
             }
 
@@ -3654,7 +3662,8 @@
             renderEarnedLeap(historyResult.value);
             const earnedLeap = earnedLeapTotal(historyResult.value);
             const starLevel = globalThis.WILD_LEDGER_STAR_SYSTEM.countForEarnedLeap(earnedLeap);
-            writeMemberSession({ totalLeap: safeBalance, earnedLeap, starLevel });
+            const greatChats = countGreatChats(historyResult.value);
+            writeMemberSession({ totalLeap: safeBalance, earnedLeap, starLevel, greatChats });
             renderLogbook(historyResult.value);
           } else {
             greatChatsEl.textContent = "—";
