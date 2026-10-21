@@ -736,10 +736,10 @@
         <div class="trail-kicker">Wild Ledger · Ledger Trail</div>
       </div>
       <h2 id="openingCheckbookBootTitle">Onboarding Checkbook</h2>
-      <p class="trail-lede">Wild Ledger confirms your current Operator authority and reads validated XRPL evidence for this Checkbook.</p>
+      <p class="trail-lede">Wild Ledger checks your Operator session and reads validated XRPL evidence for this Checkbook.</p>
       <div class="trail-route">
         <div class="trail-step active"><div class="trail-marker" aria-hidden="true"><span class="trail-activity" aria-hidden="true"></span></div><div class="trail-copy"><strong>Identify your community</strong><span>Reading your existing Operator session…</span></div></div>
-        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Confirm current authority</strong><span>Waiting for the previous checkpoint.</span></div></div>
+        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Check Authority</strong><span>Waiting for the previous checkpoint.</span></div></div>
         <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Find membership requests</strong><span>Waiting for the previous checkpoint.</span></div></div>
         <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Prove report readiness</strong><span>Waiting for the previous checkpoint.</span></div></div>
       </div>
@@ -781,10 +781,10 @@
               </div>
             </details>
             <details class="trail-step is-pending" id="trailStep2">
-              <summary><span class="trail-index" id="trailIndex2">2</span><span class="trail-copy"><strong class="trail-step-title">Confirm current authority</strong><span class="trail-step-state" id="trailState2">WAITING</span></span></summary>
+              <summary><span class="trail-index" id="trailIndex2">2</span><span class="trail-copy"><strong class="trail-step-title">Check Authority</strong><span class="trail-step-state" id="trailState2">WAITING</span></span></summary>
               <div class="trail-step-body">
                 <p class="trail-message" id="trailMessage2">Waiting for your community to be identified.</p>
-                <details class="trail-proof"><summary>What this step checks</summary><div class="trail-proof-content" id="trailProof2">Wild Ledger must find this wallet as the current authorized Operator in validated XRPL history.</div></details>
+                <details class="trail-proof"><summary>What this step checks</summary><div class="trail-proof-content" id="trailProof2">Wild Ledger checks the Operator wallet, authority, Community ID, and community name already established through Get Wild.</div></details>
                 <div class="step-actions" id="stepActions2"><button type="button" class="step-action" id="stepAction2" disabled>Waiting</button></div>
               </div>
             </details>
@@ -1268,18 +1268,18 @@ let openingRun = 1;
 let canRetry = false; // Old manual retry buttons never run an XRPL read.
 const OPENING_CLOSED = Symbol("Opening Ledger Trail closed");
 const stepStates = ["pending", "pending", "pending", "pending"];
-const runContext = { session:null, matched:null, requests:null, checks:null, scanned:0, pages:0, excluded:0, priceStatements:0 };
-const titles = ["Identify your community", "Confirm current authority", "Find membership requests", "Prove report readiness"];
+const runContext = { session:null, requests:null, checks:null, scanned:0, pages:0, excluded:0, priceStatements:0 };
+const titles = ["Identify your community", "Check Authority", "Find membership requests", "Prove report readiness"];
 const evidenceDefaults = [
   "Your Get Wild Operator session must identify a wallet and Community ID. A URL alone does not grant access.",
-  "Wild Ledger must find this wallet as the current authorized Operator in validated XRPL history.",
+  "Wild Ledger checks the Operator wallet, authority, Community ID, and community name already established through Get Wild.",
   "Verifies each request's memo, successful XRP Payment, historical Operating Wallet authority, and price at the time of payment.",
   "Wild Ledger checks your Operator session and confirms that verified requests are ready to display on this page."
 ];
 const openingStepIds = ["identify", "authority", "requests", "ready"];
 const openingTrail = createLedgerTrail({
   title: "Onboarding Checkbook",
-  description: "Wild Ledger confirms your current Operator authority and reads validated XRPL evidence for this Checkbook.",
+  description: "Wild Ledger checks your Operator session and reads validated XRPL evidence for this Checkbook.",
   steps: openingStepIds.map((id, i) => ({id, title:titles[i], detail:"Waiting for the previous checkpoint."})),
   onClose: closeGuide
 });
@@ -1341,7 +1341,7 @@ function resetTrail() {
   // The current Checkbook is unavailable until this Ledger Trail verifies it again.
   const operator = readCentralOperatorSession();
   if (operator) updateOperatorSession({ membershipRequests: [], checkRecords: [] });
-  runContext.session = null; runContext.matched = null; runContext.requests = null; runContext.checks = null;
+  runContext.session = null; runContext.requests = null; runContext.checks = null;
   runContext.scanned = 0; runContext.pages = 0; runContext.excluded = 0; runContext.priceStatements = 0;
   for (let n = 1; n <= 4; n++) {
     stepStates[n-1] = "pending";
@@ -1379,27 +1379,17 @@ async function performStep(number, checkActive = () => {}) {
   if (number === 1) {
     const active = readOperatorSession();
     if (!active) throw new Error("There is no verified Operator session in this tab. Sign in through Get Wild.");
-    if (!xrplServer) throw new Error("Wild Ledger has no configured XRPL server. Current authority cannot be checked.");
     runContext.session = active;
-    return {message:`Operator session found for ${active.communityId}.`, evidence:`Community ID: ${active.communityId}\nSession wallet: ${active.wallet}\nSource: Get Wild Operator session. This is not yet XRPL authority proof.`};
+    return {message:`Operator session found for ${active.communityId}.`, evidence:`Community ID: ${active.communityId}\nSession wallet: ${active.wallet}\nSource: Get Wild Operator session.`};
   }
   if (number === 2) {
-    assertSessionUnchanged();
-    const access = await resolveWalletAccess({ account:session.wallet, serverUrl:xrplServer, force:true });
-    checkActive();
-    const matched = (access?.operatorMatches || []).find(item =>
-      String(item.communityId || "").trim().toUpperCase() === session.communityId &&
-      String(item.currentAccount || "").trim() === session.wallet && item.authorityEstablished === true
-    );
-    if (!matched) throw new Error("This wallet is not the current authorized Operating Wallet for this community. Sign in through Get Wild again.");
-    assertSessionUnchanged();
-    runContext.matched = matched;
-    return {message:`XRPL confirms current ${session.communityId} Operator authority.`,evidence:`Community ID: ${session.communityId}\nCurrent Operating Wallet: ${session.wallet}\nAuthority established: true\nSource: validated XRPL authority history.`};
+    const active = assertSessionUnchanged();
+    return {message:`Operator authority checked for ${active.communityId}.`,
+      evidence:`Community ID: ${active.communityId}\nCommunity name: ${active.communityName}\nOperator wallet: ${active.wallet}\nAuthority: operator\nSource: established Get Wild session objects.`};
   }
   if (number === 3) {
     assertSessionUnchanged();
-    const matched = runContext.matched;
-    const communityName = session.communityName || String(matched.communityName || "").trim() || session.communityId;
+    const communityName = session.communityName;
     $("communityName").textContent = communityName;
     $("communityId").textContent = session.communityId;
     $("operatorWallet").textContent = session.wallet;
@@ -1407,6 +1397,18 @@ async function performStep(number, checkActive = () => {}) {
     document.title = `Onboarding Checkbook · ${communityName} | Wild Ledger`;
     $("requestStatus").classList.remove("error");
     $("requestStatus").textContent = "Finding membership-request payments in XRPL history…";
+    // Obtain the historical authority chain for request verification here.
+    // This is ledger evidence, not a current-Operator access gate.
+    if (!xrplServer) throw new Error("Wild Ledger has no configured XRPL server for historical request verification.");
+    updateGuideStatus("Reading the community's historical Operating Wallet chain…");
+    const access = await resolveWalletAccess({ account:session.wallet, serverUrl:xrplServer, force:true });
+    checkActive();
+    assertSessionUnchanged();
+    const matched = (access?.operatorMatches || []).find(item =>
+      String(item.communityId || "").trim().toUpperCase() === session.communityId &&
+      item.authorityEstablished === true && Array.isArray(item.intervals) && item.intervals.length > 0
+    );
+    if (!matched) throw new Error("Validated historical Operating Wallet records are unavailable for this community.");
     // Read historical, Operator-authorized price statements using Wild Ledger's
     // existing Protocol 0.24 reader. CONFIG drafts and today's price are not proof.
     updateGuideStatus("Checking the community's historical Join Request Prices…");
@@ -1541,11 +1543,11 @@ async function performWithAutomaticReadRetry(number, run) {
       return result;
     } catch (error) {
       if (!openingActive(run) || error === OPENING_CLOSED) throw OPENING_CLOSED;
-      if ((number !== 2 && number !== 3) || !isTemporaryXRPLReadFailure(error)) throw error;
+      if (number !== 3 || !isTemporaryXRPLReadFailure(error)) throw error;
       const message = "XRPL connection interrupted. Reconnecting automatically…";
       $(`trailMessage${number}`).textContent = message;
       $("trailProof"+number).textContent = `XRPL connection interrupted: ${String(error?.message || error)}\nThe current checkpoint is being rechecked. Completed checkpoints remain verified. No transaction is sent.`;
-      if (number === 3) $("requestStatus").textContent = message;
+      $("requestStatus").textContent = message;
       updateGuideStatus(message);
       await yieldToX();
     }
@@ -1561,7 +1563,7 @@ async function runNext() {
   $("trailActions").hidden = true;
   $("trailDisclosure").classList.remove("trail-failed");
   $("trailOverall").textContent = `${titles[number-1]}…`;
-  const workingMessage = ["Reading your existing Operator session…", "Reading validated XRPL authority history…", "Reading community wallet history…", "Checking your Operator session before displaying the verified requests…"][number-1];
+  const workingMessage = ["Reading your existing Operator session…", "Checking established Operator authority in session…", "Reading community wallet history…", "Checking your Operator session before displaying the verified requests…"][number-1];
   setTrailStep(number,"working",workingMessage);
   updateGuideStatus(workingMessage);
   let succeeded = false;
