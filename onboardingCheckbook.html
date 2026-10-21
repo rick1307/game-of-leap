@@ -877,35 +877,23 @@
 import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { DirectXRPLClient, isClassicAddress } from "./js/xrplTransport.js";
 import { resolveWalletAccess } from "./js/communityAccess.js";
-import { readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
+import { readUserSession, readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
 import { isAuthorizedAtLedger } from "./js/communityAuthority.js";
 import { readCommunityJoinRequestPrice, DEFAULT_JOIN_REQUEST_DROPS } from "./js/communityJoinPrice.js";
 import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog, PERMANENT_LEAP_DISTRIBUTOR } from "./js/recognitionCatalog.js";
 
 const $ = id => document.getElementById(id);
-const params = new URLSearchParams(window.location.search);
 const xrplServer = String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
 let checking = false;
 
-// Match the session shapes already accepted by viewCommunity.html.
-// A role or community written into a URL is never proof of Operator authority.
+// Identify the Operator using Wild Ledger's central session objects.
 function readOperatorSession() {
-  try {
-    const session = JSON.parse(sessionStorage.getItem("wildLedgerOperatorSession") || "null");
-    if (!session || typeof session !== "object") return null;
-    if (String(session.role || "").trim().toLowerCase() !== "operator") return null;
-    const version = Number(session.version);
-    const source = String(session.source || "").trim();
-    const communityId = String(session.communityId || "").trim().toUpperCase();
-    const wallet = String(version === 2 ? session.connectedWallet : session.verifiedWallet || "").trim();
-    const validV1 = version === 1 && source === "wallet-proof + validated-xrpl-authority";
-    const validV2 = version === 2 && source === "wallet-connect + validated-xrpl-authority";
-    if (!validV1 && !validV2) return null;
-    if (!communityId || !isClassicAddress(wallet)) return null;
-    return { communityId, wallet, communityName: String(session.communityName || "").trim() };
-  } catch (_) {
-    return null;
-  }
+  const user = readUserSession();
+  const operator = readCentralOperatorSession();
+  if (user?.authority !== "operator" || !isClassicAddress(user.wallet) ||
+      !operator?.communityId || !operator?.communityName) return null;
+  return { wallet: user.wallet, communityId: operator.communityId,
+    communityName: operator.communityName };
 }
 
 // Step 3: Read each Operating Wallet in the community authority chain,
@@ -1391,13 +1379,6 @@ async function performStep(number, checkActive = () => {}) {
   if (number === 1) {
     const active = readOperatorSession();
     if (!active) throw new Error("There is no verified Operator session in this tab. Sign in through Get Wild.");
-    const requestedId = String(params.get("community") || "").trim().toUpperCase();
-    const requestedRole = String(params.get("role") || "").trim().toLowerCase();
-    if ((requestedId && requestedId !== active.communityId) || (requestedRole && requestedRole !== "operator"))
-      throw new Error("This link does not match your signed-in community. Return through Get Wild.");
-    const downstreamWallet = String(sessionStorage.getItem("wildLedgerOperatorWallet") || "").trim();
-    if (downstreamWallet && downstreamWallet !== active.wallet)
-      throw new Error("The wallet in this tab does not match your Operator session. Sign in through Get Wild again.");
     if (!xrplServer) throw new Error("Wild Ledger has no configured XRPL server. Current authority cannot be checked.");
     runContext.session = active;
     return {message:`Operator session found for ${active.communityId}.`, evidence:`Community ID: ${active.communityId}\nSession wallet: ${active.wallet}\nSource: Get Wild Operator session. This is not yet XRPL authority proof.`};
@@ -1418,13 +1399,7 @@ async function performStep(number, checkActive = () => {}) {
   if (number === 3) {
     assertSessionUnchanged();
     const matched = runContext.matched;
-    const cachedName = (() => {
-      try { const cached = JSON.parse(sessionStorage.getItem("wildLedger.currentCommunityConfig") || "null");
-        return String(cached?.communityId || "").trim().toUpperCase() === session.communityId
-          ? String(cached?.config?.communityName || "").trim() : "";
-      } catch (_) { return ""; }
-    })();
-    const communityName = cachedName || session.communityName || String(matched.communityName || "").trim() || session.communityId;
+    const communityName = session.communityName || String(matched.communityName || "").trim() || session.communityId;
     $("communityName").textContent = communityName;
     $("communityId").textContent = session.communityId;
     $("operatorWallet").textContent = session.wallet;
@@ -1646,28 +1621,18 @@ import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
 import { isClassicAddress, DirectXRPLClient, prepareTransaction, submitSignedTransaction } from "./js/xrplTransport.js";
 import { resolveWalletAccess } from "./js/communityAccess.js";
-import { readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
+import { readUserSession, readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
 
 const $ = id => document.getElementById(id);
-const params = new URLSearchParams(window.location.search);
 const xrplServer = String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
 
 function readOperatorSession() {
-  try {
-    const s = JSON.parse(sessionStorage.getItem("wildLedgerOperatorSession") || "null");
-    if (!s || String(s.role || "").toLowerCase() !== "operator") return null;
-    const v = Number(s.version), source = String(s.source || "");
-    if (!(v === 1 && source === "wallet-proof + validated-xrpl-authority") &&
-        !(v === 2 && source === "wallet-connect + validated-xrpl-authority")) return null;
-    const wallet = String(v === 2 ? s.connectedWallet : s.verifiedWallet || "").trim();
-    const communityId = String(s.communityId || "").trim().toUpperCase();
-    if (!isClassicAddress(wallet) || !communityId) return null;
-    const activeWallet = String(sessionStorage.getItem("wildLedgerOperatorWallet") || "").trim();
-    if (activeWallet && activeWallet !== wallet) return null;
-    if (params.has("community") && String(params.get("community")).trim().toUpperCase() !== communityId) return null;
-    if (params.has("role") && String(params.get("role")).trim().toLowerCase() !== "operator") return null;
-    return {wallet, communityId, name:String(s.communityName || "").trim()};
-  } catch (_) { return null; }
+  const user = readUserSession();
+  const operator = readCentralOperatorSession();
+  if (user?.authority !== "operator" || !isClassicAddress(user.wallet) ||
+      !operator?.communityId || !operator?.communityName) return null;
+  return { wallet: user.wallet, communityId: operator.communityId,
+    name: operator.communityName };
 }
 
 function checkedHandoff(session) {
