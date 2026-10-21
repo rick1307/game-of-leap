@@ -1133,11 +1133,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     FALLBACK_CONFIG.globalDistributionWallet;
 
   let authority = null;
-  let communityOperatingWallets = new Set(
-    Object.values(registry)
-      .map(item => item?.operatingWallet)
-      .filter(Boolean)
-  );
+  let communityOperatingWallets = new Set();
 
   const metricCommunityAllocation = document.getElementById("metricCommunityAllocation");
   const metricCommunityLeap = document.getElementById("metricCommunityLeap");
@@ -1790,23 +1786,6 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     }).join("");
   }
 
-  async function resolveKnownCommunityOperatingAccounts() {
-    const records = Object.values(registry).filter(item => item?.leapNamespace);
-    const resolved = await Promise.allSettled(records.map(item =>
-      resolveCommunityAuthority({ community: item, serverUrl: xrplWebSocket })
-    ));
-    const accounts = new Set();
-    records.forEach(item => {
-      const configured = item?.operatingWallet;
-      if (configured) accounts.add(configured);
-    });
-    for (const result of resolved) {
-      if (result.status !== "fulfilled") continue;
-      for (const account of result.value.accounts || []) accounts.add(account);
-    }
-    communityOperatingWallets = accounts;
-  }
-
   async function loadCommunityDashboard() {
     startLedgerCallReporting();
     let ledgerTrailFailure = null;
@@ -1814,7 +1793,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     let ws;
     try {
       authority = await resolveCommunityAuthority({ community, serverUrl: xrplWebSocket });
-      await resolveKnownCommunityOperatingAccounts();
+      communityOperatingWallets = new Set(authority.accounts || []);
 
       ws = await openSocket();
       let requestNumber = 0;
