@@ -65,7 +65,7 @@ export function removeUserSession() {
   sessionStorage.removeItem(MEMBER_KEY);
 }
 
-export function writeOperatorSession({ communityId, communityName, membershipRequests, checkRecords }) {
+export function writeOperatorSession({ communityId, communityName, membershipRequests, checkRecords, checkbookLoadedFor }) {
   if (typeof communityId !== 'string' || !communityId.trim()) throw new Error('Community ID is required.');
   if (typeof communityName !== 'string' || !communityName.trim()) throw new Error('Community name is required.');
   const previous = readOperatorSession();
@@ -76,9 +76,12 @@ export function writeOperatorSession({ communityId, communityName, membershipReq
     ? (sameCommunity ? previous.checkRecords : []) : checkRecords;
   if (!Array.isArray(requests) || !Array.isArray(checks))
     throw new Error('Operator membership requests and Check records must be arrays.');
+  const loadedFor = checkbookLoadedFor === undefined
+    ? (sameCommunity ? previous.checkbookLoadedFor : null) : checkbookLoadedFor;
   const operator = {
     communityId: communityId.trim(), communityName: communityName.trim(),
-    membershipRequests: requests, checkRecords: checks
+    membershipRequests: requests, checkRecords: checks,
+    checkbookLoadedFor: typeof loadedFor === "string" ? loadedFor : null
   };
   sessionStorage.setItem(OPERATOR_KEY, JSON.stringify(operator));
   if (!sameCommunity) sessionStorage.removeItem(MEMBER_KEY);
@@ -92,7 +95,8 @@ export function readOperatorSession() {
     (operator.membershipRequests === undefined || Array.isArray(operator.membershipRequests)) &&
     (operator.checkRecords === undefined || Array.isArray(operator.checkRecords))
     ? { communityId: operator.communityId, communityName: operator.communityName,
-        membershipRequests: operator.membershipRequests || [], checkRecords: operator.checkRecords || [] } : null;
+        membershipRequests: operator.membershipRequests || [], checkRecords: operator.checkRecords || [],
+        checkbookLoadedFor: operator.checkbookLoadedFor || null } : null;
 }
 
 export function updateOperatorSession(changes) {
