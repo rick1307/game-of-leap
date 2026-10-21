@@ -134,7 +134,7 @@
   <script type="module">
     import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
     import { createLedgerTrail } from "./js/ledgerTrail.js";
-    import { DirectXRPLClient, submitSignedTransaction } from "./js/xrplTransport.js";
+    import { submitSignedTransaction } from "./js/xrplTransport.js";
     import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
     import {
       readCommunityVisibility,
@@ -160,16 +160,12 @@
     let pendingCommunity = null;
     let pendingHidden = false;
     let prepared = null;
-    let signedBlob = "";
     let visibilityTrailBusy = false;
     let walletHandoffActive = false;
     let trailActiveStep = "";
     let trailRun = 0;
     let finishResolve = null;
-    let savedVisibility = null;
-    let trailSubmittedHash = "";
     const STOPPED = Symbol("Ledger Trail closed");
-    const PENDING_KEY = "wild-ledger-owner-visibility-signed-v1";
 
     const TRAIL_STEPS = Object.freeze([
       ["owner", "Owner authority", "Waiting to recheck the current Wild Ledger Owner."],
@@ -247,34 +243,6 @@
       const hash = new Uint8Array(await crypto.subtle.digest("SHA-512", input));
       return Array.from(hash.slice(0,32), b => b.toString(16).padStart(2,"0")).join("").toUpperCase();
     }
-    function loadSavedVisibility() {
-      for (const storage of [localStorage,sessionStorage]) {
-        try {
-          const value = JSON.parse(storage.getItem(PENDING_KEY) || "null");
-          if (value && /^[A-Z0-9]+(?:-[A-Z0-9]+)*$/.test(value.communityId)
-            && /^(?:[A-F0-9]{2}){40,}$/.test(value.signedBlob)
-            && /^[A-F0-9]{64}$/.test(value.hash)
-            && /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(value.owner)
-            && typeof value.hidden === "boolean" && typeof value.submitAttempted === "boolean") return value;
-        } catch (_) {}
-      }
-      return null;
-    }
-    function saveVisibility(record) {
-      const raw = JSON.stringify(record);
-      let saved = false;
-      for (const storage of [localStorage,sessionStorage]) {
-        try { storage.setItem(PENDING_KEY,raw); if (storage.getItem(PENDING_KEY) === raw) saved = true; } catch (_) {}
-      }
-      if (!saved) throw new Error("Signed visibility transaction could not be saved. Nothing was submitted.");
-      savedVisibility = record;
-    }
-    function clearSavedVisibility() {
-      for (const storage of [localStorage,sessionStorage]) { try { storage.removeItem(PENDING_KEY); } catch (_) {} }
-      savedVisibility = null;
-    }
-    savedVisibility = loadSavedVisibility();
-
     function addChip(meta, text, reference = false, hidden = false) {
       if (!text) return;
       const chip = document.createElement("span");
@@ -353,7 +321,7 @@
       latestCommunities.forEach(renderCommunity);
     }
 
-    function clearPrepared() { prepared = null; signedBlob = ""; trailSubmittedHash = ""; }
+    function clearPrepared() { prepared = null; }
 
     async function disconnectSigner() {
       if (!signer) return;
@@ -386,34 +354,6 @@
       }
     }
 
-    async function readSignedTransaction(hash, run) {
-      return readUntilX("signed visibility transaction", async () => {
-        const client = new DirectXRPLClient(SERVER);
-        try {
-          await client.connect();
-          assertActive(run);
-          let response;
-          try { response = await client.request("tx", { transaction: hash, binary: false }, 20000); }
-          catch (error) {
-            if (/txnNotFound|transaction not found|not.?found/i.test(`${error?.response?.error || ""} ${error?.message || ""}`)) return null;
-            throw error;
-          }
-          assertActive(run);
-          const data = response.result || {};
-          if (!data.validated) return null;
-          if (String(data.hash || "").toUpperCase() !== hash) throw new Error("XRPL returned a different transaction hash.");
-          const result = data.meta?.TransactionResult || data.metaData?.TransactionResult || data.engine_result;
-          if (result !== "tesSUCCESS") {
-            const error = new Error(`Owner visibility transaction validated as ${result || "UNKNOWN"}, not tesSUCCESS.`);
-            // A confirmed, validated non-success can never later become successful.
-            if (result) error.validatedFailure = true;
-            throw error;
-          }
-          return data;
-        } finally { client.close(); }
-      }, run);
-    }
-
     async function completeVisibility(record, run, { alreadyCanonical = false } = {}) {
       assertActive(run);
       const canonical = await confirmCanonicalVisibility(record, run);
@@ -424,65 +364,28 @@
       setTrailStep("ready", "done", `${record.communityId} is ${record.hidden ? "hidden from" : "visible on"} the public Wild Ledger page.`);
       setTrailStatus(alreadyCanonical ? "Requested visibility was already canonical; nothing was submitted." : "Owner visibility is canonical. The change is complete.");
       await finishTrail(run);
-      clearSavedVisibility();
       pendingCommunity = null;
       clearPrepared();
     }
 
     async function submitAndConfirm(record, run) {
       assertActive(run);
-      if (await signedHash(record.signedBlob) !== record.hash) throw new Error("Saved signed visibility evidence is inconsistent. Nothing was submitted.");
-      setTrailStep("xrpl", "active", "Checking the exact signed visibility transaction on XRPL.");
-      let confirmed = await readSignedTransaction(record.hash, run);
-      if (!confirmed && !record.submitAttempted) {
-        // Verify current Owner and existing visibility before a first-ever submission.
-        const fresh = await readUntilX("pre-submit Owner authority", () => readCommunityVisibility({ serverUrl: SERVER, force: true }), run);
-        if (!fresh.ownerState?.authorityEstablished || fresh.ownerState.currentAccount !== record.owner) {
-          throw new Error("Owner authority changed after signing. The saved transaction was not submitted.");
+      setTrailStep("xrpl", "active", "Submitting the Owner-signed visibility transaction to XRPL.");
+      const result = await submitSignedTransaction({
+        serverUrl: SERVER,
+        signedBlob: record.signedBlob,
+        shouldContinue: () => isActive(run),
+        onSubmitted({ txHash }) {
+          if (String(txHash || "").toUpperCase() !== record.hash) throw new Error("XRPL returned a different signed visibility hash.");
+          setTrailStatus("Visibility transaction accepted by XRPL. Confirming validation…", "busy");
         }
-        const existing = fresh.visibility.get(record.communityId) || null;
-        if (existing?.hidden === record.hidden) {
-          for (const step of ["xrpl", "verify"]) setTrailStep(step, "done", "Requested visibility is already canonical. No transaction submitted.");
-          await completeVisibility({ ...record, hash: "" }, run, { alreadyCanonical: true });
-          return;
-        }
-        assertActive(run);
-        setTrailStatus("Submitting the original signed visibility transaction once…", "busy");
-        try {
-          await submitSignedTransaction({
-            serverUrl: SERVER, signedBlob: record.signedBlob,
-            pollIntervalMs: 0, shouldContinue: () => isActive(run),
-            onBeforeSubmit() { assertActive(run); record.submitAttempted = true; saveVisibility(record); },
-            onSubmitted({ txHash }) {
-              if (String(txHash || "").toUpperCase() !== record.hash) throw new Error("XRPL returned a different signed visibility hash.");
-              trailSubmittedHash = record.hash;
-              setTrailStatus("Original signed visibility transaction accepted by XRPL. Confirming validation…", "busy");
-            }
-          });
-        } catch (error) {
-          if (!isActive(run) || error?.trailCancelled || error === STOPPED) throw STOPPED;
-          // A submission response may be lost. From here onward, read the same hash.
-          if (!transientReadError(error) && !/not confirmed within|already|past.seq|tefALREADY|tefPAST_SEQ/i.test(String(error?.message || error))) throw error;
-        }
+      });
+      assertActive(run);
+      if (!result.validated || result.finalResult !== "tesSUCCESS") {
+        throw new Error(`Visibility transaction did not validate successfully: ${result.finalResult || "UNKNOWN"}.`);
       }
-      // Reopen, lost WebSocket, or uncertain response: never re-sign or re-submit.
-      while (!confirmed) {
-        assertActive(run);
-        setTrailStatus("Reading XRPL for the original signed visibility transaction…", "busy");
-        confirmed = await readSignedTransaction(record.hash, run);
-        if (!confirmed) await yieldToX();
-      }
-      setTrailStep("xrpl", "done", `Original signed visibility transaction validated${confirmed.ledger_index ? ` · ledger ${confirmed.ledger_index}` : ""}.`);
+      setTrailStep("xrpl", "done", `Visibility transaction validated${result.ledgerIndex ? ` · ledger ${result.ledgerIndex}` : ""}.`);
       await completeVisibility(record, run);
-    }
-
-    function markSavedSteps(record) {
-      setTrailStep("owner", "done", "Owner authority confirmed before signing.");
-      setTrailStep("choice", "done", `${record.communityId} target ${record.hidden ? "HIDDEN" : "VISIBLE"}.`);
-      setTrailStep("connect", "done", "Owner Wallet connection completed.");
-      setTrailStep("prepared", "done", "Canonical visibility transaction prepared.");
-      setTrailStep("signature", "done", "Owner signature saved.");
-      trailSubmittedHash = record.hash;
     }
 
     async function runVisibilityTrail(community, nextHidden) {
@@ -494,14 +397,6 @@
       renderList();
       const run = showTrail();
       try {
-        if (savedVisibility) {
-          if (await signedHash(savedVisibility.signedBlob) !== savedVisibility.hash) throw new Error("Saved visibility transaction evidence is inconsistent. No transaction was submitted.");
-          pendingHidden = savedVisibility.hidden;
-          pendingCommunity = latestCommunities.find(item => item.communityId === savedVisibility.communityId) || { communityId: savedVisibility.communityId };
-          markSavedSteps(savedVisibility);
-          await submitAndConfirm(savedVisibility, run);
-          return;
-        }
         if (!PROJECT_ID) throw new Error("WalletConnect Project ID is not configured.");
         setTrailStep("owner", "active", "Rechecking the current Owner from validated XRPL history.");
         visibilityState = await readUntilX("current Owner authority", () => readCommunityVisibility({ serverUrl: SERVER, force: true }), run);
@@ -559,16 +454,13 @@
         const signed = await signer.signTransaction(prepared.preparedTx);
         const blob = String(signed?.signedBlob || "").toUpperCase();
         if (!blob) throw new Error("Bifrost did not return a signed transaction.");
-        // Preserve an approved signature even when the human closed X during handoff.
         const record = { communityId: liveCommunity.communityId, hidden: pendingHidden, owner: signerAccount,
-          signedBlob: blob, hash: await signedHash(blob), submitAttempted: false };
-        saveVisibility(record);
+          signedBlob: blob, hash: await signedHash(blob) };
         assertActive(run);
         hideTrailAction();
-        setTrailStep("signature", "done", "Owner signature saved.");
+        setTrailStep("signature", "done", "Owner signature received.");
         await submitAndConfirm(record, run);
       } catch (error) {
-        if (error?.validatedFailure) clearSavedVisibility();
         if (error !== STOPPED && !error?.trailCancelled) { hideTrailAction(); failTrail(error); }
       } finally {
         visibilityTrailBusy = false;
@@ -623,10 +515,7 @@
       renderList(result.communities);
       await visibilityPromise;
       renderList(result.communities);
-      if (savedVisibility) {
-        const resumeCommunity = result.communities.find(item => item.communityId === savedVisibility.communityId) || { communityId: savedVisibility.communityId };
-        void runVisibilityTrail(resumeCommunity, savedVisibility.hidden);
-      }
+
 
       if (!result.communities.length) {
         state.textContent = "No communities were found.";
