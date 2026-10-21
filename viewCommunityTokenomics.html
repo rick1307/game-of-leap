@@ -1071,35 +1071,36 @@ import { readUserSession, readOperatorSession } from "./js/wildLedgerSession.js"
   const registry = window.WILD_LEDGER_COMMUNITY_REGISTRY || {};
   const userSession = readUserSession();
   const operatorSession = readOperatorSession();
-  // Get Wild is the sole source of identity and role. Community selection is
-  // read only from the established centralized session objects.
-  const role = userSession?.authority === "owner" || userSession?.authority === "operator"
-    ? userSession.authority : null;
-  const requestedCommunity = role === "operator"
-    ? operatorSession?.communityId
-    : role === "owner" ? userSession.selectedCommunity : null;
-  if (!userSession?.wallet || !role || !requestedCommunity ||
-      (role === "operator" && !operatorSession?.communityName)) {
-    document.body.textContent = "Community session unavailable. Return to Get Wild and select a community.";
+
+  // Get Wild owns identity and role. URL parameters and registry ordering do not.
+  const role = userSession?.authority === "owner" ? "owner"
+    : userSession?.authority === "operator" && operatorSession ? "operator"
+    : null;
+  if (!role) {
+    document.body.textContent = "Authorized session unavailable. Return to Get Wild and sign in again.";
     return;
   }
-  const community = window.WILD_LEDGER_GET_COMMUNITY?.(requestedCommunity) || null;
+
+  // The selected community must already be established in the centralized session.
+  const requestedId = String(role === "operator"
+    ? operatorSession.communityId
+    : (userSession.selectedCommunity || "")).trim();
+  if (!requestedId) {
+    document.body.textContent = "Community selection unavailable. Return to Get Wild and select a community.";
+    return;
+  }
+  const community = window.WILD_LEDGER_GET_COMMUNITY?.(requestedId) || null;
   if (!community) {
-    document.body.textContent = "Community not found. Return to Get Wild and select a community.";
+    document.body.textContent = "Selected community is not in the community registry.";
     return;
   }
-  const requestedId = role === "operator"
-    ? operatorSession.communityId : String(requestedCommunity).trim();
   const communityName = role === "operator"
-    ? operatorSession.communityName : (community.communityName || "Community");
+    ? operatorSession.communityName : (community.communityName || requestedId);
   const communityNamespace = community.leapNamespace || `${requestedId}-LEAP`;
   const viewCommunityTitle = document.getElementById("view-community-title");
   const viewCommunityBack = document.getElementById("viewCommunityBack");
   const operatorLogout = document.getElementById("operatorLogout");
 
-  if (viewCommunityBack) {
-    viewCommunityBack.href = `viewCommunity.html?community=${encodeURIComponent(requestedId)}&role=${encodeURIComponent(role)}`;
-  }
 
 
   if (operatorLogout && role !== "operator") {
