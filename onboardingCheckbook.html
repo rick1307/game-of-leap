@@ -1173,13 +1173,13 @@ async function performStep(number, checkActive = () => {}) {
     // Get Wild supplies the one Operating Wallet. Scan it once for prices,
     // requests, and onboarding Checks; no authority reconstruction.
     if (!xrplServer) throw new Error("Wild Ledger has no configured XRPL server for Checkbook history.");
-    updateGuideStatus("Reading the established Operating Wallet's XRPL history…");
+    updateGuideStatus("Reviewing check history on XRPL");
     const result = await discoverMatchingPayments(session.communityId, session.wallet, progress => {
       checkActive();
       runContext.scanned = progress.scanned;
       runContext.pages = progress.pages;
       runContext.excluded = progress.excluded;
-      updateGuideStatus(`Reading Operating Wallet history… ${progress.scanned} entries checked; ${progress.matches} candidate ${progress.matches === 1 ? "request" : "requests"}.`);
+      updateGuideStatus(`Reviewing check history on XRPL ${progress.scanned} entries checked; ${progress.matches} candidate ${progress.matches === 1 ? "request" : "requests"}.`);
     }, checkActive);
     checkActive();
     assertSessionUnchanged();
@@ -1305,7 +1305,7 @@ async function runNext() {
   const number = nextStep();
   if (!number || stepStates[number-1] === "failed") return;
   busy = true;
-  const workingMessage = ["Reading your existing Operator session…", "Checking established Operator authority in session…", "Reading community wallet history…", "Checking your Operator session before displaying the verified requests…"][number-1];
+  const workingMessage = ["Reading your existing Operator session…", "Checking established Operator authority in session…", "Reviewing check history on XRPL", "Checking your Operator session before displaying the verified requests…"][number-1];
   setTrailStep(number,"working",workingMessage);
   updateGuideStatus(workingMessage);
   let succeeded = false;
