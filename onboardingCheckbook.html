@@ -1,0 +1,2644 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#071f2c">
+<title>Onboarding Checkbook | Wild Ledger</title>
+<style>
+  :root {
+    --ink: #f5fbfa;
+    --lagoon: #29b8b1;
+    --sea-glass: #79d5c2;
+    --mango: #f4bd58;
+    --coral: #ef765d;
+    --muted: rgba(236,249,247,.68);
+    --panel: rgba(10,45,58,.70);
+    --line: rgba(219,248,244,.14);
+    --shadow: 0 28px 78px rgba(0,16,24,.38);
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { min-height: 100%; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    color: var(--ink);
+    background:
+      radial-gradient(circle at 12% 14%, rgba(41,184,177,.34) 0, rgba(41,184,177,.12) 22%, transparent 44%),
+      radial-gradient(circle at 87% 15%, rgba(244,189,88,.24) 0, rgba(244,189,88,.07) 21%, transparent 42%),
+      radial-gradient(circle at 88% 86%, rgba(239,118,93,.24) 0, rgba(239,118,93,.07) 23%, transparent 46%),
+      radial-gradient(circle at 20% 88%, rgba(121,213,194,.19) 0, transparent 42%),
+      linear-gradient(145deg,#06202e 0%,#0a3444 48%,#071d2a 100%);
+  }
+  /* The Checkbook shell is withheld until startup chooses report or recovery. */
+  .shell[hidden] { display:none !important; }
+  .shell { width: min(100% - 28px, 920px); margin: 34px auto 50px; }
+  .console {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid var(--line);
+    border-radius: 28px;
+    background: linear-gradient(160deg,rgba(255,255,255,.075),rgba(255,255,255,.018)),var(--panel);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    padding: clamp(22px,5vw,38px);
+  }
+  .console::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    height: 4px;
+    background: linear-gradient(90deg,var(--lagoon),var(--sea-glass),var(--mango),var(--coral));
+  }
+  .nav { display:flex; justify-content:flex-end; gap:10px; flex-wrap:wrap; margin-bottom: 38px; }
+  .back-link, .action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 40px;
+    padding: 9px 16px;
+    border: 1px solid rgba(121,213,194,.34);
+    border-radius: 999px;
+    background: rgba(121,213,194,.09);
+    color: #dbfff4;
+    text-decoration: none;
+    font-size: .84rem;
+    font-weight: 800;
+    cursor:pointer;
+  }
+  .back-link:hover,.back-link:focus-visible,.action:hover,.action:focus-visible {
+    background: rgba(121,213,194,.17);
+    border-color: rgba(121,213,194,.6);
+  }
+  .eyebrow { color:var(--mango); font-size:.68rem; font-weight:900; letter-spacing:.14em; text-transform:uppercase; }
+  h1 { margin: 10px 0 15px; font-size:clamp(2.3rem,7vw,4.25rem); line-height:1; letter-spacing:-.055em; }
+  .lede { max-width: 660px; margin:0 0 25px; color:var(--muted); line-height:1.55; }
+  .panel { padding:21px; border:1px solid var(--line); border-radius:20px; background:rgba(5,34,46,.49); }
+  .panel + .panel { margin-top:16px; }
+  .row { display:flex; align-items:flex-start; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .panel h2 { margin:0 0 13px; font-size:1.22rem; letter-spacing:-.02em; }
+  .label { color:var(--muted); font-size:.75rem; font-weight:700; margin-bottom:6px; }
+  .value { margin:0; font-weight:800; font-size:1.04rem; }
+  .wallet { overflow-wrap:anywhere; font-size:.84rem; line-height:1.5; font-variant-ligatures:none; }
+  .status { color:#ffe6af; line-height:1.5; }
+  .status.error { color:#ffb7aa; }
+  .check { display:inline-flex; gap:7px; align-items:center; color:#bdf2c8; font-size:.85rem; font-weight:850; }
+  .check::before { content:"✓"; font-weight:900; }
+  .grid { display:grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap:14px; margin-top:18px; }
+  .empty { padding:30px 16px; text-align:center; color:var(--muted); line-height:1.55; border:1px dashed rgba(121,213,194,.24); border-radius:15px; }
+  .request-card { padding:15px; border:1px solid rgba(121,213,194,.22); border-radius:15px; background:rgba(121,213,194,.055); }
+  .request-card + .request-card { margin-top:12px; }
+  .request-title { font-weight:850; color:#bdf2c8; margin-bottom:12px; }
+  .request-detail { margin:8px 0 0; color:var(--muted); font-size:.80rem; line-height:1.5; }
+  .request-detail strong { color:var(--ink); font-weight:700; overflow-wrap:anywhere; }
+  .request-status { color:var(--muted); line-height:1.5; }
+  .request-status.error { color:#ffb7aa; }
+  .notice { max-width:640px; color:var(--muted); line-height:1.5; }
+  .error-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:17px; }
+
+  /* The same rounded X language as Wild Ledger's established Setup Ledger Trail. */
+  .guide-overlay { position:fixed; inset:0; z-index:40; display:flex; align-items:center; justify-content:center; padding:max(20px,env(safe-area-inset-top)) max(20px,env(safe-area-inset-right)) max(20px,env(safe-area-inset-bottom)) max(20px,env(safe-area-inset-left)); background:rgba(0,12,19,.80); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+  .guide-overlay[hidden] { display:none!important; }
+  .guide-window { width:min(470px,100%); max-height:calc(100dvh - 40px); overflow:auto; border:1px solid rgba(121,213,194,.26); border-radius:26px; padding:24px 22px; background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99)); box-shadow:0 34px 90px rgba(0,0,0,.58); }
+  .guide-window::before { content:""; display:block; height:3px; margin:-24px -22px 21px; background:linear-gradient(90deg,var(--lagoon),var(--sea-glass),var(--mango),var(--coral)); }
+  .guide-topline { display:flex; align-items:center; gap:11px; margin-bottom:9px; }
+  .guide-close { flex:0 0 28px; display:grid; place-items:center; width:28px; height:28px; min-width:28px; min-height:28px; padding:0; border:1px solid rgba(236,249,247,.20); border-radius:50%; background:rgba(255,255,255,.035); color:rgba(245,251,250,.78); font:500 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; cursor:pointer; -webkit-appearance:none; }
+  .guide-close:focus-visible,.guide-close:hover { border-color:rgba(121,213,194,.7); background:rgba(255,255,255,.11); color:#fff; outline:2px solid var(--sea-glass); outline-offset:2px; }
+  .guide-kicker { color:var(--mango); text-transform:uppercase; letter-spacing:.14em; font-size:.66rem; font-weight:900; }
+  .guide-window h2 { margin:9px 0 9px; font-size:clamp(1.75rem,7vw,2.65rem); line-height:1.04; letter-spacing:-.045em; }
+  .guide-lede { color:var(--muted); font-size:.85rem; line-height:1.55; margin:0 0 14px; }
+  .guide-route { list-style:none; margin:0 0 14px; padding:0; }
+  .guide-route li { display:grid; grid-template-columns:32px minmax(0,1fr); align-items:center; gap:11px; min-height:56px; color:var(--muted); border-left:2px solid rgba(121,213,194,.15); margin-left:14px; padding:8px 0 8px 14px; position:relative; }
+  .guide-route li::before { content:attr(data-number); position:absolute; left:-16px; top:calc(50% - 15px); display:grid; place-items:center; width:28px; height:28px; border-radius:50%; border:1px solid rgba(121,213,194,.35); background:#082936; color:var(--muted); font-size:.75rem; font-weight:900; }
+  .guide-route li.is-done { color:#bdf2c8; border-left-color:rgba(159,224,176,.48); }
+  .guide-route li.is-done::before { content:'✓'; border-color:rgba(159,224,176,.65); color:#bdf2c8; }
+  .guide-route li.is-working { color:var(--ink); border-left-color:var(--mango); }
+  .guide-route li.is-working::before { border-color:var(--mango); color:#ffe6af; animation:guidePulse 1.4s ease-in-out infinite; }
+  .guide-route li.is-failed,.guide-route li.is-failed::before { color:#ffb7aa; border-color:var(--coral); }
+  .guide-route strong { display:block; font-size:.87rem; }
+  .guide-route small { display:block; margin-top:3px; font-size:.73rem; line-height:1.4; }
+  .guide-status { padding:13px 14px; border:1px solid rgba(244,189,88,.28); border-radius:14px; background:rgba(244,189,88,.05); font-size:.83rem; line-height:1.48; }
+  .guide-status.is-error { border-color:rgba(239,118,93,.6); color:#ffb7aa; }
+  .guide-learn { color:var(--muted); font-size:.72rem; margin:14px 0 0; line-height:1.5; }
+  .guide-recovery { margin-top:13px; display:flex; gap:9px; flex-wrap:wrap; }
+  .guide-recovery[hidden] { display:none!important; }
+  /* Confirmation is the human-facing finish; details remain expandable. */
+  /* Get Wild Ledger Trail completion: left-hand check and adjacent text, same grid and visual rules. */
+  .guide-success{display:grid;grid-template-columns:36px minmax(0,1fr);gap:10px;align-items:center;margin-top:12px}
+  .guide-success .trail-complete-check{display:grid;place-items:center;width:34px;height:34px;border:1px solid rgba(159,224,176,.48);border-radius:50%;background:rgba(159,224,176,.12);color:#bdf2c8;font-size:1rem;font-weight:950}
+  .guide-success .trail-complete-text{color:#bdf2c8;font-size:.8rem;font-weight:850}
+  @keyframes guidePulse { 0%,100%{box-shadow:0 0 0 0 rgba(244,189,88,.28)} 50%{box-shadow:0 0 0 5px rgba(244,189,88,0)} }
+  @keyframes guideSpin { to { transform:rotate(360deg); } }
+  @media(prefers-reduced-motion:reduce) { .guide-route li.is-working::before { animation:none; } }
+
+  @media (max-width:600px) {
+    .shell { margin-top:14px; }
+    .console { border-radius:22px; }
+    .nav { margin-bottom:30px; }
+    .grid { grid-template-columns:1fr; }
+  }
+
+  /* Established Get Wild Ledger Trail appearance. Presentation only:
+     underlying verified-XRPL steps, X/manual view, recovery, and handoff stay unchanged. */
+  .guide-overlay:not([hidden]) {
+    animation: membershipTrailVeil .34s ease both;
+  }
+  .guide-window {
+    position: relative;
+    width:min(470px,100%);
+    max-height:calc(100dvh - 40px);
+    padding:24px 22px 22px;
+    overflow:auto;
+    border:1px solid rgba(121,213,194,.24);
+    border-radius:26px;
+    background:linear-gradient(155deg,rgba(14,60,72,.98),rgba(5,30,42,.99));
+    box-shadow:0 34px 90px rgba(0,0,0,.58);
+    color:#f5fbfa;
+    font-family:serif; /* getWild.html inherits the browser serif; the backend otherwise forces sans-serif. */
+    animation:membershipTrailPanelIn .38s cubic-bezier(.2,.8,.2,1) both;
+  }
+  .guide-window::before {
+    height:3px;
+    margin:-24px -22px 21px;
+    background:linear-gradient(90deg,#29b8b1,#79d5c2,#f4bd58,#ef765d);
+  }
+  .guide-topline { gap:10px; margin:0 0 6px; }
+  .guide-close {
+    flex:0 0 28px;
+    width:28px;height:28px;min-width:28px;min-height:28px;
+    margin:0;padding:0;
+    border:1px solid rgba(236,249,247,.20);
+    border-radius:50%;
+    background:rgba(255,255,255,.035);
+    color:rgba(245,251,250,.72);
+    font:500 1.05rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    box-shadow:none;
+    transition:background .18s ease,border-color .18s ease,color .18s ease,transform .18s ease;
+  }
+  .guide-close:hover,.guide-close:focus-visible {
+    border-color:rgba(121,213,194,.42);
+    color:#fff;
+    background:rgba(255,255,255,.08);
+  }
+  .guide-close:active { transform:scale(.94); }
+  .guide-kicker {
+    padding-left:0;
+    color:#f4bd58;
+    font-size:.64rem;
+    font-weight:950;
+    letter-spacing:.16em;
+  }
+  .guide-window h2 {
+    margin:7px 0 6px;
+    font-size:clamp(1.8rem,8vw,2.8rem);
+    line-height:normal;
+    font-weight:700;
+    letter-spacing:-.045em;
+    color:#f5fbfa;
+  }
+  .guide-lede {
+    margin:0 0 12px;
+    color:rgba(236,249,247,.64);
+    font-size:.78rem;
+    line-height:1.5;
+  }
+  .guide-route {
+    display:grid;
+    gap:0;
+    margin:4px 0 18px;
+    padding:0;
+    list-style:none;
+  }
+  .guide-route li {
+    position:relative;
+    display:grid;
+    grid-template-columns:36px minmax(0,1fr);
+    align-items:start;
+    gap:11px;
+    min-height:58px;
+    margin:0;
+    padding:0;
+    border:0;
+    color:#f5fbfa;
+    list-style:none;
+  }
+  .guide-route li::before {
+    content:'○';
+    position:relative;
+    left:auto;
+    top:auto;
+    display:grid;
+    place-items:center;
+    width:28px;
+    height:28px;
+    margin-top:1px;
+    border:1px solid rgba(236,249,247,.22);
+    border-radius:50%;
+    background:#082936;
+    color:rgba(236,249,247,.40);
+    font-size:.76rem;
+    font-weight:950;
+    line-height:1;
+    z-index:1;
+    animation:none;
+    box-shadow:none;
+  }
+  .guide-route li:not(:last-child)::after {
+    content:'';
+    position:absolute;
+    top:28px;
+    left:13px;
+    width:2px;
+    height:32px;
+    background:linear-gradient(to bottom,rgba(121,213,194,.18),rgba(121,213,194,.05));
+  }
+  .guide-route li strong {
+    display:block;
+    padding-top:1px;
+    color:#f5fbfa;
+    font-size:.82rem;
+    font-weight:700;
+  }
+  .guide-route li small {
+    display:block;
+    margin-top:3px;
+    color:rgba(236,249,247,.43);
+    font-size:.66rem;
+    line-height:1.35;
+  }
+  .guide-route li.is-done::before {
+    content:'✓';
+    border-color:rgba(159,224,176,.48);
+    background:rgba(159,224,176,.12);
+    color:#bdf2c8;
+  }
+  .guide-route li.is-done:not(:last-child)::after {
+    background:linear-gradient(to bottom,rgba(121,213,194,.75),rgba(121,213,194,.25));
+  }
+  .guide-route li.is-done small { color:rgba(189,242,200,.66); }
+  .guide-route li.is-working::before {
+    content:'';
+    border-color:rgba(244,189,88,.70);
+    background:rgba(244,189,88,.12);
+    color:#ffe2a7;
+    animation:membershipTrailPulse 1.6s ease-out infinite;
+  }
+  /* Match the First LEAP activity arc exactly, without changing the
+     opening Trail's 28px circle, border, connectors, spacing, or layout. */
+  .guide-route .guide-activity { display:none; pointer-events:none; }
+  .guide-route li.is-working > .guide-activity {
+    position:absolute; top:8px; left:7px; z-index:2; display:block;
+    box-sizing:border-box; width:14px; height:14px;
+    border:2px solid transparent; border-top-color:#ffe2a7; border-right-color:#ffe2a7;
+    border-radius:50%; animation:issuanceActivitySpin .9s linear infinite;
+  }
+  .guide-route li.is-working.is-awaiting-wallet > .guide-activity {
+    width:8px; height:8px; top:11px; left:10px;
+    border:0; background:#ffe2a7; border-radius:50%;
+    box-shadow:0 0 0 0 rgba(255,226,167,.5);
+    animation:issuanceWalletPulse 1.45s ease-in-out infinite;
+  }
+  .guide-route li.is-working strong { color:#ffe2a7; }
+  .guide-route li.is-working small { color:rgba(255,226,167,.72); }
+  .guide-route li.is-failed::before {
+    content:'!';
+    border-color:rgba(255,183,170,.58);
+    background:rgba(239,118,93,.12);
+    color:#ffb7aa;
+  }
+  .guide-route li.is-failed strong,.guide-route li.is-failed small { color:#ffb7aa; }
+  .guide-status {
+    margin:5px 0 0;
+    padding:10px 12px;
+    border:1px solid rgba(121,213,194,.12);
+    border-radius:12px;
+    background:rgba(2,24,34,.34);
+    color:rgba(236,249,247,.62);
+    font-size:.68rem;
+    line-height:1.42;
+  }
+  .guide-status.is-error {
+    color:#ffb7aa;
+    border-color:rgba(239,118,93,.24);
+  }
+  .guide-learn {
+    margin:12px 0 0;
+    color:rgba(236,249,247,.50);
+    font-size:.66rem;
+    line-height:1.45;
+  }
+  @keyframes membershipTrailVeil { from {opacity:0;} to {opacity:1;} }
+  @keyframes membershipTrailPanelIn { from {opacity:0;transform:translateY(10px) scale(.985);} to {opacity:1;transform:none;} }
+  @keyframes membershipTrailPulse { from {box-shadow:0 0 0 0 rgba(244,189,88,.22);} to {box-shadow:0 0 0 8px rgba(244,189,88,0);} }
+  @media(prefers-reduced-motion:reduce) {
+    .guide-overlay:not([hidden]),.guide-window,.guide-route li.is-working::before,.guide-route li.is-working > .guide-activity {animation:none;}
+  }
+
+
+  /* First LEAP uses Get Wild's established full-screen Ledger Trail language.
+     Both Trails share the same type and checkpoint activity indicator. */
+  .issuance-window { width:min(470px,100%); font-family:serif; }
+  .issuance-window h2 { font-family:inherit; font-weight:700; }
+  .issuance-purpose { margin:1px 0 7px; font-size:.89rem; font-weight:850; color:#f5fbfa; }
+  .issuance-compact { font-size:.72rem; color:var(--muted); line-height:1.5; overflow-wrap:anywhere; }
+  .issuance-steps { display:grid; gap:0; padding:0; margin:5px 0 18px; list-style:none; }
+  .issuance-step { position:relative; display:grid; grid-template-columns:36px minmax(0,1fr); gap:11px; min-height:58px; align-items:start; padding:0; margin:0; border:0; }
+  .issuance-step .issuance-dot { position:relative; display:grid; place-items:center; width:28px; height:28px; margin-top:1px; border:1px solid rgba(236,249,247,.22); border-radius:50%; background:#082936; color:rgba(236,249,247,.4); font-size:.76rem; font-weight:950; z-index:1; }
+  .issuance-step:not(:last-child) .issuance-dot::after { content:""; position:absolute; top:27px; left:50%; transform:translateX(-50%); width:2px; height:32px; background:linear-gradient(to bottom,rgba(121,213,194,.18),rgba(121,213,194,.05)); }
+  .issuance-step.is-working .issuance-dot { border-color:rgba(244,189,88,.70); background:rgba(244,189,88,.12); color:#ffe2a7; animation:membershipTrailPulse 1.6s ease-out infinite; }
+  /* Activity stays INSIDE the existing 28px checkpoint: no circle, border,
+     connector, spacing, or geometry changes. System = arc; wallet = pulse. */
+  .issuance-step.is-working .issuance-dot::before {
+    content:""; display:block; box-sizing:border-box; width:14px; height:14px;
+    border:2px solid transparent; border-top-color:#ffe2a7; border-right-color:#ffe2a7;
+    border-radius:50%; animation:issuanceActivitySpin .9s linear infinite;
+  }
+  .issuance-step.is-working.is-awaiting-wallet .issuance-dot::before {
+    width:8px; height:8px; border:0; background:#ffe2a7;
+    box-shadow:0 0 0 0 rgba(255,226,167,.5);
+    animation:issuanceWalletPulse 1.45s ease-in-out infinite;
+  }
+  @keyframes issuanceActivitySpin { to { transform:rotate(360deg); } }
+  @keyframes issuanceWalletPulse {
+    0%,100% { transform:scale(.72); opacity:.58; box-shadow:0 0 0 0 rgba(255,226,167,.1); }
+    50% { transform:scale(1.13); opacity:1; box-shadow:0 0 0 3px rgba(255,226,167,.13); }
+  }
+  .issuance-step.is-working strong { color:#ffe2a7; }
+  .issuance-step.is-done .issuance-dot { border-color:rgba(159,224,176,.48); background:rgba(159,224,176,.12); color:#bdf2c8; }
+  .issuance-step.is-done:not(:last-child) .issuance-dot::after { background:linear-gradient(to bottom,rgba(121,213,194,.75),rgba(121,213,194,.25)); }
+  .issuance-step.is-done small { color:rgba(189,242,200,.66); }
+  .issuance-step.is-failed .issuance-dot { border-color:rgba(255,183,170,.58); background:rgba(239,118,93,.12); color:#ffb7aa; }
+  .issuance-step.is-failed strong,.issuance-step.is-failed small { color:#ffb7aa; }
+  .issuance-step strong { display:block; padding-top:1px; font-size:.82rem; font-weight:700; }
+  .issuance-step small { display:block; margin-top:3px; color:rgba(236,249,247,.43); font-size:.66rem; line-height:1.35; overflow-wrap:anywhere; }
+  .issuance-handoff { margin:13px 0 18px; padding:16px; border:1px solid rgba(244,189,88,.30); border-radius:17px; background:linear-gradient(145deg,rgba(244,189,88,.10),rgba(41,184,177,.06)); box-shadow:inset 0 1px 0 rgba(255,255,255,.035); }
+  .issuance-handoff strong { display:block; color:#ffe2a7; font-size:1.05rem; letter-spacing:.01em; }
+  .issuance-handoff p { margin:6px 0 0; color:rgba(255,244,214,.80); font-size:.76rem; line-height:1.45; }
+  .issuance-wallet-qr { display:block; width:min(220px,72vw); margin:14px auto 0; padding:7px; border-radius:13px; background:white; }
+  .issuance-evidence { margin:12px 0; border:1px solid var(--line); border-radius:12px; }
+  .issuance-evidence > summary { padding:11px; color:var(--sea-glass); font-size:.78rem; font-weight:850; cursor:pointer; }
+  .issuance-evidence pre { margin:0; padding:0 12px 12px; color:var(--muted); font:normal .72rem/1.5 ui-monospace,SFMono-Regular,monospace; white-space:pre-wrap; overflow-wrap:anywhere; }
+  /* Only the established close X belongs to the normal Trail. If and only
+     if a wallet pairing expires, a quiet QR-refresh affordance is allowed. */
+  .issuance-refresh-qr { display:block; margin:12px auto 0; padding:6px 10px; border:0; border-radius:7px;
+    color:var(--sea-glass); background:transparent; font-family:inherit; font-size:.73rem; font-weight:700; line-height:1.5;
+    text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+  .issuance-refresh-qr:focus-visible { outline:2px solid var(--sea-glass); outline-offset:3px; }
+  .issuance-refresh-qr[hidden] { display:none!important; }
+  .issuance-error { color:#ffb7aa; }
+  .issuance-complete { display:grid; grid-template-columns:36px minmax(0,1fr); gap:10px; align-items:center; margin-top:12px; color:#bdf2c8; font-size:.80rem; font-weight:850; }
+  .issuance-complete-mark { display:grid; place-items:center; width:34px; height:34px; border:1px solid rgba(159,224,176,.48); border-radius:50%; background:rgba(159,224,176,.12); }
+  @media(prefers-reduced-motion:reduce) {
+    .issuance-step.is-working .issuance-dot,
+    .issuance-step.is-working .issuance-dot::before { animation:none; }
+  }
+
+  /* Existing Membership Requests report styles, unchanged. */
+
+  .report-heading { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; flex-wrap:wrap; }
+  .report-heading h2 { margin:0 0 5px; }
+  .report-subtitle { max-width:570px; color:var(--muted); font-size:.85rem; line-height:1.55; margin:0 0 13px; }
+  /* A status announcement, not an action or button. Color follows the existing lifecycle counts. */
+  .lifecycle-announcement {
+    display:flex;
+    align-items:center;
+    gap:14px;
+    width:100%;
+    margin:2px 0 17px;
+    padding:15px 17px;
+    border:1px solid var(--announcement-border);
+    border-radius:16px;
+    background:var(--announcement-background);
+    color:var(--announcement-text);
+    cursor:default;
+  }
+  .lifecycle-announcement[data-state="action"] {
+    --announcement-border:rgba(239,118,93,.54);
+    --announcement-background:rgba(239,118,93,.12);
+    --announcement-text:#ffc2b8;
+  }
+  .lifecycle-announcement[data-state="outstanding"] {
+    --announcement-border:rgba(244,189,88,.55);
+    --announcement-background:rgba(244,189,88,.11);
+    --announcement-text:#ffe4a0;
+  }
+  .lifecycle-announcement[data-state="clear"] {
+    --announcement-border:rgba(121,213,194,.43);
+    --announcement-background:rgba(121,213,194,.10);
+    --announcement-text:#bdf2c8;
+  }
+  .lifecycle-announcement::before {
+    content:"!";
+    flex:0 0 35px;
+    display:grid;
+    place-items:center;
+    width:35px;
+    height:35px;
+    border-radius:50%;
+    border:1px solid currentColor;
+    font-size:1.05rem;
+    font-weight:900;
+  }
+  .lifecycle-announcement[data-state="outstanding"]::before { content:"◷"; }
+  .lifecycle-announcement[data-state="clear"]::before { content:"✓"; }
+  .lifecycle-announcement-copy { display:flex; flex-direction:column; gap:5px; min-width:0; }
+  .lifecycle-announcement-title { color:var(--announcement-text); font-size:.91rem; font-weight:850; line-height:1.3; }
+  .lifecycle-announcement-totals { color:var(--ink); font-size:.81rem; line-height:1.45; font-variant-numeric:tabular-nums; }
+  .lifecycle-announcement-reserve { color:var(--muted); font-size:.79rem; line-height:1.45; font-variant-numeric:tabular-nums; }
+  .lifecycle-announcement-reserve strong { color:var(--ink); font-weight:800; }
+  .request-status { color:var(--muted); line-height:1.5; font-size:.82rem; margin:0 0 17px; }
+  .request-status.error { color:#ffb7aa; }
+  /* One symbol per completed/pending lifecycle stage; only actual actions
+     have buttons, backgrounds, or borders. Legend explains symbols once. */
+  .table-wrap { width:100%; overflow-x:auto; }
+  .requests-table { width:100%; table-layout:fixed; border-collapse:separate; border-spacing:0; text-align:left; font-size:.85rem; }
+  .requests-table th:nth-child(1) { width:37%; }
+  .requests-table th:nth-child(2) { width:20%; }
+  .requests-table th:nth-child(3) { width:17%; }
+  .requests-table th:nth-child(4) { width:26%; }
+  .requests-table th { padding:12px 7px; font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.075em; font-weight:850; border-bottom:1px solid rgba(121,213,194,.29); }
+  .requests-table td { padding:16px 7px; vertical-align:middle; border-bottom:1px solid var(--line); line-height:1.45; overflow-wrap:anywhere; }
+  .requests-table th:not(:first-child), .requests-table td:not(:first-child) { text-align:center; }
+  .requests-table tbody tr:last-child td { border-bottom:0; }
+  .requests-table tbody tr:hover { background:rgba(121,213,194,.045); }
+  .applicant-main { font-weight:850; font-variant-ligatures:none; overflow-wrap:anywhere; }
+  .checkbook-symbol { display:inline-block; min-width:1.25em; padding:0; border:0; background:none; font:900 1.65rem/1 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; text-align:center; vertical-align:middle; cursor:default; }
+  .checkbook-symbol.is-complete { color:#bdf2c8; }
+  .checkbook-symbol.is-pending { color:#ffe2a7; }
+  .checkbook-symbol.is-canceled { color:#ff9d8a; }
+  .checkbook-symbol.is-na { color:var(--muted); font-size:1.2rem; font-weight:500; }
+  .checkbook-legend { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:8px 16px; padding:13px 3px 0; border-top:1px solid var(--line); }
+  .checkbook-legend-item { display:inline-flex; align-items:center; gap:5px; color:var(--muted); font-size:.71rem; white-space:nowrap; }
+  .checkbook-legend .checkbook-symbol { font-size:1.06rem; }
+  .checkbook-legend .checkbook-symbol.is-na { font-size:.95rem; }
+  .paid-value { font-weight:800; white-space:nowrap; }
+  .paid-unit { color:var(--muted); font-size:.75rem; }
+  .ledger-value { font-variant-numeric:tabular-nums; font-weight:780; }
+  .issue-first-leap { display:inline-block; width:100%; margin:0; min-height:40px; padding:9px 7px; border:1px solid rgba(121,213,194,.58); border-radius:12px; background:rgba(121,213,194,.16); color:#dbfff4; font-size:.79rem; font-weight:850; cursor:pointer; text-align:center; }
+  .issue-first-leap:hover,.issue-first-leap:focus-visible { border-color:#bdf2c8; background:rgba(121,213,194,.27); outline-offset:2px; }
+  /* Move 4: each still-outstanding Check gets its own cancellation affordance.
+     Disabled until a separate, signed and verified cancellation Trail exists. */
+  .cancel-onboarding-check {
+    display:inline-block; width:100%; max-width:170px; min-height:38px; margin:0;
+    padding:7px 9px; border:1px solid rgba(239,118,93,.48); border-radius:10px;
+    color:#ffddd4; background:rgba(239,118,93,.10); cursor:pointer;
+    font:inherit; font-size:.76rem; font-weight:850; line-height:1.25;
+    text-align:center; white-space:normal;
+  }
+  .cancel-onboarding-check:disabled { opacity:.78; cursor:not-allowed; }
+  /* Historical Checks are read-only: pagination is the only interactive control. */
+  .cashed-history-table { width:100%; border-collapse:collapse; text-align:left; font-size:.85rem; }
+  .cashed-history-table th { padding:12px 7px; font-size:.70rem; color:var(--muted); text-transform:uppercase; letter-spacing:.075em; font-weight:850; border-bottom:1px solid rgba(121,213,194,.29); }
+  .cashed-history-table td { padding:14px 7px; border-bottom:1px solid var(--line); vertical-align:middle; }
+  .cashed-history-table tr:last-child td { border-bottom:0; }
+  .cashed-history-table th:last-child, .cashed-history-table td:last-child { width:110px; text-align:center; }
+  .cashed-history-navigation { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-top:14px; padding-top:13px; border-top:1px solid var(--line); }
+  .cashed-history-navigation[hidden] { display:none!important; }
+  .cashed-history-range, .cashed-history-page { color:var(--muted); font-size:.78rem; font-variant-numeric:tabular-nums; }
+  .cashed-history-controls { display:flex; align-items:center; gap:10px; }
+  .cashed-history-controls button { border:1px solid rgba(121,213,194,.44); border-radius:9px; background:rgba(121,213,194,.09); color:var(--ink); padding:8px 11px; font:inherit; font-size:.76rem; font-weight:750; cursor:pointer; }
+  .cashed-history-controls button:disabled { opacity:.4; cursor:default; }
+  .cashed-history-controls button:focus-visible { outline:2px solid var(--sea-glass); outline-offset:3px; }
+  .cashed-history-empty { padding:11px 0 2px; color:var(--muted); font-size:.82rem; }
+  .report-foot { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin-top:17px; }
+  .report-foot .notice { margin:0; font-size:.78rem; }
+  /* Four columns remain visible on iPhone portrait: statuses stay borderless. */
+  @media(max-width:700px) {
+    .table-wrap { overflow-x:visible; }
+    .requests-table { width:100%; table-layout:fixed; font-size:.74rem; }
+    .requests-table th { padding:10px 2px; font-size:.59rem; letter-spacing:.012em; }
+    .requests-table td { padding:13px 2px; vertical-align:middle; }
+    .applicant-main { font-size:.68rem; line-height:1.35; }
+    .checkbook-symbol { font-size:1.55rem; }
+    .issue-first-leap { width:100%; padding:7px 2px; font-size:.67rem; white-space:normal; line-height:1.2; }
+    .cancel-onboarding-check { min-height:36px; padding:7px 2px; font-size:.64rem; }
+    .checkbook-legend { gap:6px 12px; }
+    .checkbook-legend-item { font-size:.67rem; }
+    .cashed-history-table { font-size:.74rem; }
+    .cashed-history-table th { font-size:.59rem; letter-spacing:.012em; }
+    .cashed-history-table .applicant-main { font-size:.73rem; }
+    .cashed-history-navigation { justify-content:center; }
+  }
+  @media(max-width:360px) {
+    .requests-table th { font-size:.53rem; letter-spacing:0; }
+    .issue-first-leap { font-size:.60rem; overflow-wrap:normal; word-break:normal; }
+    .cancel-onboarding-check { font-size:.60rem; overflow-wrap:normal; word-break:normal; }
+  }
+
+
+  /* Conformity pass: copy Get Wild's restrained controls and checkpoint rail.
+     Scope to the existing Checkbook views; their XRPL evidence remains expandable. */
+  .guide-recovery { display:block; margin-top:0; }
+  .guide-recovery .trail-retry {
+    width:100%;min-height:44px;margin-top:12px;
+    border:1px solid rgba(255,183,170,.26);border-radius:12px;
+    background:rgba(239,118,93,.08);color:#ffd0c8;font-weight:850;
+    cursor:pointer;
+  }
+  .guide-recovery .trail-retry:focus-visible {outline:2px solid #ffd0c8;outline-offset:2px;}
+  .guide-recovery #guideSignin { margin-top:12px; }
+  .guide-lede {margin-bottom:20px;}
+  .issuance-handoff {display:block;margin:0 0 18px;padding:16px;border:1px solid rgba(244,189,88,.30);border-radius:17px;background:linear-gradient(145deg,rgba(244,189,88,.10),rgba(41,184,177,.06));box-shadow:inset 0 1px 0 rgba(255,255,255,.035)}
+  .issuance-handoff strong {font-size:1.12rem;}
+  .issuance-refresh-qr {display:inline-flex;align-items:center;justify-content:center;min-height:38px;margin:12px 0 0;padding:8px 12px;border:1px solid rgba(244,189,88,.36);border-radius:9px;background:rgba(244,189,88,.06);color:#ffe2a7;font-size:.78rem;font-weight:750;text-decoration:none;cursor:pointer}
+  .issuance-refresh-qr:focus-visible {outline:2px solid #ffe2a7;outline-offset:3px;}
+  .issuance-complete-mark {font-size:1rem;font-weight:950;}
+  .guide-route {margin:4px 0 18px;}
+  /* Neutralize inherited Checkbook trail-card styling; Get Wild has no cards. */
+</style>
+<link rel="stylesheet" href="wildLedgerBackend.css">
+<link rel="stylesheet" href="ledgerTrail.css">
+<style>
+  /* Opening Trail first paint: the shared module takes over without the normal
+     entrance fade revealing the Checkbook in between. Its other animations
+     and its 500ms final completion stay exactly as they are. */
+  #openingCheckbookTrail.opening-first-paint,
+  #openingCheckbookTrail.opening-first-paint .ledger-trail-panel {
+    transition:none !important;
+  }
+</style>
+</head>
+<body>
+  <!-- All three Checkbook Ledger Trails use the shared presentation module. -->
+
+  <main class="shell" id="checkbookShell" hidden>
+    <section class="console" aria-labelledby="pageTitle">
+      <nav class="nav" aria-label="Operator navigation">
+        <a id="backLink" class="back-link" href="viewCommunity.html" hidden>← View Community</a>
+      </nav>
+      <div class="eyebrow">Wild Ledger · Operator</div>
+      <h1 id="pageTitle">Onboarding Checkbook</h1>
+
+      <section aria-live="polite" class="panel" hidden="" id="reportGate">
+<p class="notice" id="reportGateMessage"></p>
+<a class="action" href="getWild.html" id="reportGateLink">Sign in through Get Wild</a>
+</section>
+      <div hidden="" id="authorizedContent">
+<p class="lede">Your individual onboarding Checks, reconstructed from validated XRPL history. Issuing a First LEAP Check launches its own signed Ledger Trail.</p>
+<section aria-label="Verified community" class="panel">
+<div class="row">
+<div>
+<div class="label">Community</div>
+<h2 id="communityName">Community</h2>
+</div>
+</div>
+<div class="grid">
+<div>
+<div class="label">Community ID</div>
+<p class="value" id="communityId"></p>
+</div>
+<div>
+<div class="label">Operating Wallet</div>
+<p class="value wallet" id="operatorWallet"></p>
+</div>
+</div>
+</section>
+<section aria-label="Onboarding Checks recorded on XRPL" class="panel">
+<div class="report-heading">
+<div>
+<h2>Onboarding lifecycle</h2>
+</div>
+</div>
+<div class="lifecycle-announcement" data-state="clear" hidden id="requestCount" role="status" aria-live="polite" aria-atomic="true">
+  <div class="lifecycle-announcement-copy">
+    <strong class="lifecycle-announcement-title" id="requestCountTitle">All caught up</strong>
+    <span class="lifecycle-announcement-totals" id="requestCountTotals">0 to issue · 0 outstanding</span>
+    <span class="lifecycle-announcement-reserve">XRP reserved for open Checks: <strong id="requestReserveAmount">Checking XRPL…</strong></span>
+  </div>
+</div>
+<p aria-live="polite" class="request-status" id="requestStatus" role="status" hidden>Opening verified membership requests…</p>
+<details class="issuance-evidence" id="issuanceEvidencePanel" hidden><summary>Check issuance · Transaction and XRPL evidence</summary><pre id="issuanceEvidence">Waiting for verification.</pre></details>
+<div hidden="" id="requestList"></div>
+</section>
+<section aria-label="Past Cashed Checks" class="panel" id="cashedHistoryCard">
+  <h2>Past Cashed Checks</h2>
+  <div id="cashedHistoryList"></div>
+  <nav id="cashedHistoryNav" class="cashed-history-navigation" aria-label="Past Cashed Checks pages" hidden>
+    <span id="cashedHistoryRange" class="cashed-history-range" aria-live="polite"></span>
+    <div class="cashed-history-controls">
+      <button type="button" id="cashedHistoryPrevious" aria-label="Previous page of cashed Checks">Previous</button>
+      <span id="cashedHistoryPage" class="cashed-history-page" aria-live="polite"></span>
+      <button type="button" id="cashedHistoryNext" aria-label="Next page of cashed Checks">Next</button>
+    </div>
+  </nav>
+</section>
+</div>
+      <p id="verificationNote" class="trail-note" hidden></p>
+
+    </section>
+  </main>
+<script src="js/communityConfig.js" data-registry-only="true"></script>
+<script src="js/wildLedgerConfig.js"></script>
+<script type="module">
+import { createLedgerTrail } from "./js/ledgerTrail.js";
+import { DirectXRPLClient, isClassicAddress } from "./js/xrplTransport.js";
+import { readUserSession, readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
+import { isCanonicalNoOpAccountSet } from "./js/communityAuthority.js";
+import { joinRequestPriceMemo, DEFAULT_JOIN_REQUEST_DROPS } from "./js/communityJoinPrice.js";
+import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog, PERMANENT_LEAP_DISTRIBUTOR } from "./js/recognitionCatalog.js";
+
+const $ = id => document.getElementById(id);
+const xrplServer = String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+let checking = false;
+
+// Identify the Operator using Wild Ledger's central session objects.
+function readOperatorSession() {
+  const user = readUserSession();
+  const operator = readCentralOperatorSession();
+  if (user?.authority !== "operator" || !isClassicAddress(user.wallet) ||
+      !operator?.communityId || !operator?.communityName) return null;
+  return { wallet: user.wallet, communityId: operator.communityId,
+    communityName: operator.communityName };
+}
+
+// Step 3: Read the one Operating Wallet established by Get Wild.
+// Match requests against the published price at each ledger position.
+function memoText(hex) {
+  const value = String(hex || "");
+  if (!value || !/^(?:[0-9a-fA-F]{2})+$/.test(value)) return "";
+  try {
+    const bytes = Uint8Array.from(value.match(/../g), pair => Number.parseInt(pair, 16));
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch (_) { return ""; }
+}
+
+function matchingPayment(entry, destination, communityId) {
+  if (entry?.validated !== true) return null;
+  const tx = entry?.tx_json || entry?.tx || entry?.transaction || {};
+  const meta = entry?.meta || entry?.metaData || {};
+  if (meta.TransactionResult !== "tesSUCCESS" || tx.TransactionType !== "Payment" || tx.Destination !== destination || !isClassicAddress(tx.Account)) return null;
+  const memos = Array.isArray(tx.Memos) ? tx.Memos : [];
+  if (memos.length !== 1 || !memos[0]?.Memo || memos[0].Memo.MemoType || memos[0].Memo.MemoFormat ||
+      memoText(memos[0].Memo.MemoData) !== `WILD-LEDGER/MEMBERSHIP-REQUEST/${communityId}`) return null;
+  const amount = tx.Amount ?? tx.DeliverMax;
+  const ledger = Number(entry.ledger_index ?? tx.ledger_index);
+  const hash = String(entry.hash || tx.hash || "").toUpperCase();
+  if (typeof amount !== "string" || !/^[1-9][0-9]*$/.test(amount) || !Number.isInteger(ledger) || ledger < 1 || !/^[0-9A-F]{64}$/.test(hash)) return null;
+  const txIndex = Number(meta.TransactionIndex);
+  return { applicant: tx.Account, destination: tx.Destination, drops: amount, ledger, txIndex,
+    hash, flags: tx.Flags ?? 0, paths: tx.Paths, sendMax: tx.SendMax, deliverMin: tx.DeliverMin,
+    otherAmount: tx.Amount !== undefined && tx.DeliverMax !== undefined ? tx.DeliverMax : null };
+}
+
+function verifyRequestAtLedger(candidate, operatingWallet, priceHistory) {
+  // An unknown transaction position can never receive a Verified designation.
+  if (!Number.isInteger(candidate.txIndex) || candidate.txIndex < 0) return null;
+  if (candidate.destination !== operatingWallet) return null;
+  const flags = Number(candidate.flags);
+  if (!Number.isSafeInteger(flags) || flags < 0 || (flags & 0x00020000) !== 0 ||
+      candidate.paths !== undefined || candidate.sendMax !== undefined || candidate.deliverMin !== undefined ||
+      (candidate.otherAmount !== null && candidate.otherAmount !== candidate.drops)) return null;
+
+  // Price is the latest valid, Operator-authorized AccountSet strictly BEFORE
+  // the request, not a price set later in the same ledger or afterward.
+  let expectedDrops = DEFAULT_JOIN_REQUEST_DROPS;
+  let priceStatement = null;
+  for (const record of priceHistory) {
+    if (record.ledger > candidate.ledger ||
+        (record.ledger === candidate.ledger && record.txIndex >= candidate.txIndex)) break;
+    expectedDrops = record.drops;
+    priceStatement = record;
+  }
+  if (candidate.drops !== expectedDrops) return null;
+  return { ...candidate, expectedDrops, priceStatement };
+}
+
+// Price statements are extracted from the SAME validated Operating Wallet scan.
+// No authority-chain lookup, synthetic interval, or second account_tx scan.
+function singleWalletPriceStatement(entry, communityId, operatingWallet) {
+  if (entry?.validated !== true) return null;
+  const tx = entry.tx_json || entry.tx || entry.transaction || {};
+  const meta = entry.meta || entry.metaData || {};
+  if (tx.Account !== operatingWallet || !isCanonicalNoOpAccountSet(tx) ||
+      meta.TransactionResult !== "tesSUCCESS") return null;
+  const ledger = Number(entry.ledger_index ?? tx.ledger_index);
+  const txIndex = Number(meta.TransactionIndex);
+  const hash = String(entry.hash || tx.hash || "").toUpperCase();
+  if (!Number.isInteger(ledger) || ledger < 1 || !Number.isInteger(txIndex) || txIndex < 0 ||
+      !/^[A-F0-9]{64}$/.test(hash)) return null;
+  const memos = Array.isArray(tx.Memos) ? tx.Memos : [];
+  if (memos.length !== 1 || !memos[0]?.Memo || memos[0].Memo.MemoType ||
+      memos[0].Memo.MemoFormat) return null;
+  const memo = memoText(memos[0].Memo.MemoData);
+  const prefix = `WILD-LEDGER/JOIN-REQUEST-PRICE-DROPS/${communityId}=`;
+  if (!memo.startsWith(prefix)) return null;
+  const drops = memo.slice(prefix.length);
+  try { if (joinRequestPriceMemo(communityId, drops) !== memo) return null; }
+  catch (_) { return null; }
+  return {communityId, drops, account:operatingWallet, ledger, txIndex, hash, memo};
+}
+
+async function discoverMatchingPayments(communityId, operatingWallet, onProgress = () => {}, checkActive = () => {}) {
+  // The single Get Wild Operating Wallet is the only history to search.
+  if (!isClassicAddress(operatingWallet)) throw new Error("Get Wild Operating Wallet is unavailable.");
+  const accounts = [operatingWallet];
+  const client = new DirectXRPLClient(xrplServer);
+  const found = new Map();
+  const onboardingCreates = new Map();
+  const checkCancels = new Map();
+  let scanned = 0;
+  let pages = 0;
+  let excluded = 0;
+  const priceHistory = [];
+  try {
+    await client.connect();
+    checkActive();
+    for (const [index, account] of accounts.entries()) {
+      checkActive();
+      let marker;
+      do {
+        checkActive();
+        const fields = { account, ledger_index_min: -1, ledger_index_max: -1, binary: false, forward: true, limit: 400 };
+        if (marker !== undefined) fields.marker = marker;
+        const response = await client.request("account_tx", fields, 30000);
+        checkActive();
+        const entries = response?.result?.transactions;
+        if (!Array.isArray(entries)) throw new Error("XRPL returned no readable transaction list.");
+        pages += 1;
+        for (const entry of entries) {
+          scanned += 1;
+          // Use this same Operator-wallet history scan for onboarding Check evidence.
+          // Old recognition Checks are not onboarding Checks.
+          const priceRecord = singleWalletPriceStatement(entry, communityId, operatingWallet);
+          if (priceRecord) priceHistory.push(priceRecord);
+          const createdCheck = onboardingCheckCreate(entry, account, communityId);
+          if (createdCheck) onboardingCreates.set(createdCheck.id, createdCheck);
+          const cancellation = successfulCheckAction(entry, "CheckCancel", account);
+          if (cancellation) checkCancels.set(cancellation.id, cancellation);
+          const candidate = matchingPayment(entry, account, communityId);
+          if (!candidate) continue;
+          found.set(candidate.hash, candidate);
+        }
+        checkActive();
+        onProgress({scanned, pages, matches:found.size, excluded,
+          wallet:account, walletIndex:index + 1, walletCount:accounts.length});
+        marker = response.result.marker;
+      } while (marker !== undefined && marker !== null);
+    }
+  } finally {
+    client.close();
+  }
+  priceHistory.sort((a,b) => a.ledger - b.ledger || a.txIndex - b.txIndex);
+  const verified = [];
+  for (const candidate of found.values()) {
+    const request = verifyRequestAtLedger(candidate, operatingWallet, priceHistory);
+    if (request) verified.push(request);
+    else excluded += 1;
+  }
+  return {
+    requests: verified.sort((a, b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash)),
+    excluded, scanned, pages, walletCount:1, priceHistory,
+    onboardingCreates:[...onboardingCreates.values()], checkCancels:[...checkCancels.values()]
+  };
+}
+
+// LEAP Protocol 0.24: a request is not membership. Only a successful,
+// authorized LEAP recognition Payment or an actually cashed recognition Check
+// proves a member. Read the applicant's complete validated history; an open
+// Check, CheckCancel, account_lines balance or memo alone is insufficient.
+function recognitionTx(entry) {
+  return entry?.tx_json || entry?.tx || entry?.transaction || {};
+}
+function successfulRecognitionEntry(entry) {
+  const meta = entry?.meta || entry?.metaData || {};
+  return entry?.validated === true && meta.TransactionResult === "tesSUCCESS" &&
+    Number.isSafeInteger(Number(entry.ledger_index ?? recognitionTx(entry).ledger_index)) &&
+    Number.isSafeInteger(Number(meta.TransactionIndex));
+}
+function canonicalRecognitionAmount(amount, issuer, currency) {
+  if (!amount || typeof amount !== "object" || amount.issuer !== issuer ||
+      String(amount.currency || "").toUpperCase() !== currency.toUpperCase()) return null;
+  const value = Number(amount.value);
+  return Number.isSafeInteger(value) && value > 0 ? value : null;
+}
+function recognitionReason(tx, namespace, isLegacy = false) {
+  const memos = Array.isArray(tx.Memos) ? tx.Memos : [];
+  if (memos.length !== 1 || !memos[0]?.Memo) return null;
+  const memo = memos[0].Memo;
+  const type = memoText(memo.MemoType);
+  const format = memoText(memo.MemoFormat);
+  const data = memoText(memo.MemoData);
+  let value = "";
+  if (!type && !format) value = data;
+  // Pre-authority community records may use the original Type/Data form.
+  else if (isLegacy && !format && type === namespace && /^(BADGE|EVENT|CHALLENGE)=/.test(data)) value = `${namespace}/${data}`;
+  else if (isLegacy && !format && type.startsWith(`${namespace}/`) && !type.includes("=")) {
+    const category = type.slice(namespace.length + 1);
+    if (category === "NEW-MEMBER") value = `${namespace}/BADGE=NEW-MEMBER`;
+    else if (["BADGE","EVENT","CHALLENGE"].includes(category)) value = `${namespace}/${category}=${data}`;
+  }
+  const prefix = `${namespace}/`;
+  if (!value.startsWith(prefix)) return null;
+  const match = /^(BADGE|EVENT|CHALLENGE)=([A-Z0-9]+(?:-[A-Z0-9]+)*)$/.exec(value.slice(prefix.length));
+  if (!match || (match[1] === "CHALLENGE" && !/^LEAP-\d{3,}$/.test(match[2]))) return null;
+  return {category:match[1], id:match[2]};
+}
+function checkCreatedId(meta) {
+  for (const wrap of meta?.AffectedNodes || []) {
+    const node = wrap?.CreatedNode;
+    if (node?.LedgerEntryType === "Check" && /^[A-Fa-f0-9]{64}$/.test(node.LedgerIndex || "")) return node.LedgerIndex.toUpperCase();
+  }
+  return "";
+}
+function recognitionFromHistory(entries, applicant, communityId, operatingWallet, catalog, issuer, currency, legacyDistributors) {
+  const namespace = `${communityId}-LEAP`;
+  const cashes = new Map();
+  for (const entry of entries) {
+    if (!successfulRecognitionEntry(entry)) continue;
+    const tx = recognitionTx(entry), meta = entry.meta || entry.metaData || {};
+    if (tx.TransactionType !== "CheckCash" || tx.Account !== applicant ||
+        !/^[A-Fa-f0-9]{64}$/.test(tx.CheckID || "")) continue;
+    // Actual received LEAP is authoritative, not the Check's offered SendMax.
+    const actualDelivery = meta.delivered_amount ?? meta.DeliveredAmount;
+    const delivered = canonicalRecognitionAmount(actualDelivery, issuer, currency);
+    // Only when XRPL omits delivery metadata may exact Amount-style cashing
+    // prove the amount. Never override an explicit incompatible delivery record.
+    const exact = actualDelivery !== undefined && actualDelivery !== null ? delivered :
+      (tx.DeliverMin === undefined ? canonicalRecognitionAmount(tx.Amount, issuer, currency) : null);
+    if (exact === null) continue;
+    cashes.set(tx.CheckID.toUpperCase(), {amount:exact,
+      hash:String(entry.hash || tx.hash || "").toUpperCase(), ledger:Number(entry.ledger_index ?? tx.ledger_index)});
+  }
+  const proofs = [];
+  for (const entry of entries) {
+    if (!successfulRecognitionEntry(entry)) continue;
+    const tx = recognitionTx(entry), meta = entry.meta || entry.metaData || {};
+    if (!(["CheckCreate","Payment"].includes(tx.TransactionType)) || tx.Destination !== applicant) continue;
+    const ledger = Number(entry.ledger_index ?? tx.ledger_index), txIndex = Number(meta.TransactionIndex);
+    const legacy = tx.Account !== operatingWallet && legacyDistributors.has(tx.Account);
+    if (tx.Account !== operatingWallet && !legacy) continue;
+    const reason = recognitionReason(tx, namespace, legacy);
+    if (!reason || recognitionAvailabilityFromCatalog({catalog,category:reason.category,id:reason.id,
+      ledgerIndex:ledger,transactionIndex:txIndex}).available !== true) continue;
+    let amount = null, confirmed = null;
+    if (tx.TransactionType === "CheckCreate") {
+      if (tx.Expiration !== undefined || canonicalRecognitionAmount(tx.SendMax, issuer, currency) === null) continue;
+      const checkId = checkCreatedId(meta);
+      confirmed = cashes.get(checkId);
+      if (!checkId || !confirmed) continue; // Check offered, not earned.
+      amount = confirmed.amount;
+    } else {
+      const flags = Number(tx.Flags ?? 0);
+      if (!Number.isSafeInteger(flags) || flags < 0) continue;
+      const actualDelivery = meta.delivered_amount ?? meta.DeliveredAmount;
+      const delivered = canonicalRecognitionAmount(actualDelivery, issuer, currency);
+      // Without DeliveredAmount only a non-partial, direct LEAP Payment is provable from Amount.
+      // Explicit delivery metadata must agree with the canonical asset.
+      amount = actualDelivery !== undefined && actualDelivery !== null ? delivered :
+        (((flags & 0x00020000) === 0 && tx.Paths === undefined && tx.SendMax === undefined)
+          ? canonicalRecognitionAmount(tx.Amount, issuer, currency) : null);
+      if (amount === null) continue;
+    }
+    const hash = String(entry.hash || tx.hash || "").toUpperCase();
+    if (!/^[A-F0-9]{64}$/.test(hash)) continue;
+    if (confirmed && !/^[A-F0-9]{64}$/.test(confirmed.hash)) continue;
+    proofs.push({type:tx.TransactionType === "CheckCreate" ? "CheckCash" : "Payment",
+      reason:`${reason.category}=${reason.id}`, amount, awardLedger:ledger, awardHash:hash,
+      ledger:confirmed ? confirmed.ledger : ledger,
+      hash:confirmed ? confirmed.hash : hash});
+  }
+  proofs.sort((a,b) => a.ledger - b.ledger || a.awardLedger - b.awardLedger);
+  return proofs[0] || null;
+}
+// Check lifecycle evidence: the wallet makes the request, the authorized
+// Operating Wallet issues a 1-LEAP Check to that wallet, and the Check ID
+// connects issuance to a validated CheckCash. No separate history scan.
+function ledgerCheckPosition(entry) {
+  const tx = recognitionTx(entry), meta = entry?.meta || entry?.metaData || {};
+  const ledger = Number(entry?.ledger_index ?? tx.ledger_index);
+  const txIndex = Number(meta.TransactionIndex);
+  if (!successfulRecognitionEntry(entry) || !Number.isSafeInteger(ledger) || ledger < 1 ||
+      !Number.isSafeInteger(txIndex) || txIndex < 0) return null;
+  const hash = String(entry?.hash || tx.hash || "").toUpperCase();
+  return /^[0-9A-F]{64}$/.test(hash) ? {ledger,txIndex,hash} : null;
+}
+function onboardingCheckCreate(entry, source, communityId) {
+  const tx = recognitionTx(entry), position = ledgerCheckPosition(entry);
+  if (!position || tx.TransactionType !== "CheckCreate" || tx.Account !== source ||
+      !isClassicAddress(tx.Destination) || tx.Expiration !== undefined ||
+      tx.Account !== source) return null;
+  const expectedIssuer = String(window.WILD_LEDGER_CONFIG?.leapIssuer || "");
+  const expectedCurrency = String(window.WILD_LEDGER_CONFIG?.leapCurrency || "").toUpperCase();
+  if (!isClassicAddress(expectedIssuer) || !expectedCurrency ||
+      tx.SendMax?.issuer !== expectedIssuer ||
+      String(tx.SendMax?.currency || "").toUpperCase() !== expectedCurrency ||
+      !/^1(?:\.0+)?$/.test(String(tx.SendMax?.value || ""))) return null;
+  // Older CheckCreate transactions with Badge/Event/Challenge recognition
+  // memos do not belong to the Onboarding Checkbook.
+  const memoTextValues = (Array.isArray(tx.Memos) ? tx.Memos : []).flatMap(w =>
+    ["MemoData","MemoType","MemoFormat"].map(key => memoText(w?.Memo?.[key])));
+  const oldRecognition = new RegExp(`(?:^|/)${communityId}-LEAP/(?:BADGE|EVENT|CHALLENGE)(?:=|$)`);
+  if (memoTextValues.some(text => oldRecognition.test(text) ||
+      /^\s*(?:BADGE|EVENT|CHALLENGE)=/.test(text))) return null;
+  const id = checkCreatedId(entry.meta || entry.metaData || {});
+  if (!id) return null;
+  return {id, source, destination:tx.Destination, ...position};
+}
+function successfulCheckAction(entry, kind, actor) {
+  const tx = recognitionTx(entry), position = ledgerCheckPosition(entry);
+  const id = String(tx.CheckID || "").toUpperCase();
+  if (!position || tx.TransactionType !== kind || tx.Account !== actor ||
+      !/^[0-9A-F]{64}$/.test(id)) return null;
+  return {id, ...position};
+}
+function compareLedgerPositions(a,b) {
+  return a.ledger - b.ledger || a.txIndex - b.txIndex;
+}
+function onboardingLifecycleByWallet(requests, creates, cancellations, cashes) {
+  const output = new Map();
+  const requested = new Map();
+  for (const r of requests) {
+    const earliest = requested.get(r.applicant);
+    if (!earliest || compareLedgerPositions(r, earliest) < 0) requested.set(r.applicant, r);
+  }
+  for (const [wallet, firstRequest] of requested) {
+    const matching = creates.filter(c => c.destination === wallet &&
+      compareLedgerPositions(c, firstRequest) > 0).sort(compareLedgerPositions);
+    const cashed = [...matching].reverse().find(c => cashes.has(c.id));
+    const outstanding = [...matching].reverse().find(c => !cashes.has(c.id) && !cancellations.has(c.id));
+    const lastCanceled = [...matching].reverse().find(c => cancellations.has(c.id));
+    const selected = cashed || outstanding || lastCanceled;
+    const status = cashed ? "cashed" : outstanding ? "issued" : lastCanceled ? "canceled" : "unissued";
+    output.set(wallet, {status,
+      id:selected?.id || "", issuedHash:selected?.hash || "", issuedLedger:selected?.ledger || null,
+      issuingWallet:selected?.source || "",
+      cashHash:cashed ? cashes.get(cashed.id)?.hash || "" : "",
+      cashLedger:cashed ? cashes.get(cashed.id)?.ledger || null : null,
+      cancelHash:status === "canceled" ? cancellations.get(lastCanceled.id)?.hash || "" : ""});
+  }
+  return output;
+}
+
+// Keep every independently identified onboarding Check as its own entry.
+// The wallet-level summary above remains for the EXISTING First LEAP issuance
+// preflight; it must not be used to select a Checkbook display row.
+function onboardingChecksById(requests, creates, cancellations, cashes) {
+  const requestsByWallet = new Map();
+  for (const request of requests) {
+    if (!requestsByWallet.has(request.applicant)) requestsByWallet.set(request.applicant, []);
+    requestsByWallet.get(request.applicant).push(request);
+  }
+  for (const walletRequests of requestsByWallet.values()) walletRequests.sort(compareLedgerPositions);
+  return creates.flatMap(created => {
+    const requestsForWallet = requestsByWallet.get(created.destination) || [];
+    const request = [...requestsForWallet].reverse().find(r => compareLedgerPositions(r, created) < 0);
+    if (!request) return []; // Not proven to follow a valid onboarding request.
+    const cash = cashes.get(created.id);
+    const cancel = cancellations.get(created.id);
+    return [{id:created.id, applicant:created.destination, requestHash:request.hash,
+      status:cash ? "cashed" : cancel ? "canceled" : "issued",
+      issuedHash:created.hash, issuedLedger:created.ledger, issuedTxIndex:created.txIndex,
+      issuingWallet:created.source, cashHash:cash?.hash || "", cashLedger:cash?.ledger || null,
+      cashTxIndex:cash?.txIndex ?? null, cancelHash:cancel?.hash || ""}];
+  }).sort((a,b) => b.issuedLedger - a.issuedLedger ||
+    b.issuedTxIndex - a.issuedTxIndex || a.id.localeCompare(b.id));
+}
+
+async function verifyApplicantsRecognition(requests, communityId, operatingWallet, onProgress = () => {}, onApplicantHistory = () => {}, checkActive = () => {}) {
+  const applicants = [...new Set(requests.map(request => request.applicant))];
+  if (!applicants.length) return requests;
+  const cfg = window.WILD_LEDGER_CONFIG || {};
+  const issuer = String(cfg.leapIssuer || "");
+  const currency = String(cfg.leapCurrency || "");
+  const initialWallet = String(operatingWallet || "");
+  if (!isClassicAddress(issuer) || !currency || !isClassicAddress(initialWallet))
+    throw new Error("Canonical LEAP identity or original community wallet is unavailable. Membership status cannot be verified.");
+  onProgress({stage:"catalog", index:0, total:applicants.length});
+  const community = {id:communityId.toLowerCase(),backendId:communityId,
+    communityName:$("communityName").textContent, leapNamespace:`${communityId}-LEAP`, operatingWallet:initialWallet};
+  const catalog = await loadRecognitionCatalog({community,serverUrl:xrplServer,issuer,currency,includeIgnored:true});
+  checkActive();
+  const legacyDistributors = new Set([PERMANENT_LEAP_DISTRIBUTOR,
+    ...(Array.isArray(cfg.leapDistributors) ? cfg.leapDistributors : [])]);
+  const proofByApplicant = new Map();
+  const client = new DirectXRPLClient(xrplServer);
+  try {
+    await client.connect();
+    checkActive();
+    for (const [index, applicant] of applicants.entries()) {
+      checkActive();
+      let marker;
+      const entries = [];
+      do {
+        checkActive();
+        const fields = {account:applicant,ledger_index_min:-1,ledger_index_max:-1,binary:false,forward:true,limit:400};
+        if (marker !== undefined && marker !== null) fields.marker = marker;
+        const response = await client.request("account_tx",fields,30000);
+        checkActive();
+        if (!Array.isArray(response?.result?.transactions)) throw new Error("XRPL did not provide the complete applicant history.");
+        entries.push(...response.result.transactions);
+        marker = response.result.marker;
+      } while (marker !== undefined && marker !== null);
+      onApplicantHistory(applicant, entries);
+      proofByApplicant.set(applicant,recognitionFromHistory(entries,applicant,communityId,operatingWallet,catalog,issuer,currency,legacyDistributors));
+      onProgress({stage:"member", index:index+1,total:applicants.length});
+    }
+  } finally { client.close(); }
+  return requests.map(request => ({...request,recognition:proofByApplicant.get(request.applicant)
+    ? {status:"fulfilled",proof:proofByApplicant.get(request.applicant)}
+    : {status:"awaiting",proof:null}}));
+}
+
+// One read-only verification operation: the shared module shows the approved
+// Get Wild Trail; this page owns evidence, XRPL reads, and the Checkbook report.
+// X is the only way to cancel recoverable XRPL read retries.
+let guideMode = true;
+let busy = false;
+let completed = false;
+let openingRun = 1;
+const OPENING_CLOSED = Symbol("Opening Ledger Trail closed");
+const stepStates = ["pending", "pending", "pending", "pending"];
+const runContext = { session:null, requests:null, checks:null, scanned:0, pages:0, excluded:0, priceStatements:0 };
+// Reassess required properties on every load. Get Wild owns authorization;
+// this page consumes its established session and gathers only missing report data.
+const openingRequirements = (() => {
+  const user = readUserSession();
+  const operator = readCentralOperatorSession();
+  const identityReady = user?.authority === "operator" && isClassicAddress(user.wallet) &&
+    !!operator?.communityId && !!operator?.communityName;
+  const reportReady = identityReady &&
+    Array.isArray(operator.membershipRequests) && Array.isArray(operator.checkRecords);
+  return { identityReady, reportReady, user, operator };
+})();
+const titles = ["Identify your community", "Check Authority", "Find membership requests", "Prove report readiness"];
+const openingStepIds = ["identify", "authority", "requests", "ready"];
+const openingTrail = createLedgerTrail({
+  title: "Onboarding Checkbook",
+  description: "Wild Ledger checks your Operator session and reads validated XRPL evidence for this Checkbook.",
+  steps: openingStepIds.map((id, i) => ({id, title:titles[i], detail:"Waiting for the previous checkpoint."})),
+  onClose: closeGuide
+});
+openingTrail.element.id = "openingCheckbookTrail";
+function openingActive(run) {
+  return guideMode && run === openingRun && openingTrail.element.classList.contains("show");
+}
+function assertOpeningActive(run) {
+  if (!openingActive(run)) throw OPENING_CLOSED;
+}
+function nextStep() { const index = stepStates.findIndex(s => s !== "done"); return index < 0 ? 0 : index + 1; }
+function reportIsReady() { return stepStates.every(s => s === "done"); }
+function updateGuideStatus(message, failed = false) {
+  if (guideMode && openingTrail.element.classList.contains("show"))
+    openingTrail.setStatus(message, failed ? "error" : "busy");
+}
+function setTrailStep(number, state, message) {
+  stepStates[number-1] = state;
+  if (guideMode && openingTrail.element.classList.contains("show"))
+    openingTrail.setStep(openingStepIds[number-1], state, message);
+}
+function resetTrail() {
+  completed = false;
+  $("authorizedContent").hidden = true;
+  $("backLink").hidden = true;
+  runContext.session = null; runContext.requests = null; runContext.checks = null;
+  runContext.scanned = 0; runContext.pages = 0; runContext.excluded = 0; runContext.priceStatements = 0;
+  for (let n = 1; n <= 4; n++)
+    setTrailStep(n, "pending", "Waiting for the previous step.");
+  updateGuideStatus("Reading your Operator session…");
+}
+function trailFailure(number, message) {
+  setTrailStep(number, "failed", message);
+  $("authorizedContent").hidden = true;
+  $("backLink").hidden = true;
+  updateGuideStatus(message, true);
+}
+
+function assertSessionUnchanged() {
+  const original = runContext.session;
+  const current = readOperatorSession();
+  if (!original || !current || current.wallet !== original.wallet || current.communityId !== original.communityId)
+    throw new Error("The Operator session changed during verification. Sign in through Get Wild again.");
+  return current;
+}
+
+async function performStep(number, checkActive = () => {}) {
+  const session = runContext.session;
+  if (number === 1) {
+    const active = readOperatorSession();
+    if (!active) throw new Error("There is no verified Operator session in this tab. Sign in through Get Wild.");
+    runContext.session = active;
+    return {message:`Operator session found for ${active.communityId}.`, evidence:`Community ID: ${active.communityId}\nSession wallet: ${active.wallet}\nSource: Get Wild Operator session.`};
+  }
+  if (number === 2) {
+    const active = assertSessionUnchanged();
+    return {message:`Operator authority checked for ${active.communityId}.`,
+      evidence:`Community ID: ${active.communityId}\nCommunity name: ${active.communityName}\nOperator wallet: ${active.wallet}\nAuthority: operator\nSource: established Get Wild session objects.`};
+  }
+  if (number === 3) {
+    assertSessionUnchanged();
+    const communityName = session.communityName;
+    $("communityName").textContent = communityName;
+    $("communityId").textContent = session.communityId;
+    $("operatorWallet").textContent = session.wallet;
+    $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(session.communityId)}&role=operator`;
+    document.title = `Onboarding Checkbook · ${communityName} | Wild Ledger`;
+    $("requestStatus").classList.remove("error");
+    if (openingRequirements.reportReady) {
+      // The required XRPL-derived report is already in the central Operator session.
+      // An empty result array means the XRPL investigation returned zero rows.
+      runContext.requests = openingRequirements.operator.membershipRequests;
+      runContext.checks = openingRequirements.operator.checkRecords;
+      $("requestStatus").textContent = "Using membership requests already gathered from XRPL.";
+      return {message:`${runContext.requests.length} membership requests already available from XRPL.`,
+        evidence:"Existing Operator session contains the completed Checkbook report."};
+    }
+    $("requestStatus").textContent = "Finding membership-request payments in XRPL history…";
+    // Get Wild supplies the one Operating Wallet. Scan it once for prices,
+    // requests, and onboarding Checks; no authority reconstruction.
+    if (!xrplServer) throw new Error("Wild Ledger has no configured XRPL server for Checkbook history.");
+    updateGuideStatus("Reviewing check history on XRPL");
+    const result = await discoverMatchingPayments(session.communityId, session.wallet, progress => {
+      checkActive();
+      runContext.scanned = progress.scanned;
+      runContext.pages = progress.pages;
+      runContext.excluded = progress.excluded;
+      updateGuideStatus(`Reviewing check history on XRPL ${progress.scanned} entries checked; ${progress.matches} candidate ${progress.matches === 1 ? "request" : "requests"}.`);
+    }, checkActive);
+    checkActive();
+    assertSessionUnchanged();
+    runContext.priceStatements = result.priceHistory.length;
+    checkActive();
+    assertSessionUnchanged();
+    // Reuse the completed ledger request scan; the member-status verification is
+    // still part of this same guided step, never a second destination scan.
+    const checkCashes = new Map();
+    const checkCancels = new Map(result.checkCancels.map(c => [c.id,c]));
+    const withRecognition = await verifyApplicantsRecognition(result.requests, session.communityId, session.wallet, p => {
+      checkActive();
+      const message = p.stage === "catalog" ? "Checking the community's recognition history…" :
+        `Checking member ${p.index} of ${p.total} for delivered LEAP…`;
+      updateGuideStatus(message);
+    }, (wallet, entries) => {
+      checkActive();
+      for (const entry of entries) {
+        const cash = successfulCheckAction(entry, "CheckCash", wallet);
+        if (cash) checkCashes.set(cash.id, cash);
+        const cancel = successfulCheckAction(entry, "CheckCancel", wallet);
+        if (cancel) checkCancels.set(cancel.id, cancel);
+      }
+    }, checkActive);
+    checkActive();
+    assertSessionUnchanged();
+    const lifecycleByWallet = onboardingLifecycleByWallet(result.requests,
+      result.onboardingCreates, checkCancels, checkCashes);
+    runContext.requests = withRecognition.map(row => ({...row,
+      onboardingCheck:lifecycleByWallet.get(row.applicant)}));
+    runContext.checks = onboardingChecksById(result.requests,
+      result.onboardingCreates, checkCancels, checkCashes);
+    runContext.excluded = result.excluded;
+    const proofs = result.requests.slice(0, 5).map(r =>
+      `Validated ledger: ${r.ledger}, transaction: ${r.txIndex}\nApplicant: ${r.applicant}\nAuthorized recipient: ${r.destination}\nXRP paid: ${r.drops} drops\nRequired price at that time: ${r.expectedDrops} drops\nPrice source: ${r.priceStatement ? `ledger ${r.priceStatement.ledger}, transaction ${r.priceStatement.txIndex}` : "1-drop protocol default"}\nMemo: WILD-LEDGER/MEMBERSHIP-REQUEST/${session.communityId}\nResult: tesSUCCESS\nHash: ${r.hash}`
+    ).join("\n\n");
+    return {
+      message:`${result.requests.length} ${result.requests.length === 1 ? "membership request" : "membership requests"} found and verified.`,
+      evidence:`Community: ${session.communityId}\nOperating Wallet searched: ${session.wallet}\nTransactions read: ${result.scanned}\nHistory pages: ${result.pages}\nHistorical price statements: ${result.priceHistory.length}\nVerified requests: ${result.requests.length}\nMembers confirmed: ${withRecognition.filter(r=>r.recognition.status === "fulfilled").length}\nAwaiting LEAP: ${withRecognition.filter(r=>r.recognition.status === "awaiting").length}\nCandidates that did not qualify: ${result.excluded}\nChecked: Community ID and exact memo; validated successful native-XRP Payment without paths or partial payment; established Operating Wallet and Join Request Price immediately before payment.${proofs ? `\n\nSample verified transaction evidence (up to 5):\n${proofs}` : ""}`
+    };
+  }
+  if (number === 4) {
+    const current = assertSessionUnchanged();
+    const requests = runContext.requests;
+    if (!Array.isArray(requests) || !Array.isArray(runContext.checks))
+      throw new Error("The search has not finished. Return to the previous step.");
+    // Publish only the verified Checkbook data to the Operator's central session.
+    const operator = readCentralOperatorSession();
+    if (!operator || operator.communityId !== current.communityId)
+      throw new Error("The Operator community changed during verification.");
+    const membershipRequests = (Array.isArray(operator.membershipRequests)
+      ? operator.membershipRequests : requests.map(row => ({
+      applicant: row.applicant,
+      hash: row.hash,
+      ledger: row.ledger,
+      txIndex: row.txIndex,
+      recognition: { status: row.recognition.status },
+      onboardingCheck: row.onboardingCheck
+    })));
+    const checkRecords = Array.isArray(operator.checkRecords)
+      ? operator.checkRecords : runContext.checks;
+    if (!openingRequirements.reportReady &&
+        !updateOperatorSession({ membershipRequests, checkRecords, checkbookLoadedFor: current.wallet }))
+      throw new Error("The verified Checkbook could not be saved to the Operator session.");
+    $("backLink").hidden = false;
+    document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
+    return {message:"All checks passed. Membership Requests are ready.",evidence:`Session rechecked: ${current.communityId}\nOperator wallet: ${current.wallet}\nVerified report rows: ${requests.length}\nCandidates not qualifying under Protocol 0.24: ${runContext.excluded}\nOperating Wallet request records included.`};
+  }
+  throw new Error("Unknown Ledger Trail step.");
+}
+
+function revealMembershipReport() {
+  $("checkbookShell").hidden = false;
+  $("authorizedContent").hidden = false;
+  window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified"));
+  $("authorizedContent").scrollIntoView({block:"start", behavior:"auto"});
+}
+function finishTrail(run) {
+  assertOpeningActive(run);
+  completed = true;
+  openingTrail.finish({message:"Completed",onFinished() {
+    if (!openingActive(run)) return;
+    openingTrail.close();
+    guideMode = false;
+    revealMembershipReport();
+  }});
+}
+function closeGuide() {
+  // X alone cancels retry loops. In-flight calls can settle, but cannot start
+  // further XRPL requests, complete a checkpoint, or advance after this point.
+  openingRun += 1;
+  guideMode = false;
+  if (completed) { revealMembershipReport(); return; }
+  // Closing the real opening Trail must not strand the operator behind a hidden shell.
+  $("authorizedContent").hidden = true;
+  $("reportGateMessage").textContent = "Checkbook verification was canceled. Return to Get Wild or View Community to continue.";
+  $("reportGateLink").href = openingRequirements.identityReady
+    ? `viewCommunity.html?community=${encodeURIComponent(openingRequirements.operator.communityId)}&role=operator`
+    : "getWild.html";
+  $("reportGateLink").textContent = openingRequirements.identityReady ? "Return to View Community" : "Return to Get Wild";
+  $("reportGate").hidden = false;
+  $("checkbookShell").hidden = false;
+}
+
+function isTemporaryXRPLReadFailure(error) {
+  const message = String(error?.message || error || "");
+  return /(?:websocket|socket|connection|disconnect|network|fetch failed|failed to fetch|timed? out|timeout|too busy|server.{0,25}busy|overload|slow.?down|rate.?limit|too many requests|temporarily unavailable|service unavailable|429|502|503|504)/i.test(message);
+}
+// Zero-millisecond event-loop yield (not a timed backoff): keeps the X clickable
+// even if a broken transport rejects synchronously on every connection attempt.
+const yieldToX = () => new Promise(resolve => setTimeout(resolve, 0));
+async function performWithAutomaticReadRetry(number, run) {
+  const checkActive = () => assertOpeningActive(run);
+  for (;;) {
+    checkActive();
+    try {
+      const result = await performStep(number, checkActive);
+      checkActive();
+      return result;
+    } catch (error) {
+      if (!openingActive(run) || error === OPENING_CLOSED) throw OPENING_CLOSED;
+      if (number !== 3 || !isTemporaryXRPLReadFailure(error)) throw error;
+      const message = "XRPL connection interrupted. Reconnecting automatically…";
+      $("requestStatus").textContent = message;
+      updateGuideStatus(message);
+      await yieldToX();
+    }
+  }
+}
+async function runNext() {
+  if (busy || completed || !guideMode) return;
+  const run = openingRun;
+  const number = nextStep();
+  if (!number || stepStates[number-1] === "failed") return;
+  busy = true;
+  const workingMessage = ["Reading your existing Operator session…", "Checking established Operator authority in session…", "Reviewing check history on XRPL", "Checking your Operator session before displaying the verified requests…"][number-1];
+  setTrailStep(number,"working",workingMessage);
+  updateGuideStatus(workingMessage);
+  let succeeded = false;
+  try {
+    const result = await performWithAutomaticReadRetry(number,run);
+    assertOpeningActive(run);
+    setTrailStep(number,"done",result.message);
+    updateGuideStatus(result.message);
+    succeeded = true;
+    if (reportIsReady()) finishTrail(run);
+  } catch (error) {
+    if (error !== OPENING_CLOSED && openingActive(run)) trailFailure(number,String(error?.message || error));
+  } finally {
+    busy = false;
+    if (succeeded && openingActive(run) && !completed) void runNext();
+  }
+}
+// The opening Trail is a tool for gathering missing requirements, not a
+// mandatory presentation. Inspect the actual central-session properties first.
+if (openingRequirements.reportReady) {
+  // Get Wild already established identity and the XRPL-derived report is present.
+  // Do not run the opening Trail or repeat historical ledger reads.
+  const {user, operator} = openingRequirements;
+  guideMode = false;
+  completed = true;
+  stepStates.fill("done");
+  runContext.session = {wallet:user.wallet, communityId:operator.communityId,
+    communityName:operator.communityName};
+  runContext.requests = operator.membershipRequests;
+  runContext.checks = operator.checkRecords;
+  $("communityName").textContent = operator.communityName;
+  $("communityId").textContent = operator.communityId;
+  $("operatorWallet").textContent = user.wallet;
+  $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(operator.communityId)}&role=operator`;
+  $("backLink").hidden = false;
+  $("requestStatus").textContent = "Membership requests ready.";
+  document.title = `Onboarding Checkbook · ${operator.communityName} | Wild Ledger`;
+  $("authorizedContent").hidden = false;
+  $("checkbookShell").hidden = false;
+  // The report renderer lives in a separate module; its ready-on-load check
+  // also handles module evaluation order without triggering an XRPL scan.
+} else {
+  resetTrail();
+  openingTrail.element.classList.add("opening-first-paint");
+  openingTrail.open({resetSteps:true});
+  requestAnimationFrame(() => openingTrail.element.classList.remove("opening-first-paint"));
+  void runNext();
+}
+window.addEventListener("wildLedgerIssuanceAudit", event => {
+  const { resolve, reject, checkActive = () => {} } = event.detail || {};
+  void (async () => {
+    if (!completed || busy || !reportIsReady()) throw new Error("Finish the membership-request Ledger Trail first.");
+    checkActive();
+    assertSessionUnchanged();
+    await performStep(2,checkActive);
+    checkActive();
+    await performStep(3,checkActive);
+    checkActive();
+    await performStep(4,checkActive);
+    checkActive();
+    const session = assertSessionUnchanged();
+    return { session, rows:runContext.requests };
+  })().then(resolve, reject);
+});
+</script>
+<script type="module">
+import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
+import { decode } from "https://esm.sh/ripple-binary-codec@2.11.0?bundle";
+import { createLedgerTrail } from "./js/ledgerTrail.js";
+import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
+import { isClassicAddress, DirectXRPLClient, prepareTransaction, submitSignedTransaction } from "./js/xrplTransport.js";
+import { resolveWalletAccess } from "./js/communityAccess.js";
+import { readUserSession, readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
+
+const $ = id => document.getElementById(id);
+const xrplServer = String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+
+function readOperatorSession() {
+  const user = readUserSession();
+  const operator = readCentralOperatorSession();
+  if (user?.authority !== "operator" || !isClassicAddress(user.wallet) ||
+      !operator?.communityId || !operator?.communityName) return null;
+  return { wallet: user.wallet, communityId: operator.communityId,
+    name: operator.communityName };
+}
+
+function checkedHandoff(session) {
+  // Only the Operator's verified XRPL data, published by Worker 1, is consumed.
+  const operator = readCentralOperatorSession();
+  if (!operator || !session || operator.communityId !== session.communityId) return null;
+  if (!Array.isArray(operator.membershipRequests) || !Array.isArray(operator.checkRecords)) return null;
+  return { requests: operator.membershipRequests, checks: operator.checkRecords,
+    communityName: operator.communityName };
+}
+
+function formatXrp(drops) {
+  // Use integer arithmetic so a one-drop payment displays exactly as 0.000001 XRP.
+  const amount = BigInt(drops);
+  const whole = amount / 1000000n;
+  const fractional = (amount % 1000000n).toString().padStart(6, "0").replace(/0+$/, "");
+  return fractional ? `${whole}.${fractional}` : String(whole);
+}
+
+function shortWallet(address) {
+  return `${address.slice(0, 9)}…${address.slice(-6)}`;
+}
+
+function createCell(label, valueNode) {
+  const td = document.createElement("td");
+  td.dataset.label = label;
+  if (valueNode instanceof Node) td.append(valueNode);
+  else td.textContent = String(valueNode);
+  return td;
+}
+
+// Issuance Trail: no second page and no duplicate membership-request scanner.
+// Keep signed transaction bytes in memory during the active issuance Trail.
+const issueStage = Array(7).fill("pending");
+const issue = { busy:false, signing:false, cancelled:false, selected:null, signer:null, prepared:null,
+  signedBlob:"", pendingHash:"", verified:null, confirmed:false, qrRetries:0, recoveryAttempts:0, retryTimer:null, pairingPending:false };
+const runtime = window.WILD_LEDGER_CONFIG || {};
+const issueServer = String(runtime.xrplWebSocket || "").trim();
+const issueProjectId = String(runtime.walletConnectProjectId || "").trim();
+const issueIssuer = String(runtime.leapIssuer || "").trim();
+const issueCurrency = String(runtime.leapCurrency || "").trim();
+const HASH = /^[A-F0-9]{64}$/;
+// XRPL transaction IDs are SHA-512Half of TXN\0 + the signed serialized bytes.
+// Knowing the hash BEFORE submission permits recovery even if submit times out.
+async function signedCheckHash(blob) {
+  const bytes=Uint8Array.from(blob.match(/../g), h => Number.parseInt(h,16));
+  const payload=new Uint8Array(bytes.length+4);
+  payload.set([0x54,0x58,0x4E,0x00]);
+  payload.set(bytes,4);
+  const digest=new Uint8Array(await crypto.subtle.digest("SHA-512",payload));
+  return Array.from(digest.slice(0,32),b=>b.toString(16).padStart(2,"0")).join("").toUpperCase();
+}
+
+const issuanceStepIds = ["request", "prepare", "wallet", "sign", "submit", "verify", "return"];
+const issuanceStepTitles = ["Verify request and authority", "Prepare 1-LEAP Check", "Connect Bifrost", "Sign Check", "Submit and validate", "Verify issuance", "Return to Checkbook"];
+const issueTrail = createLedgerTrail({
+  title:"Issue First LEAP",
+  description:"An onboarding Check for the verified requester. The recipient must cash it to receive LEAP.",
+  steps:issuanceStepIds.map((id,i)=>({id,title:issuanceStepTitles[i],detail:"Waiting for the previous checkpoint."})),
+  onClose:()=>{
+    // X is the only cancellation of recoverable XRPL read loops.
+    issue.cancelled=true;
+    issue.closedByHuman=true;
+    issue.runId++;
+    if (!issue.signing && issue.signer) void issue.signer.disconnect().catch(()=>{});
+  }
+});
+issueTrail.element.id="issuanceLedgerTrail";
+issue.runId=0;
+issue.closedByHuman=false;
+issue.qrDataUrl="";
+function assertIssueOpen(run=issue.runId) {
+  if (issue.cancelled || run!==issue.runId || !issueTrail.element.classList.contains("show"))
+    throw new Error("ISSUANCE_TRAIL_CLOSED");
+}
+const issueYieldToX=()=>new Promise(resolve=>setTimeout(resolve,0)); // event-loop yield; no backoff
+function transientIssueRead(error) {
+  const message=String(error?.message||error||"");
+  return /websocket|socket|connection|disconnect|network|fetch failed|failed to fetch|timed? out|timeout|too busy|server.{0,25}busy|overload|slow.?down|rate.?limit|too many requests|temporarily unavailable|service unavailable|\b429\b|\b502\b|\b503\b|\b504\b/i.test(message);
+}
+async function issueReadRetry(operation,stage,message) {
+  const run=issue.runId;
+  for (;;) {
+    assertIssueOpen(run);
+    try {
+      const value=await operation();
+      assertIssueOpen(run);
+      return value;
+    } catch(error) {
+      if (issue.cancelled || run!==issue.runId) throw error;
+      if (!transientIssueRead(error)) throw error;
+      issueUpdate(stage,"working",message);
+      await issueYieldToX();
+    }
+  }
+}
+function issueUpdate(stage,state,message,waitingForWallet=false) {
+  issueStage[stage]=state;
+  const visual=state==="working" && waitingForWallet ? "waiting" : state;
+  if (issueTrail.element.classList.contains("show")) {
+    issueTrail.setStep(issuanceStepIds[stage],visual,message);
+    issueTrail.setStatus(message,state==="failed"?"error":"busy");
+  }
+}
+function issueEvidence(message) { $("issuanceEvidence").textContent=message; }
+function issueHandoff(copy,qrReady=false) {
+  issueTrail.showPrompt({heading:"GO TO BIFROST NOW",detail:copy,qrDataUrl:qrReady?issue.qrDataUrl:""});
+}
+function hideIssueHandoff() { issue.qrDataUrl="";issueTrail.hidePrompt(); }
+function issueFail(stage,error) {
+  if (issue.cancelled) return;
+  hideIssueHandoff();
+  issue.signing=false;
+  const message=String(error?.message||error||"Unknown failure");
+  issueUpdate(stage,"failed",message);
+  issueEvidence(`${message}\n${issue.signedBlob ? "The original signed Check remains available while this page is open." : "No Check was submitted."}`);
+}
+async function issueGuarded(fn) {
+  if (issue.busy || issue.cancelled) return;
+  issue.busy=true;
+  try { await fn(); }
+  catch(error) {
+    if (!issue.cancelled && String(error?.message||error)!=="ISSUANCE_TRAIL_CLOSED") {
+      const activeStage=issueStage.findIndex(state=>state==="working");
+      issueFail(activeStage>=0?activeStage:(issue.signedBlob?4:2),error);
+    }
+  } finally {
+    issue.busy=false;
+    if (issue.cancelled && !issue.signing && issue.signer) { try { await issue.signer.disconnect(); } catch(_) {} }
+  }
+}
+function assertIssueSession() {
+  if (issue.cancelled) throw new Error("The unsigned Ledger Trail was closed.");
+  const session = readOperatorSession();
+  if (!session || session.communityId !== issue.selected?.communityId || session.wallet !== issue.selected?.operatorWallet)
+    throw new Error("The Operator session changed. Return through Get Wild.");
+  return session;
+}
+function auditCurrentCheckbook() {
+  const run=issue.runId;
+  return new Promise((resolve,reject) => {
+    window.dispatchEvent(new CustomEvent("wildLedgerIssuanceAudit", {
+      detail:{resolve,reject,checkActive:()=>assertIssueOpen(run)}
+    }));
+  });
+}
+function qualifiedFirstRequest(rows) {
+  const row = rows.find(r => r.applicant === issue.selected.applicant && r.hash === issue.selected.requestHash);
+  if (!row || row.recognition?.status !== "awaiting" || row.onboardingCheck?.status !== "unissued")
+    throw new Error("XRPL no longer shows this wallet as awaiting its first Check. No Check will be created. Return to the refreshed Checkbook.");
+  return row;
+}
+async function liveIssuePreflight() {
+  assertIssueSession();
+  const readStage=Math.max(0,issueStage.findIndex(state=>state==="working"));
+  const access=await issueReadRetry(()=>resolveWalletAccess({account:issue.selected.operatorWallet,serverUrl:issueServer,force:true}),readStage,
+    "XRPL connection interrupted; verifying Operator authority again…");
+  if (!(access?.operatorMatches||[]).some(m=>m.authorityEstablished===true &&
+      String(m.communityId||"").toUpperCase()===issue.selected.communityId &&
+      m.currentAccount===issue.selected.operatorWallet)) throw new Error("XRPL does not confirm current Operating Wallet authority.");
+  const fresh=await issueReadRetry(auditCurrentCheckbook,readStage,"XRPL connection interrupted; reading membership evidence again…");
+  assertIssueSession();
+  qualifiedFirstRequest(fresh.rows);
+  return fresh;
+}
+function assertCheck(tx, withSigningFields = false) {
+  if (tx?.TransactionType !== "CheckCreate" || tx.Account !== issue.selected.operatorWallet ||
+      tx.Destination !== issue.selected.applicant ||
+      String(tx.SendMax?.issuer || "") !== issueIssuer ||
+      String(tx.SendMax?.currency || "").toUpperCase() !== issueCurrency.toUpperCase() ||
+      String(tx.SendMax?.value) !== "1" ||
+      tx.Expiration !== undefined || tx.Memos !== undefined || tx.InvoiceID !== undefined ||
+      tx.DestinationTag !== undefined || tx.Paths !== undefined)
+    throw new Error("The transaction does not match the approved memo-free, no-expiration, 1-LEAP onboarding Check.");
+  if (withSigningFields) {
+    if (!issue.prepared) throw new Error("The original prepared Check was lost before signing.");
+    // A signing wallet may add signature fields, but may not rewrite any
+    // transaction field. Compare nested issued-token objects by value.
+    const canonical = value => value && typeof value === "object" ?
+      (Array.isArray(value) ? value.map(canonical) : Object.fromEntries(
+        Object.keys(value).sort().map(key => [key,canonical(value[key])]))) : value;
+    const signFields = new Set(["SigningPubKey","TxnSignature","Signers"]);
+    for (const [key,value] of Object.entries(issue.prepared)) {
+      if (signFields.has(key)) continue;
+      if (JSON.stringify(canonical(tx[key])) !== JSON.stringify(canonical(value)))
+        throw new Error(`Bifrost changed the prepared Check field ${key}. No submission is allowed.`);
+    }
+    for (const key of Object.keys(tx)) {
+      if (!signFields.has(key) && !(key in issue.prepared) &&
+          !(key === "Flags" && Number(tx.Flags) === 0))
+        throw new Error(`Bifrost added an unexpected Check field ${key}. No submission is allowed.`);
+    }
+  }
+}
+function clearSavedSignedCheck() {
+  issue.signedBlob="";
+}
+async function startIssuePreflight() {
+  issueUpdate(0,"working","Reading fresh membership and community authority evidence…");
+  await liveIssuePreflight();
+  issueUpdate(0,"done","Verified request remains eligible; Operator authority is current.");
+  issueUpdate(1,"working","Simulating canonical 1-LEAP CheckCreate on XRPL…");
+  if (!issueProjectId || !isClassicAddress(issueIssuer) || !issueCurrency || !issueServer)
+    throw new Error("Required WalletConnect, XRPL, or canonical LEAP configuration is unavailable.");
+  const result = await issueReadRetry(()=>prepareTransaction({serverUrl:issueServer,txJson:{
+    TransactionType:"CheckCreate", Account:issue.selected.operatorWallet,
+    Destination:issue.selected.applicant,
+    SendMax:{currency:issueCurrency,issuer:issueIssuer,value:"1"}
+  }}),1,"XRPL preparation was interrupted; checking again…");
+  issue.prepared = result.preparedTx;
+  assertCheck(issue.prepared);
+  issueEvidence(`Community: ${issue.selected.communityId}\nRequest: ${issue.selected.requestHash}\nFrom: ${issue.selected.operatorWallet}\nTo: ${issue.selected.applicant}\nCanonical LEAP issuer: ${issueIssuer}\nCurrency: ${issueCurrency}\nSendMax: 1 LEAP\nMemo: none\nExpiration: none\nFee: ${issue.prepared.Fee} drops\nSimulated result: ${result.engineResult}\nPrepared transaction:\n${JSON.stringify(issue.prepared,null,2)}`);
+  issueUpdate(1,"done",`Prepared and checked · fee ${issue.prepared.Fee} drops. Issuing an outstanding Check uses XRP reserve.`);
+  await connectIssueWallet();
+}
+async function connectIssueWallet() {
+  issueUpdate(2,"working","Connecting the current Operating Wallet in Bifrost…");
+  assertIssueSession();
+  const run=issue.runId;
+  for (;;) {
+    assertIssueOpen(run);
+    issueHandoff("Approve the Wild Ledger Operating Wallet connection in Bifrost. The Trail continues automatically.");
+    if (issue.signer) { try { await issue.signer.disconnect(); } catch(_) {} }
+    issue.signer=new WalletConnectXrplSigner({projectId:issueProjectId,
+      metadata:{name:"Wild Ledger Onboarding Checkbook",description:"Sign one 1-LEAP onboarding Check",url:location.origin,icons:[`${location.origin}/favicon.ico`]}});
+    try {
+      const connection=await issue.signer.connect({onUri:async uri=>{
+        if (issue.cancelled || run!==issue.runId) return;
+        const qr=await QRCode.toDataURL(uri,{width:520,margin:2,errorCorrectionLevel:"M"});
+        if (issue.cancelled || run!==issue.runId) return;
+        issue.qrDataUrl=qr;
+        issueHandoff("Open Bifrost, approve this wallet connection, and return here. Wild Ledger will continue automatically.",true);
+        issueUpdate(2,"working","Waiting for Bifrost wallet approval…",true);
+      }});
+      assertIssueOpen(run);
+      if (connection.account!==issue.selected.operatorWallet) throw new Error("The Bifrost account does not match the current Community Operating Wallet.");
+      issueUpdate(2,"working","Rechecking current Operator authority and request eligibility…");
+      await liveIssuePreflight();
+      assertIssueOpen(run);
+      hideIssueHandoff();
+      issueUpdate(2,"done",`Connected and checked ${connection.account}.`);
+      await signIssueCheck();
+      return;
+    } catch(error) {
+      if (issue.cancelled || run!==issue.runId) return;
+      if (!transientIssueRead(error)) throw error;
+      issueUpdate(2,"working","Bifrost connection interrupted; preparing a fresh QR…");
+      await issueYieldToX();
+    }
+  }
+}
+async function signIssueCheck() {
+  issueUpdate(3,"working","Rechecking the prepared Check before wallet approval…");
+  assertIssueSession();
+  await liveIssuePreflight();
+  if (issue.signer?.account !== issue.selected.operatorWallet) throw new Error("The signing wallet is no longer the authorized Operator.");
+  assertCheck(issue.prepared);
+  issueHandoff("Review and sign exactly one 1-LEAP Check in Bifrost. Nothing has been submitted yet.");
+  issueUpdate(3,"working","Waiting for your Bifrost Check signature…",true);
+  issue.signing=true;
+  let signed;
+  try { signed=await issue.signer.signTransaction(issue.prepared); }
+  finally { issue.signing=false; }
+  // If the human hit X while Bifrost was open, a returned signature may be
+  // preserved but MUST NEVER trigger an invisible payment submission.
+  const blob=String(signed?.signedBlob||"").toUpperCase();
+  if (!/^[A-F0-9]{80,}$/.test(blob)) throw new Error("Bifrost did not return a valid signed transaction blob.");
+  assertCheck(decode(blob),true);
+  issue.signedBlob=blob;
+  issue.pendingHash=await signedCheckHash(blob);
+  assertIssueOpen();
+  hideIssueHandoff();
+  issueUpdate(3,"done","Bifrost returned the exact signed Check; no XRPL submission has occurred yet.");
+  await submitIssueCheck();
+}
+async function findValidatedIssue(hash) {
+  if (!HASH.test(hash)) throw new Error("The saved signed Check hash is invalid.");
+  return issueReadRetry(async()=>{
+    const client=new DirectXRPLClient(issueServer);
+    try {
+      await client.connect();
+      const reply=await client.request("tx",{transaction:hash,binary:false},20000);
+      return reply.result?.validated===true ? reply.result : null;
+    } catch(error) {
+      if (/not found|txnNotFound/i.test(String(error?.message||""))) return null;
+      throw error;
+    } finally {client.close();}
+  },4,"XRPL lookup interrupted; checking the original signed Check again…");
+}
+async function awaitValidatedIssue() {
+  const run=issue.runId;
+  for (;;) {
+    assertIssueOpen(run);
+    const tx=await findValidatedIssue(issue.pendingHash);
+    assertIssueOpen(run);
+    if (tx) return tx;
+    issueUpdate(4,"working","Waiting for validated XRPL confirmation of this exact signed Check…");
+    await issueYieldToX();
+  }
+}
+async function checkIssueReadback(tx,hash) {
+  if (tx?.validated !== true || (tx.meta || tx.metaData)?.TransactionResult !== "tesSUCCESS")
+    throw new Error("No successful validated CheckCreate was found. Issuance is not confirmed.");
+  const actual=tx.tx_json || tx.tx || tx.transaction || tx;
+  assertCheck(actual);
+  const meta=tx.meta || tx.metaData || {};
+  const created=(meta.AffectedNodes || []).find(node => node?.CreatedNode?.LedgerEntryType === "Check" && HASH.test(String(node.CreatedNode.LedgerIndex || "").toUpperCase()));
+  const id=String(created?.CreatedNode?.LedgerIndex || "").toUpperCase();
+  if (!HASH.test(id)) throw new Error("The validated transaction did not provide a created Check ID.");
+  // The actual current Check ledger object, not a browser flag, proves it is open.
+  let open=false;
+  try {
+    try {
+      const ledger=await issueReadRetry(async()=>{
+        const client=new DirectXRPLClient(issueServer);
+        try { await client.connect(); return await client.request("ledger_entry",{check:id,ledger_index:"validated"},20000); }
+        finally {client.close();}
+      },5,"XRPL Check-object lookup interrupted; checking again…");
+      const obj=ledger?.result?.node || {};
+      if (obj.LedgerEntryType !== "Check" || obj.Account !== issue.selected.operatorWallet ||
+        obj.Destination !== issue.selected.applicant || obj.Expiration !== undefined ||
+        obj.SendMax?.issuer !== issueIssuer || String(obj.SendMax?.currency || "").toUpperCase() !== issueCurrency.toUpperCase() ||
+        String(obj.SendMax?.value) !== "1") throw new Error("The live Check object did not match the validated onboarding transaction.");
+      open=true;
+    } catch(error) {
+      // A member may cash the Check immediately. Its disappearance is not
+      // proof of cashing; the following historical reconciliation must be.
+      if (!/entryNotFound|not found/i.test(String(error?.message||""))) throw error;
+    }
+  } finally { assertIssueOpen(); }
+  issue.verified={hash,id,ledger:tx.ledger_index,open};
+  issueEvidence(`VALIDATED ON XRPL\nTransaction: ${hash}\nLedger: ${tx.ledger_index}\nResult: tesSUCCESS\nCheck ID: ${id}\nAccount: ${issue.selected.operatorWallet}\nDestination: ${issue.selected.applicant}\nSendMax: 1 canonical LEAP\nMemo: none\nExpiration: none\nCurrent Check ledger object: ${open ? "verified open" : "not found; requires cashed-history proof"}`);
+}
+async function finishIssuedCheck() {
+  issueUpdate(6,"working","Refreshing this recipient's Checkbook row from XRPL evidence…");
+  const run=issue.runId;
+  let row;
+  for (;;) {
+    assertIssueOpen(run);
+    const fresh=await issueReadRetry(auditCurrentCheckbook,6,"XRPL history interrupted; rebuilding this Checkbook row again…");
+    assertIssueOpen(run);
+    row=fresh.rows.find(r=>r.applicant===issue.selected.applicant && r.hash===issue.selected.requestHash);
+    if (row && ["issued","cashed"].includes(row.onboardingCheck?.status) &&
+      row.onboardingCheck.id===issue.verified.id &&
+      (issue.verified.open || row.onboardingCheck.status==="cashed")) break;
+    if (row?.onboardingCheck?.id && row.onboardingCheck.id!==issue.verified.id)
+      throw new Error("The Checkbook reported a different Check ID; issuance cannot be confirmed.");
+    issueUpdate(6,"working","Validated Check confirmed; waiting for the Checkbook's current XRPL view…");
+    await issueYieldToX();
+  }
+  // Finish all verified work before notifying downstream consumers.
+  issue.confirmed=true;
+  clearSavedSignedCheck();
+  window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified"));
+  issueTrail.finish({message:"Completed",onFinished:()=>issueTrail.close()});
+}
+async function verifyIssuedCheck() {
+  issueUpdate(5,"working","Reading the validated transaction and live Check ledger object…");
+  const tx=await awaitValidatedIssue();
+  if ((tx.meta||tx.metaData)?.TransactionResult!=="tesSUCCESS")
+    throw new Error("The original signed Check validated unsuccessfully. Do not sign another Check.");
+  await checkIssueReadback(tx,issue.pendingHash);
+  issueUpdate(5,"done",`Validated Check ID: ${issue.verified.id}.`);
+  await finishIssuedCheck();
+}
+async function submitIssueCheck() {
+  issueUpdate(4,"working","Checking the saved signed Check before submission…");
+  if (!issue.signedBlob) throw new Error("No signed Check is available to submit.");
+  const signedTx=decode(issue.signedBlob);
+  assertCheck(signedTx,!!issue.prepared);
+  if (!(signedTx.TxnSignature || (Array.isArray(signedTx.Signers)&&signedTx.Signers.length)))
+    throw new Error("The stored Check has no XRPL signature.");
+  if (await signedCheckHash(issue.signedBlob)!==issue.pendingHash)
+    throw new Error("Signed Check bytes do not match the original transaction hash.");
+  assertIssueOpen();
+  // Check the original hash first. A submitted or accepted Check must not be
+  // regenerated, re-signed, or replaced with a different CheckCreate.
+  const already=await findValidatedIssue(issue.pendingHash);
+  if (already) { await verifyIssuedCheck(); return; }
+  // Mark possible submission BEFORE opening the transport. If X is pressed
+  // while the socket opens, no submission takes place after it closes.
+  issueUpdate(4,"working","Submitting the exact Bifrost-signed Check to XRPL…");
+  try {
+    const client=new DirectXRPLClient(issueServer);
+    try {
+      await client.connect();
+      assertIssueOpen();
+      const reply=await client.request("submit",{tx_blob:issue.signedBlob,fail_hard:false},20000);
+      assertIssueOpen();
+      const result=reply.result||{};
+      const returned=String(result.tx_json?.hash||result.hash||"").toUpperCase();
+      if (returned && returned!==issue.pendingHash)
+        throw new Error("XRPL returned a different transaction hash for the signed Check.");
+      const engine=String(result.engine_result||"");
+      if (engine && engine!=="tesSUCCESS" && engine!=="tefALREADY" && engine!=="tefPAST_SEQ")
+        throw new Error(`XRPL rejected the signed Check with ${engine}. No new Check may be signed.`);
+    } finally {client.close();}
+  } catch(error) {
+    if (issue.cancelled) return;
+    if (!transientIssueRead(error)) throw error;
+    // A transport interruption may occur AFTER XRPL received the signed blob.
+    // Look up the original transaction hash without creating another Check.
+    issueUpdate(4,"working","XRPL submission response interrupted; verifying the original transaction hash…");
+  }
+  const confirmed=await awaitValidatedIssue();
+  if ((confirmed.meta||confirmed.metaData)?.TransactionResult!=="tesSUCCESS")
+    throw new Error("The original signed Check validated unsuccessfully. Do not sign another Check.");
+  issueUpdate(4,"done",`CheckCreate validated in ledger ${confirmed.ledger_index}.`);
+  await verifyIssuedCheck();
+}
+function beginCheckIssuance(request) {
+  const session=readOperatorSession();
+  const report=session&&checkedHandoff(session);
+  const matching=report?.requests.find(row=>row.applicant===request.applicant&&row.hash===request.hash);
+  const eligible=matching?.recognition?.status==="awaiting"&&matching?.onboardingCheck?.status==="unissued";
+  if (!eligible || issue.busy || issueTrail.element.classList.contains("show")) {
+    if (!eligible) window.alert("This request is no longer eligible for first issuance. Return to the verified Checkbook.");
+    return;
+  }
+  issue.selected={communityId:session.communityId,operatorWallet:session.wallet,
+    applicant:matching.applicant,requestHash:matching.hash};
+  issue.prepared=null;issue.signer=null;issue.verified=null;issue.confirmed=false;issue.signedBlob="";issue.pendingHash="";
+  issue.signing=false;issue.cancelled=false;issue.closedByHuman=false;issue.runId++;
+  issueStage.fill("pending");
+  issueTrail.open({resetSteps:true});
+  $("issuanceEvidencePanel").hidden=false;
+  issueEvidence(`Verified membership request: ${matching.hash}\\nSource: validated XRPL Payment\\nIssuing wallet: ${session.wallet}`);
+  void issueGuarded(startIssuePreflight);
+}
+
+// An inert symbol: unlike Issue Check and Cancel Check it must never be
+// mistaken for a button. Accessible name describes the actual XRPL state.
+function checkbookSymbol(state, label) {
+  const symbol = document.createElement("span");
+  symbol.className = `checkbook-symbol is-${state}`;
+  symbol.textContent = state === "complete" ? "✓" : state === "na" ? "—" : "×";
+  symbol.setAttribute("role", "img");
+  symbol.setAttribute("aria-label", label);
+  return symbol;
+}
+function makeRequestRow(request) {
+  const tr = document.createElement("tr");
+  if (request.onboardingCheck?.id) tr.dataset.checkId = request.onboardingCheck.id;
+  const address = document.createElement("div");
+  address.className = "applicant-main";
+  address.title = request.applicant;
+  address.textContent = shortWallet(request.applicant);
+  tr.append(createCell("Requested", address));
+
+  const check = request.onboardingCheck;
+  const issued = document.createElement("div");
+  if (check?.status === "unissued" && request.recognition?.status === "awaiting") {
+    const issue = document.createElement("button");
+    issue.type = "button";
+    issue.className = "issue-first-leap";
+    issue.textContent = "Issue Check";
+    issue.setAttribute("aria-label", `Issue First LEAP Check to ${request.applicant}`);
+    issue.addEventListener("click", () => beginCheckIssuance(request));
+    issued.append(issue);
+  } else if (["issued", "cashed", "canceled"].includes(check?.status)) {
+    issued.append(checkbookSymbol("complete", "Issued"));
+  } else {
+    issued.append(checkbookSymbol("na", "Issuance not needed"));
+  }
+  tr.append(createCell("Issued", issued));
+
+  const cashedCell = document.createElement("div");
+  if (check?.status === "cashed") {
+    cashedCell.append(checkbookSymbol("complete", "Cashed"));
+  } else if (check?.status === "issued") {
+    cashedCell.append(checkbookSymbol("pending", "Awaiting cashing"));
+  } else if (check?.status === "canceled") {
+    cashedCell.append(checkbookSymbol("canceled", "Canceled"));
+  } else {
+    cashedCell.append(checkbookSymbol("na", "Not applicable"));
+  }
+  tr.append(createCell("Cashed", cashedCell));
+
+  const actions = document.createElement("div");
+  // Cancellation only exists for a validated, outstanding Check with its own
+  // ID; the existing signed cancellation Ledger Trail remains unchanged.
+  if (check?.status === "issued" && check.id) {
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "cancel-onboarding-check";
+    cancel.textContent = "Cancel Check";
+    cancel.dataset.checkId = check.id;
+    cancel.setAttribute("aria-label", `Cancel outstanding Check for ${request.applicant}`);
+    actions.append(cancel);
+  }
+  tr.append(createCell("Action", actions));
+  return tr;
+}
+function makeCheckbookLegend() {
+  const legend = document.createElement("div");
+  legend.className = "checkbook-legend";
+  legend.setAttribute("aria-label", "Lifecycle symbol legend");
+  for (const [state, symbol, text] of [
+    ["complete", "✓", "Complete"],
+    ["pending", "×", "Pending"],
+    ["na", "—", "Not applicable"]
+  ]) {
+    const item = document.createElement("span");
+    item.className = "checkbook-legend-item";
+    const mark = document.createElement("span");
+    mark.className = `checkbook-symbol is-${state}`;
+    mark.textContent = symbol;
+    mark.setAttribute("aria-hidden", "true");
+    const label = document.createElement("span");
+    label.textContent = text;
+    item.append(mark, label);
+    legend.append(item);
+  }
+  return legend;
+}
+// Step 6.8: The active Checkbook contains only work to issue or live reserve-
+// consuming Checks. Validated cashed Checks are a separate paginated history;
+// canceled Checks stay in XRPL reconstruction but appear in neither view.
+function showMatchingPayments(requests, checks) {
+  const list = $("requestList");
+  list.replaceChildren();
+  list.hidden = false;
+  $("requestCount").hidden = false;
+
+  // An already issued/cashed/canceled Check is never an opportunity to issue
+  // another First LEAP Check merely because it left the active display.
+  const checksByWallet = new Set(checks.map(c => c.applicant));
+  const newestRequestByWallet = new Map();
+  for (const request of [...requests].sort((a,b) => b.ledger-a.ledger || b.txIndex-a.txIndex || a.hash.localeCompare(b.hash))) {
+    if (!newestRequestByWallet.has(request.applicant)) newestRequestByWallet.set(request.applicant,request);
+  }
+  const pendingRows = [...newestRequestByWallet.values()].filter(r =>
+    !checksByWallet.has(r.applicant) && r.onboardingCheck?.status === "unissued" &&
+    r.recognition?.status === "awaiting");
+  const outstanding = checks.filter(c => c.status === "issued");
+  const visibleRows = [...outstanding.map(c => ({row:{applicant:c.applicant,onboardingCheck:c},ledger:c.issuedLedger,txIndex:c.issuedTxIndex})),
+    ...pendingRows.map(row => ({row,ledger:row.ledger,txIndex:row.txIndex}))]
+    .sort((a,b) => b.ledger-a.ledger || b.txIndex-a.txIndex);
+  const issuedCount = outstanding.length;
+  const waitingCount = pendingRows.length;
+  const announcement = $("requestCount");
+  announcement.dataset.state = waitingCount > 0 ? "action" : issuedCount > 0 ? "outstanding" : "clear";
+  $("requestCountTitle").textContent = waitingCount > 0 ? "Action needed · Checks to issue" :
+    issuedCount > 0 ? "Outstanding Checks · XRP reserve in use" : "All caught up";
+  $("requestCountTotals").textContent = `${waitingCount} to issue · ${issuedCount} outstanding`;
+
+  if (!visibleRows.length) {
+    const empty = document.createElement("div");
+    empty.className = "empty";
+    empty.textContent = "No Checks need issuance or cashing.";
+    list.append(empty);
+  } else {
+    const container = document.createElement("div");
+    container.className = "table-wrap";
+    const table = document.createElement("table");
+    table.className = "requests-table";
+    table.setAttribute("aria-label", "Active onboarding Check lifecycle");
+    const head = document.createElement("thead");
+    const headRow = document.createElement("tr");
+    for (const text of ["Requested", "Issued", "Cashed", "Action"]) {
+      const th = document.createElement("th"); th.scope = "col"; th.textContent = text;
+      headRow.append(th);
+    }
+    head.append(headRow);
+    const body = document.createElement("tbody");
+    for (const {row} of visibleRows) body.append(makeRequestRow(row));
+    table.append(head, body);
+    container.append(table);
+    list.append(container, makeCheckbookLegend());
+  }
+  // Internal/report status remains machine-readable; not a visible debug list.
+  $("requestStatus").textContent = `${waitingCount} to issue, ${issuedCount} outstanding. Verified against XRPL transaction history.`;
+}
+
+const CASHED_HISTORY_PAGE_SIZE = 20;
+let cashedHistory = [];
+let cashedHistoryPage = 0;
+function showCashedHistory(checks) {
+  // Cashing position, NOT creation position, determines historical recency.
+  cashedHistory = checks.filter(c => c.status === "cashed").sort((a,b) =>
+    (b.cashLedger || 0)-(a.cashLedger || 0) ||
+    (b.cashTxIndex ?? -1)-(a.cashTxIndex ?? -1) ||
+    a.id.localeCompare(b.id));
+  cashedHistoryPage = 0;
+  renderCashedHistoryPage();
+}
+function renderCashedHistoryPage() {
+  const list = $("cashedHistoryList");
+  const nav = $("cashedHistoryNav");
+  list.replaceChildren();
+  const total = cashedHistory.length;
+  const pageCount = Math.ceil(total / CASHED_HISTORY_PAGE_SIZE);
+  cashedHistoryPage = Math.max(0, Math.min(cashedHistoryPage, Math.max(0,pageCount-1)));
+  nav.hidden = total <= CASHED_HISTORY_PAGE_SIZE;
+  if (!total) {
+    const empty = document.createElement("p");
+    empty.className = "cashed-history-empty";
+    empty.textContent = "No past cashed Checks yet.";
+    list.append(empty);
+    return;
+  }
+  const start = cashedHistoryPage * CASHED_HISTORY_PAGE_SIZE;
+  const table = document.createElement("table");
+  table.className = "cashed-history-table";
+  table.setAttribute("aria-label", "Past cashed onboarding Checks");
+  const head = document.createElement("thead");
+  const trHead = document.createElement("tr");
+  for (const text of ["Requested", "Cashed"]) {
+    const th = document.createElement("th"); th.scope = "col"; th.textContent = text;
+    trHead.append(th);
+  }
+  head.append(trHead);
+  const body = document.createElement("tbody");
+  for (const check of cashedHistory.slice(start,start+CASHED_HISTORY_PAGE_SIZE)) {
+    const tr = document.createElement("tr");
+    const wallet = document.createElement("div");
+    wallet.className = "applicant-main";
+    wallet.title = check.applicant;
+    wallet.textContent = shortWallet(check.applicant);
+    tr.append(createCell("Requested", wallet));
+    tr.append(createCell("Cashed", checkbookSymbol("complete", "Cashed")));
+    body.append(tr);
+  }
+  table.append(head,body);
+  list.append(table);
+  $("cashedHistoryRange").textContent = `Showing ${start+1}–${Math.min(start+CASHED_HISTORY_PAGE_SIZE,total)} of ${total}`;
+  $("cashedHistoryPage").textContent = `Page ${cashedHistoryPage+1} of ${pageCount}`;
+  $("cashedHistoryPrevious").disabled = cashedHistoryPage === 0;
+  $("cashedHistoryNext").disabled = cashedHistoryPage >= pageCount-1;
+}
+$("cashedHistoryPrevious").addEventListener("click", () => {
+  if (cashedHistoryPage > 0) { cashedHistoryPage--; renderCashedHistoryPage(); }
+});
+$("cashedHistoryNext").addEventListener("click", () => {
+  if ((cashedHistoryPage+1)*CASHED_HISTORY_PAGE_SIZE < cashedHistory.length) {
+    cashedHistoryPage++; renderCashedHistoryPage();
+  }
+});
+
+
+// Step 6.5: read the CURRENT incremental XRPL reserve and the validated
+// Check objects actually held by the original issuing wallets. This is the
+// reserve for onboarding Checks in this report, NOT the wallet's total reserve.
+// The history-based announcement and all signing logic remain unchanged.
+let reserveReadToken = 0;
+async function showCurrentOnboardingReserve(checks, operatorWallet, {strict = false} = {}) {
+  const token = ++reserveReadToken;
+  const amount = $("requestReserveAmount");
+  amount.textContent = "Checking XRPL…";
+  const outstanding = checks.filter(c => c.status === "issued");
+  // The validated historical report contains no outstanding onboarding Checks.
+  if (!outstanding.length) { amount.textContent = "0 XRP"; return; }
+  const wallets = [...new Set(outstanding.map(c => c.issuingWallet))];
+  if (wallets.some(wallet => !isClassicAddress(wallet)) || !isClassicAddress(operatorWallet)) {
+    amount.textContent = "Unavailable";
+    if (strict) throw new Error("A verified XRP reserve could not be calculated for the refreshed Checkbook.");
+    return;
+  }
+  let client;
+  try {
+    if (!xrplServer) throw new Error("XRPL endpoint is not configured.");
+    client = new DirectXRPLClient(xrplServer);
+    await client.connect();
+    const response = await client.request("server_info", {}, 20000);
+    const ledger = response?.result?.info?.validated_ledger;
+    const increment = Number(ledger?.reserve_inc_xrp);
+    if (!ledger || ledger.reserve_inc_xrp == null || !Number.isFinite(increment) || increment <= 0 ||
+        !Number.isSafeInteger(Math.round(increment * 1_000_000))) {
+      throw new Error("XRPL did not provide a validated owner reserve increment.");
+    }
+    const expectedById = new Map(outstanding.map(check => [check.id, check]));
+    const liveIds = new Set();
+    for (const wallet of wallets) {
+      let marker;
+      do {
+        const fields = {account:wallet,ledger_index:"validated",type:"check",limit:400};
+        if (marker !== undefined) fields.marker = marker;
+        const page = await client.request("account_objects", fields, 30000);
+        const result = page?.result;
+        if (result?.validated !== true || !Array.isArray(result.account_objects) || result.account !== wallet)
+          throw new Error("XRPL did not return validated Check objects for the issuing wallet.");
+        for (const obj of result.account_objects) {
+          const id = String(obj?.index || "").toUpperCase();
+          const check = expectedById.get(id);
+          if (obj?.LedgerEntryType === "Check" && check && obj.Account === check.issuingWallet &&
+              obj.Destination === check.applicant && wallet === check.issuingWallet) liveIds.add(id);
+        }
+        marker = result.marker;
+      } while (marker !== undefined && marker !== null);
+    }
+    if (token !== reserveReadToken || $("operatorWallet").textContent !== operatorWallet) return;
+    const drops = Math.round(increment * 1_000_000) * liveIds.size;
+    amount.textContent = `${formatXrp(String(drops))} XRP`;
+  } catch (error) {
+    // The normal read-only report may show Unavailable. During cancellation,
+    // do NOT dismiss the overlay until this reserve read has succeeded.
+    if (token === reserveReadToken) amount.textContent = "Unavailable";
+    if (strict) throw new Error(`The refreshed Checkbook reserve is not verified: ${String(error?.message || error)}`);
+  } finally { client?.close(); }
+}
+
+function showGate(message, url, label) {
+  $("authorizedContent").hidden = true;
+  $("reportGate").hidden = false;
+  $("reportGateMessage").textContent = message;
+  $("reportGateLink").href = url;
+  $("reportGateLink").textContent = label;
+}
+
+function openReport({strictReserve = false, skipReserve = false} = {}) {
+  const session = readOperatorSession();
+  if (!session) {
+    showGate("Sign in through Get Wild as a Community Operator to view membership requests.",
+      "getWild.html", "Sign in through Get Wild");
+    return;
+  }
+  const data = checkedHandoff(session);
+  if (!data) {
+    showGate("The current verification result is unavailable. Check for new requests.",
+      `onboardingCheckbook.html?community=${encodeURIComponent(session.communityId)}&role=operator`, "Check for new requests");
+    return;
+  }
+  $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(session.communityId)}&role=operator`;
+  $("backLink").hidden = false;
+  $("communityName").textContent = String(data.communityName || session.name || session.communityId);
+  $("communityId").textContent = session.communityId;
+  $("operatorWallet").textContent = session.wallet;
+  document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
+  $("authorizedContent").hidden = false;
+  showMatchingPayments(data.requests, data.checks);
+  showCashedHistory(data.checks);
+  const reserveRead = skipReserve ? Promise.resolve() : showCurrentOnboardingReserve(data.checks, session.wallet, {strict:strictReserve});
+
+  return reserveRead;
+}
+
+// Move 7 · The existing Cancel Check signing path stays unchanged. After a
+// successful validated CheckCancel, independently verify its Check object is
+// gone, reconstruct the entire verified Checkbook, await the reserve display,
+// then dismiss this Trail to reveal the already-updated page.
+const cancelTrailKeys = ["identify","authority","outstanding","prepare","wallet","sign","verify"];
+const cancelTrailTitles = ["Identify Check","Confirm authority","Verify outstanding Check","Prepare CheckCancel","Connect Bifrost","Sign and submit","Verify cancellation"];
+const cancelTrailDefaults = [
+  "Waiting to identify the selected outstanding Check.",
+  "Waiting for validated Operator authority.",
+  "Waiting to inspect the live XRPL Check object.",
+  "Waiting for cancellation transaction preparation.",
+  "Waiting for the authorized Operating Wallet.",
+  "Waiting for wallet approval and XRPL submission.",
+  "Waiting for final ledger proof and Checkbook refresh."
+];
+let cancelTrailRun = 0;
+let cancelTrailSelectedId = "";
+const cancelTx = {selected:null, prepared:null, signer:null, signing:false, signedBlob:"", txHash:"", confirmed:false, refreshed:false, submitAttempted:false};
+function cancelTrailStop() {
+  ++cancelTrailRun;
+  cancelTrailSelectedId = "";
+  // Signing may finish after X; its signed bytes remain in memory before any
+  // submission, even though the Trail will not continue invisibly.
+  if (!cancelTx.signing && cancelTx.signer) {
+    void cancelTx.signer.disconnect().catch(()=>{});
+    cancelTx.signer=null;
+  }
+}
+const cancelTrail = createLedgerTrail({
+  title:"Cancel Check",
+  description:"Stay on the Trail while Wild Ledger verifies this Check, confirms Operator authority, and proves cancellation on XRPL.",
+  steps:cancelTrailKeys.map((id,i)=>({id,title:cancelTrailTitles[i],detail:cancelTrailDefaults[i]})),
+  onClose:cancelTrailStop
+});
+cancelTrail.element.id="cancellationLedgerTrail";
+function cancelTrailSetStep(step,state,detail="",waitingForWallet=false) {
+  cancelTrail.setStep(step,state==="active"?(waitingForWallet?"waiting":"working"):state,detail);
+}
+function cancelTrailSetStatus(message,tone="") { cancelTrail.setStatus(message,tone); }
+function cancelTrailHideHandoff() { cancelTrail.hidePrompt(); }
+function cancelTrailHandoff(message,qrDataUrl="") {
+  cancelTrail.showPrompt({heading:"GO TO BIFROST NOW",detail:message,qrDataUrl});
+}
+function cancelTrailEnsureOpen(run) {
+  if (run!==cancelTrailRun || !cancelTrail.element.classList.contains("show"))
+    throw new Error("CANCEL_TRAIL_CLOSED");
+}
+function cancelTrailClose() {
+  cancelTrailStop();
+  cancelTrail.close();
+  // The selected Check may have disappeared from the table. Send focus to the
+  // next available Check action rather than to a now-detached button.
+  const next=document.querySelector("#requestList button.cancel-onboarding-check, #requestList button.issue-first-leap");
+  if (next) next.focus({preventScroll:true});
+  else { const heading=$("pageTitle"); if (heading) {heading.tabIndex=-1;heading.focus({preventScroll:true});} }
+}
+const cancelTrailYieldToX=()=>new Promise(resolve=>setTimeout(resolve,0)); // event-loop yield, never a backoff
+function cancelTrailTransientRead(error) {
+  return /websocket|socket|connection|disconnect|network|fetch failed|failed to fetch|timed? out|timeout|too busy|server.{0,25}busy|overload|slow.?down|rate.?limit|too many requests|temporarily unavailable|service unavailable|\b429\b|\b502\b|\b503\b|\b504\b/i.test(String(error?.message||error||""));
+}
+async function cancelTrailRetryRead(run,work,step,message) {
+  for (;;) {
+    cancelTrailEnsureOpen(run);
+    try {
+      const result=await work();
+      cancelTrailEnsureOpen(run);
+      return result;
+    } catch(error) {
+      cancelTrailEnsureOpen(run);
+      if (!cancelTrailTransientRead(error)) throw error;
+      cancelTrailSetStep(step,"active",message);
+      cancelTrailSetStatus(message,"busy");
+      await cancelTrailYieldToX();
+    }
+  }
+}
+function cancelTrailAudit(run) {
+  return new Promise((resolve,reject)=>window.dispatchEvent(new CustomEvent("wildLedgerIssuanceAudit",{
+    detail:{resolve,reject,checkActive:()=>cancelTrailEnsureOpen(run)}
+  })));
+}
+function cancelTrailCurrentSession() {
+  const s = readOperatorSession();
+  if (!s || !cancelTx.selected || s.communityId !== cancelTx.selected.communityId ||
+      s.wallet !== cancelTx.selected.operatorWallet)
+    throw new Error("The current Operator session changed. Return through Get Wild; no cancellation was submitted.");
+  return s;
+}
+async function cancelTrailReadCheck(checkId) {
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  if (!server) throw new Error("XRPL server unavailable. No cancellation can proceed.");
+  const client=new DirectXRPLClient(server);
+  try {
+    await client.connect();
+    const response=await client.request("ledger_entry",{check:checkId,ledger_index:"validated",binary:false},30000);
+    if (response?.result?.validated === false) throw new Error("XRPL did not return validated Check evidence.");
+    const node=response?.result?.node;
+    if (!node || node.LedgerEntryType!=="Check") throw new Error("The XRPL Check object was not returned.");
+    return node;
+  } finally { client.close(); }
+}
+function cancelTrailAssertCheckNode(node) {
+  const cfg=window.WILD_LEDGER_CONFIG || {};
+  const amount=node.SendMax;
+  if (node.Account!==cancelTx.selected.operatorWallet || node.Destination!==cancelTx.selected.applicant ||
+      !amount || amount.issuer!==String(cfg.leapIssuer || "") ||
+      String(amount.currency || "").toUpperCase()!==String(cfg.leapCurrency || "").toUpperCase() ||
+      !/^1(?:\.0+)?$/.test(String(amount.value || "")) || node.Expiration!==undefined)
+    throw new Error("This XRPL Check does not match the selected 1-LEAP onboarding Check.");
+}
+async function cancelTrailCheckAuthority() {
+  cancelTrailCurrentSession();
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  if (!server) throw new Error("No XRPL server is configured.");
+  const access=await resolveWalletAccess({account:cancelTx.selected.operatorWallet,serverUrl:server,force:true});
+  cancelTrailCurrentSession();
+  if (!(access?.operatorMatches || []).some(item=>
+    String(item.communityId || "").trim().toUpperCase()===cancelTx.selected.communityId &&
+    String(item.currentAccount || "").trim()===cancelTx.selected.operatorWallet &&
+    item.authorityEstablished===true))
+    throw new Error("Validated XRPL history does not confirm current Community Operating Wallet authority.");
+}
+async function cancelTrailFreshProof() {
+  await cancelTrailCheckAuthority();
+  const node=await cancelTrailReadCheck(cancelTx.selected.checkId);
+  cancelTrailCurrentSession();
+  cancelTrailAssertCheckNode(node);
+  return node;
+}
+function cancelTrailAssertTx(tx, prepared = null) {
+  if (tx?.TransactionType!=="CheckCancel" || tx.Account!==cancelTx.selected?.operatorWallet ||
+      String(tx.CheckID || "").toUpperCase()!==cancelTx.selected?.checkId)
+    throw new Error("Bifrost's transaction does not cancel the selected Check from the authorized Operating Wallet.");
+  const permitted=new Set(["TransactionType","Account","CheckID","Fee","Sequence","TicketSequence",
+    "LastLedgerSequence","NetworkID","Flags","SourceTag","SigningPubKey","TxnSignature","Signers"]);
+  for (const name of Object.keys(tx)) if (!permitted.has(name))
+    throw new Error(`Unexpected CheckCancel transaction field: ${name}.`);
+  if (prepared) {
+    const normalized = value => value && typeof value==="object" ?
+      (Array.isArray(value) ? value.map(normalized) : Object.fromEntries(
+        Object.keys(value).sort().map(k=>[k,normalized(value[k])]))) : value;
+    const signatures=new Set(["SigningPubKey","TxnSignature","Signers"]);
+    for (const [key,value] of Object.entries(prepared)) {
+      if (!signatures.has(key) && JSON.stringify(normalized(tx[key]))!==JSON.stringify(normalized(value)))
+        throw new Error(`Bifrost changed the prepared cancellation field ${key}.`);
+    }
+    for (const [key,value] of Object.entries(tx)) {
+      if (!signatures.has(key) && !(key in prepared) && !(key==="Flags" && Number(value)===0))
+        throw new Error(`Bifrost added an unapproved cancellation field ${key}.`);
+    }
+  }
+}
+async function cancelTrailCheckSigned() {
+  const blob=cancelTx.signedBlob;
+  if (!/^[A-F0-9]{80,}$/.test(blob) || !/^[A-F0-9]{64}$/.test(cancelTx.txHash))
+    throw new Error("A valid signed CheckCancel transaction was not retained.");
+  const tx=decode(blob);
+  cancelTrailAssertTx(tx,cancelTx.prepared);
+  if (!(tx.TxnSignature || (Array.isArray(tx.Signers) && tx.Signers.length)))
+    throw new Error("The saved cancellation has no XRPL signature.");
+  if (await signedCheckHash(blob)!==cancelTx.txHash)
+    throw new Error("The signed CheckCancel bytes no longer match their transaction hash.");
+}
+async function cancelTrailFindValidated() {
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  const client=new DirectXRPLClient(server);
+  try {
+    await client.connect();
+    const reply=await client.request("tx",{transaction:cancelTx.txHash,binary:false},20000);
+    return reply?.result?.validated===true ? reply.result : null;
+  } catch(error) {
+    if (/not found|txnNotFound/i.test(String(error?.message || error))) return null;
+    throw error;
+  } finally { client.close(); }
+}
+function cancelTrailValidatedResult(tx) {
+  if (tx?.validated!==true) throw new Error("The CheckCancel transaction is not validated yet.");
+  // XRPL tx RPC may attach these response-only fields inside tx_json (not
+  // just at top level), including ctid in API v2. They are NOT signed fields.
+  // Exclude ONLY documented RPC metadata; all transaction fields below are
+  // still checked against the actual Bifrost-signed serialized bytes.
+  const received=tx.tx_json || tx.tx || tx.transaction || tx;
+  if (!received || typeof received!=="object" || Array.isArray(received))
+    throw new Error("XRPL did not provide a decoded CheckCancel transaction.");
+  const ledgerTx={...received};
+  for (const name of ["hash","date","ledger_index","inLedger","ctid",
+    "close_time_iso","ledger_hash","validated","meta","metaData",
+    "tx_blob","meta_blob","tx_json","tx","transaction"])
+    delete ledgerTx[name];
+  cancelTrailAssertTx(ledgerTx,cancelTx.prepared);
+  // Beyond checking the approved CheckID and prepared fields, independently
+  // match every actual signed field to the transaction returned by consensus.
+  // XRPL may expose an absent default Flags as 0; these are equivalent.
+  const signedTx=decode(cancelTx.signedBlob);
+  cancelTrailAssertTx(signedTx,cancelTx.prepared);
+  const canonical=value=>value && typeof value==="object" ?
+    (Array.isArray(value) ? value.map(canonical) : Object.fromEntries(
+      Object.keys(value).sort().map(key=>[key,canonical(value[key])]))) : value;
+  const signedComparison={...signedTx};
+  const responseComparison={...ledgerTx};
+  if (Number(signedComparison.Flags || 0)===0) delete signedComparison.Flags;
+  if (Number(responseComparison.Flags || 0)===0) delete responseComparison.Flags;
+  if (JSON.stringify(canonical(signedComparison))!==JSON.stringify(canonical(responseComparison)))
+    throw new Error("XRPL's validated CheckCancel fields differ from the original signed transaction.");
+  if ((tx.meta || tx.metaData)?.TransactionResult!=="tesSUCCESS")
+    throw new Error("The CheckCancel transaction was validated unsuccessfully. It must not be signed again.");
+  const recordedHash=String(tx.hash || received.hash || "").toUpperCase();
+  if (!recordedHash || recordedHash!==cancelTx.txHash)
+    throw new Error("XRPL did not return the expected validated cancellation hash.");
+  return tx.ledger_index || received.ledger_index || tx.inLedger;
+}
+function cancelTrailMarkSubmitted(ledger) {
+  // A validated CheckCancel does NOT finish the Trail. Retain signed evidence
+  // until both independent object proof and the full Checkbook readback pass.
+  cancelTx.confirmed=true;
+  cancelTrailHideHandoff();
+  cancelTrailSetStep("sign","done",`CheckCancel validated in XRPL ledger ${ledger}.`);
+  cancelTrailSetStep("verify","active","Checking the validated ledger for the canceled Check object…");
+  cancelTrailSetStatus("Cancellation validated. Verifying removal and refreshing the Checkbook behind this Trail…","busy");
+}
+
+async function cancelTrailVerifyObjectGone(run) {
+  // Only an explicit entryNotFound response for this exact Check ID at the
+  // validated ledger is evidence of absence. Never mistake network failures,
+  // account errors or an unvalidated response for a canceled Check.
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  if (!server) throw new Error("An XRPL endpoint is required to verify the canceled Check object.");
+  const client=new DirectXRPLClient(server);
+  let notFound=false;
+  try {
+    await client.connect();
+    try {
+      const reply=await client.request("ledger_entry",{check:cancelTx.selected.checkId,ledger_index:"validated",binary:false},30000);
+      if (reply?.result?.validated===false) throw new Error("The Check object lookup was not against a validated ledger.");
+      throw new Error("XRPL still reports the original Check object, or did not prove its absence. Retry verification without signing again.");
+    } catch(error) {
+      const code=String(error?.response?.result?.error || error?.response?.error || "");
+      if (code!=="entryNotFound") throw error;
+      notFound=true;
+    }
+  } finally { client.close(); }
+  cancelTrailEnsureOpen(run);
+  cancelTrailCurrentSession();
+  if (!notFound) throw new Error("XRPL has not confirmed that the original Check object is gone.");
+}
+
+// Move 7.1: after XRPL has validated CheckCancel, each readback step is its
+// own checkpoint. A failed step retries immediately (no wait interval or
+// exponential backoff); a successful step is never repeated during this Trail.
+// The zero-delay yield schedules the next attempt on the next browser task,
+// preventing a rapidly rejected promise from starving rendering and input.
+// This is not a timer-based polling interval. Never repeat signing/submission.
+async function cancelTrailReadbackCheckpoint(run, label, work) {
+  let attempts=0;
+  for (;;) {
+    cancelTrailEnsureOpen(run);
+    ++attempts;
+    try {
+      await work();
+      cancelTrailEnsureOpen(run);
+      cancelTrailCurrentSession();
+      return;
+    } catch (error) {
+      if (run!==cancelTrailRun || !cancelTrail.element.classList.contains("show")) throw new Error("CANCEL_TRAIL_CLOSED");
+      // If the Operator changed, security requires re-authentication; network
+      // retries cannot fix an invalid identity. Preserve all signed evidence.
+      cancelTrailCurrentSession();
+      if (!cancelTx.confirmed)
+        throw error;
+      cancelTrailSetStep("verify","active",`${label} · checking again automatically…`);
+      cancelTrailSetStatus(`Cancellation is validated. ${label} still in progress; automatically retrying (${attempts + 1}). No action or new signature needed.`,"busy");
+      // No intentional delay between network attempts. Yield only so Safari
+      // can paint the live status and remain responsive during fast failures.
+      await new Promise(resolve => setTimeout(resolve,0));
+    }
+  }
+}
+
+async function cancelTrailFinishVerified(run) {
+  cancelTrailEnsureOpen(run);
+  cancelTrailSetStep("verify","active","Confirming this Check is absent from the validated ledger…");
+  // Checkpoint 1: prove absence of the exact Check object. Never redo after success.
+  await cancelTrailReadbackCheckpoint(run,"Confirming the Check object is gone",async()=>{
+    await cancelTrailVerifyObjectGone(run);
+  });
+  cancelTrailEnsureOpen(run);
+
+  cancelTrailSetStep("verify","active","Reconstructing validated Checks and refreshing the underlying table…");
+  cancelTrailSetStatus("Check object absent. Rebuilding the current Onboarding Checkbook from XRPL history…","busy");
+  // Checkpoint 2: the full historical audit, including matching the exact
+  // cancellation transaction. A failure here never redoes Checkpoint 1.
+  await cancelTrailReadbackCheckpoint(run,"Reconciling validated Checkbook history",async()=>{
+    await cancelTrailAudit(run);
+    cancelTrailEnsureOpen(run);
+    const session=cancelTrailCurrentSession();
+    const refreshed=checkedHandoff(session);
+    const check=refreshed?.checks?.find(c=>c.id===cancelTx.selected.checkId);
+    if (!check || check.status!=="canceled" || check.cancelHash!==cancelTx.txHash ||
+        check.issuingWallet!==cancelTx.selected.operatorWallet || check.applicant!==cancelTx.selected.applicant)
+      throw new Error("Validated history has not yet confirmed the selected CheckCancel transaction.");
+  });
+  cancelTrailEnsureOpen(run);
+
+  cancelTrailSetStep("verify","active","Updating the hidden Checkbook table, counts and XRP reserve…");
+  cancelTrailSetStatus("Cancellation verified in XRPL history. Updating the Checkbook behind this Trail…","busy");
+  // Checkpoint 3: render the proven history ONCE. If a transient UI error
+  // occurs, retry only this render; do not redo the history or object lookup.
+  await cancelTrailReadbackCheckpoint(run,"Updating the Checkbook table",async()=>{
+    openReport({skipReserve:true});
+    cancelTrailEnsureOpen(run);
+    cancelTrailCurrentSession();
+    const shown=checkedHandoff(cancelTrailCurrentSession());
+    const issued=shown?.checks?.filter(c=>c.status==="issued").length;
+    const pending=document.querySelectorAll('#requestList button.issue-first-leap').length;
+    if (!$('authorizedContent') || $('authorizedContent').hidden ||
+        document.querySelector(`#requestList button.cancel-onboarding-check[data-check-id="${cancelTx.selected.checkId}"]`) ||
+        !Number.isInteger(issued) ||
+        $("requestCountTotals").textContent!==`${pending} to issue · ${issued} outstanding`)
+      throw new Error("The verified Checkbook table has not updated.");
+  });
+  cancelTrailEnsureOpen(run);
+
+  cancelTrailSetStep("verify","active","Verifying the current XRP reserve for the refreshed Checkbook…");
+  cancelTrailSetStatus("The canceled Check is gone from the table. Verifying the current XRP reserve…","busy");
+  // Checkpoint 4: on reserve failure ONLY the reserve read repeats. The
+  // already-refreshed table, historical audit and object proof stay complete.
+  await cancelTrailReadbackCheckpoint(run,"Verifying XRP reserve",async()=>{
+    const session=cancelTrailCurrentSession();
+    const report=checkedHandoff(session);
+    if (!report) throw new Error("The verified Checkbook report is unavailable.");
+    await showCurrentOnboardingReserve(report.checks,session.wallet,{strict:true});
+    cancelTrailEnsureOpen(run);
+    if (!$('requestReserveAmount').textContent ||
+        /^(?:Checking XRPL…|Unavailable)$/.test($('requestReserveAmount').textContent))
+      throw new Error("The refreshed XRP reserve is not verified yet.");
+  });
+  cancelTrailEnsureOpen(run);
+
+  // Release signed evidence only after all checkpoints have succeeded.
+  cancelTx.refreshed=true;
+  cancelTrailSetStep("verify","done","Canceled Check removed; Checkbook counts and XRP reserve refreshed.");
+  cancelTrailSetStatus("Cancellation verified. Onboarding Checkbook is already up to date.");
+  cancelTrail.finish({message:"Completed",onFinished:()=>cancelTrailClose()});
+}
+async function cancelTrailAwaitValidated(run) {
+  for (;;) {
+    cancelTrailEnsureOpen(run);
+    const result=await cancelTrailRetryRead(run,cancelTrailFindValidated,"sign",
+      "XRPL read interrupted; checking the original signed cancellation again…");
+    if (result) return result;
+    cancelTrailSetStep("sign","active","Waiting for validation of the original signed CheckCancel hash…");
+    await cancelTrailYieldToX();
+  }
+}
+async function cancelTrailSubmitSameSigned(run) {
+  await cancelTrailCheckSigned();
+  cancelTrailEnsureOpen(run);
+  cancelTrailSetStep("sign","active","Looking up the original signed CheckCancel on XRPL…");
+  cancelTrailSetStatus("Checking the exact signed cancellation; no new signature will be requested…","busy");
+  const existing=await cancelTrailRetryRead(run,cancelTrailFindValidated,"sign",
+    "XRPL read interrupted; checking the signed cancellation again…");
+  if (existing) {
+    const ledger=cancelTrailValidatedResult(existing);
+    cancelTrailMarkSubmitted(ledger);
+    await cancelTrailFinishVerified(run);
+    return;
+  }
+  // Once submission has been attempted, XRPL is the source of truth. Read the
+  // SAME hash; do not submit again just because the response was interrupted.
+  if (!cancelTx.submitAttempted) {
+    await cancelTrailRetryRead(run,cancelTrailFreshProof,"sign",
+      "XRPL read interrupted; rechecking Check and Operator authority…");
+    await cancelTrailCheckSigned();
+    cancelTrailEnsureOpen(run);
+    cancelTrailSetStep("sign","active","Submitting the original Bifrost-signed CheckCancel once…");
+    const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+    const client=new DirectXRPLClient(server);
+    try {
+      await cancelTrailRetryRead(run,()=>client.connect(),"sign","XRPL connection interrupted; reconnecting to submit the signed CheckCancel…");
+      cancelTrailEnsureOpen(run);
+      // Record submission intent in memory before requesting submit.
+      cancelTx.submitAttempted=true;
+      const response=await client.request("submit",{tx_blob:cancelTx.signedBlob,fail_hard:false},20000);
+      cancelTrailEnsureOpen(run);
+      const result=response?.result||{};
+      const responseHash=String(result.tx_json?.hash||result.hash||"").toUpperCase();
+      if (responseHash && responseHash!==cancelTx.txHash)
+        throw new Error("XRPL returned a different transaction hash from the signed CheckCancel.");
+      const engine=String(result.engine_result||"");
+      if (engine && engine!=="tesSUCCESS" && engine!=="tefALREADY" && engine!=="tefPAST_SEQ")
+        throw new Error(`XRPL rejected the original signed CheckCancel: ${engine}. No new signature will be requested.`);
+    } catch(error) {
+      cancelTrailEnsureOpen(run);
+      if (!cancelTrailTransientRead(error)) throw error;
+      cancelTrailSetStatus("XRPL submission response was interrupted. Checking the original transaction hash…","busy");
+    } finally { client.close(); }
+  }
+  const validated=await cancelTrailAwaitValidated(run);
+  const ledger=cancelTrailValidatedResult(validated);
+  cancelTrailMarkSubmitted(ledger);
+  await cancelTrailFinishVerified(run);
+}
+async function cancelTrailPrepare(run) {
+  cancelTrailSetStep("prepare","active","Simulating CheckCancel and preparing the transaction for Bifrost…");
+  cancelTrailSetStatus("Preparing an XRPL CheckCancel for this exact Check ID…","busy");
+  const server=String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
+  if (!server || !String(window.WILD_LEDGER_CONFIG?.walletConnectProjectId || "").trim())
+    throw new Error("XRPL or WalletConnect configuration is unavailable.");
+  const result=await cancelTrailRetryRead(run,()=>prepareTransaction({serverUrl:server,txJson:{
+    TransactionType:"CheckCancel",Account:cancelTx.selected.operatorWallet,CheckID:cancelTx.selected.checkId
+  }}),"prepare","XRPL preparation interrupted; preparing the same CheckCancel again…");
+  cancelTrailEnsureOpen(run);
+  cancelTrailCurrentSession();
+  cancelTrailAssertTx(result.preparedTx);
+  cancelTx.prepared=result.preparedTx;
+  cancelTrailSetStep("prepare","done",`Simulated tesSUCCESS · network fee ${cancelTx.prepared.Fee} drops.`);
+}
+async function cancelTrailConnectAndSign(run) {
+  cancelTrailSetStep("wallet","active","Waiting for Bifrost to connect the current Operating Wallet…",true);
+  cancelTrailSetStatus("Connect the authorized Operating Wallet in Bifrost…","busy");
+  cancelTrailHandoff("Approve the Operating Wallet connection in Bifrost, then return here. No cancellation has been submitted.");
+  cancelTx.signer=new WalletConnectXrplSigner({projectId:String(window.WILD_LEDGER_CONFIG?.walletConnectProjectId || "").trim(),
+    metadata:{name:"Wild Ledger Onboarding Checkbook",description:"Sign one selected XRPL CheckCancel",url:location.origin,icons:[`${location.origin}/favicon.ico`]}});
+  const connection=await cancelTx.signer.connect({onUri:async uri=>{
+    cancelTrailEnsureOpen(run);
+    const qr=await QRCode.toDataURL(uri,{width:520,margin:2,errorCorrectionLevel:"M"});
+    cancelTrailEnsureOpen(run);
+    cancelTrailHandoff("Open Bifrost, approve this wallet connection, then return to the Trail.",qr);
+  }});
+  cancelTrailEnsureOpen(run);
+  cancelTrailCurrentSession();
+  if (connection.account!==cancelTx.selected.operatorWallet)
+    throw new Error("The connected Bifrost account is not this community's current Operating Wallet.");
+  await cancelTrailRetryRead(run,cancelTrailFreshProof,"wallet","XRPL read interrupted; rechecking Operating Wallet authority and Check…");
+  cancelTrailEnsureOpen(run);
+  cancelTrailHideHandoff();
+  cancelTrailSetStep("wallet","done",`Bifrost connected the verified Operating Wallet ${connection.account}.`);
+  cancelTrailSetStep("sign","active","Review and sign this exact CheckCancel in Bifrost. Nothing has been submitted yet.",true);
+  cancelTrailSetStatus("Waiting for your Bifrost approval of CheckCancel…","busy");
+  cancelTrailHandoff("Review and sign the prepared CheckCancel in Bifrost, then return here. Wild Ledger will submit only after checking the signature.");
+  cancelTrailAssertTx(cancelTx.prepared);
+  cancelTx.signing=true;
+  try {
+    const signed=await cancelTx.signer.signTransaction(cancelTx.prepared);
+    // Even if X was pressed during approval, preserve the signed bytes first.
+    cancelTrailHideHandoff();
+    cancelTx.signedBlob=String(signed?.signedBlob || "").toUpperCase();
+    if (!/^[A-F0-9]{80,}$/.test(cancelTx.signedBlob))
+      throw new Error("Bifrost did not return a signed XRPL transaction blob.");
+    cancelTrailAssertTx(decode(cancelTx.signedBlob),cancelTx.prepared);
+    cancelTx.txHash=await signedCheckHash(cancelTx.signedBlob);
+    await cancelTrailCheckSigned();
+  } finally {
+    cancelTx.signing=false;
+  }
+  cancelTrailEnsureOpen(run); // Never submit in the background after X.
+  cancelTrailSetStep("sign","active","Bifrost signature verified and saved; submitting the exact signed CheckCancel…");
+  await cancelTrailSubmitSameSigned(run);
+}
+async function cancelTrailPreflight(checkId,run) {
+  let active="identify";
+  try {
+    cancelTrailSetStep(active,"active","Checking the Check ID and current Operator session…");
+    cancelTrailSetStatus("Identifying the selected Check…","busy");
+    const session=readOperatorSession();
+    const report=session && checkedHandoff(session);
+    const check=report?.checks?.find(row=>row.id===checkId);
+    if (!session || !report || !check ||
+        check.issuingWallet!==session.wallet || !isClassicAddress(check.applicant) ||
+        check.status!=="issued")
+      throw new Error("This Check is not a verified outstanding Check issued by your current Operating Wallet. Reopen through Get Wild.");
+    cancelTx.selected={communityId:session.communityId,operatorWallet:session.wallet,
+      applicant:check.applicant,checkId};
+    cancelTrailEnsureOpen(run);
+    cancelTrailSetStep("identify","done",`Check ID ${checkId.slice(0,12)}…${checkId.slice(-8)} · recipient ${cancelTx.selected.applicant}`);
+    active="authority";
+    cancelTrailSetStep(active,"active","Reading validated authority for this community…");
+    cancelTrailSetStatus("Confirming Operator authority against XRPL…","busy");
+    await cancelTrailRetryRead(run,cancelTrailCheckAuthority,"authority","XRPL read interrupted; verifying Operator authority again…");
+    cancelTrailEnsureOpen(run);
+    cancelTrailSetStep("authority","done",`${session.communityId} · authorized Operating Wallet ${session.wallet}`);
+
+    active="outstanding";
+    cancelTrailSetStep(active,"active","Checking the selected Check ID in the validated ledger…");
+    cancelTrailSetStatus("Looking up the outstanding Check object on XRPL…","busy");
+    const node=await cancelTrailRetryRead(run,()=>cancelTrailReadCheck(checkId),"outstanding","XRPL read interrupted; looking up the outstanding Check again…");
+    cancelTrailEnsureOpen(run);
+    cancelTrailAssertCheckNode(node);
+    cancelTrailSetStep("outstanding","done","XRPL confirms this exact 1-LEAP Check is outstanding.");
+    active="prepare";
+    await cancelTrailPrepare(run);
+    active="wallet";
+    await cancelTrailConnectAndSign(run);
+  } catch (error) {
+    if (run!==cancelTrailRun) return;
+    cancelTrailHideHandoff();
+    cancelTx.signing=false;
+    const hasSignature=!!cancelTx.signedBlob;
+    cancelTrailSetStep(cancelTx.confirmed?"verify":hasSignature?"sign":active,"failed",String(error?.message||error));
+    cancelTrailSetStatus(String(error?.message||error),"error");
+    // A genuine invalid signature, authority or wallet rejection cannot be
+    // repaired by repeating XRPL reads. Preserve signed evidence if present.
+  }
+}
+
+function cancelTrailOpen(checkId) {
+  if (!/^[0-9A-F]{64}$/.test(checkId) || cancelTrail.element.classList.contains("show")) return;
+  cancelTrailSelectedId=checkId;
+  if (cancelTx.signer && !cancelTx.signing) { void cancelTx.signer.disconnect().catch(()=>{});cancelTx.signer=null; }
+  cancelTx.selected=null;cancelTx.prepared=null;cancelTx.signedBlob="";cancelTx.txHash="";
+  cancelTx.confirmed=false;cancelTx.refreshed=false;cancelTx.signing=false;cancelTx.submitAttempted=false;
+  const run=++cancelTrailRun;
+  cancelTrail.open({resetSteps:true});
+  void cancelTrailPreflight(checkId,run);
+}
+document.addEventListener("click",event=>{
+  const button=event.target.closest?.("button.cancel-onboarding-check");
+  if (!button || button.disabled || !$("authorizedContent").contains(button)) return;
+  cancelTrailOpen(String(button.dataset.checkId||"").toUpperCase());
+});
+// The verification machinery above owns this operation. Do not open the
+// report on page load or replay XRPL reads: render only after its fourth proof.
+window.addEventListener("wildLedgerMembershipRequestsVerified", openReport);
+// Module execution order is not guaranteed. If Worker 1 already completed
+// its session reuse before this listener existed, render the ready report now.
+if (!$("authorizedContent").hidden && $("requestList").children.length === 0) {
+  openReport();
+}
+</script>
+</body>
+</html>
