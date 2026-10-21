@@ -559,33 +559,6 @@
 </style>
 </head>
 <body>
-  <!-- Keep the temporary opening Trail non-visible until the module determines
-       whether a new investigation is needed; session reuse must not flash it. -->
-  <div id="openingCheckbookBoot" class="ledger-trail" role="dialog" aria-modal="true" aria-labelledby="openingCheckbookBootTitle">
-    <div class="ledger-trail-panel" tabindex="-1">
-      <div class="trail-topline">
-        <button id="openingCheckbookBootClose" class="trail-close" type="button" aria-label="Close Ledger Trail">×</button>
-        <div class="trail-kicker">Wild Ledger · Ledger Trail</div>
-      </div>
-      <h2 id="openingCheckbookBootTitle">Onboarding Checkbook</h2>
-      <p class="trail-lede">Wild Ledger checks your Operator session and reads validated XRPL evidence for this Checkbook.</p>
-      <div class="trail-route">
-        <div class="trail-step active"><div class="trail-marker" aria-hidden="true"><span class="trail-activity" aria-hidden="true"></span></div><div class="trail-copy"><strong>Identify your community</strong><span>Reading your existing Operator session…</span></div></div>
-        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Check Authority</strong><span>Waiting for the previous checkpoint.</span></div></div>
-        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Find membership requests</strong><span>Waiting for the previous checkpoint.</span></div></div>
-        <div class="trail-step"><div class="trail-marker" aria-hidden="true">○</div><div class="trail-copy"><strong>Prove report readiness</strong><span>Waiting for the previous checkpoint.</span></div></div>
-      </div>
-      <p class="trail-status busy" role="status" aria-live="polite">Starting your read-only check…</p>
-    </div>
-  </div>
-  <script>
-    // The X works even if a slow network has not loaded the shared module.
-    window.__wildLedgerOpeningBootDismissed = false;
-    document.getElementById('openingCheckbookBootClose').addEventListener('click', () => {
-      window.__wildLedgerOpeningBootDismissed = true;
-      document.getElementById('openingCheckbookBoot')?.remove();
-    });
-  </script>
   <!-- All three Checkbook Ledger Trails use the shared presentation module. -->
 
   <main class="shell">
@@ -1069,7 +1042,7 @@ async function verifyApplicantsRecognition(requests, communityId, operatingWalle
 // One read-only verification operation: the shared module shows the approved
 // Get Wild Trail; this page owns evidence, XRPL reads, and the Checkbook report.
 // X is the only way to cancel recoverable XRPL read retries.
-let guideMode = !window.__wildLedgerOpeningBootDismissed;
+let guideMode = true;
 let busy = false;
 let completed = false;
 let openingRun = 1;
@@ -1346,18 +1319,12 @@ if (openingRequirements.reportReady) {
   $("authorizedContent").hidden = false;
   // The report renderer lives in a separate module; its ready-on-load check
   // also handles module evaluation order without triggering an XRPL scan.
-  document.getElementById("openingCheckbookBoot")?.remove();
 } else {
   resetTrail();
-  if (guideMode) {
-    openingTrail.element.classList.add("opening-first-paint");
-    openingTrail.open({resetSteps:true});
-    document.getElementById("openingCheckbookBoot")?.remove();
-    requestAnimationFrame(() => openingTrail.element.classList.remove("opening-first-paint"));
-    void runNext();
-  } else {
-    document.getElementById("openingCheckbookBoot")?.remove();
-  }
+  openingTrail.element.classList.add("opening-first-paint");
+  openingTrail.open({resetSteps:true});
+  requestAnimationFrame(() => openingTrail.element.classList.remove("opening-first-paint"));
+  void runNext();
 }
 window.addEventListener("wildLedgerIssuanceAudit", event => {
   const { resolve, reject, checkActive = () => {} } = event.detail || {};
