@@ -1058,6 +1058,7 @@
 <script src="js/wildLedgerConfig.js"></script>
 <script type="module">
 import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityAuthority.js";
+import { readUserSession, readOperatorSession } from "./js/wildLedgerSession.js";
 (() => {
   const FALLBACK_CONFIG = Object.freeze({
     leapIssuer: "rh7SidU91xGW2Za5RvoKiCgS2YB2psTBgq",
@@ -1068,16 +1069,30 @@ import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityA
   });
 
   const registry = window.WILD_LEDGER_COMMUNITY_REGISTRY || {};
-  const params = new URLSearchParams(window.location.search);
-  const defaultCommunity = Object.values(registry)[0] || null;
-  const defaultBackendId = window.WILD_LEDGER_BACKEND_COMMUNITY_ID?.(defaultCommunity) || "";
-  const requestedCommunity = params.get("community") || defaultBackendId;
-  const requestedRole = (params.get("role") || "owner").trim().toLowerCase();
-  const role = requestedRole === "operator" || requestedRole === "manager" ? "operator" : "owner";
+  const userSession = readUserSession();
+  const operatorSession = readOperatorSession();
+  // Get Wild is the sole source of identity and role. Community selection is
+  // read only from the established centralized session objects.
+  const role = userSession?.authority === "owner" || userSession?.authority === "operator"
+    ? userSession.authority : null;
+  const requestedCommunity = role === "operator"
+    ? operatorSession?.communityId
+    : role === "owner" ? userSession.selectedCommunity : null;
+  if (!userSession?.wallet || !role || !requestedCommunity ||
+      (role === "operator" && !operatorSession?.communityName)) {
+    document.body.textContent = "Community session unavailable. Return to Get Wild and select a community.";
+    return;
+  }
   const community = window.WILD_LEDGER_GET_COMMUNITY?.(requestedCommunity) || null;
-  const requestedId = window.WILD_LEDGER_BACKEND_COMMUNITY_ID?.(community) || String(requestedCommunity || "").trim().toUpperCase();
-  const communityName = community?.communityName || "Community";
-  const communityNamespace = community?.leapNamespace || `${requestedId}-LEAP`;
+  if (!community) {
+    document.body.textContent = "Community not found. Return to Get Wild and select a community.";
+    return;
+  }
+  const requestedId = role === "operator"
+    ? operatorSession.communityId : String(requestedCommunity).trim();
+  const communityName = role === "operator"
+    ? operatorSession.communityName : (community.communityName || "Community");
+  const communityNamespace = community.leapNamespace || `${requestedId}-LEAP`;
   const viewCommunityTitle = document.getElementById("view-community-title");
   const viewCommunityBack = document.getElementById("viewCommunityBack");
   const operatorLogout = document.getElementById("operatorLogout");
