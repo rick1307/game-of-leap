@@ -727,9 +727,9 @@
 </style>
 </head>
 <body>
-  <!-- First-paint opening Trail uses the approved shared CSS. It is visible
-       before any JavaScript module loads and replaced by the real module. -->
-  <div id="openingCheckbookBoot" class="ledger-trail show" role="dialog" aria-modal="true" aria-labelledby="openingCheckbookBootTitle">
+  <!-- Keep the temporary opening Trail non-visible until the module determines
+       whether a new investigation is needed; session reuse must not flash it. -->
+  <div id="openingCheckbookBoot" class="ledger-trail" role="dialog" aria-modal="true" aria-labelledby="openingCheckbookBootTitle">
     <div class="ledger-trail-panel" tabindex="-1">
       <div class="trail-topline">
         <button id="openingCheckbookBootClose" class="trail-close" type="button" aria-label="Close Ledger Trail">×</button>
@@ -1610,14 +1610,14 @@ if (reuseCheckbook) {
   window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified"));
 } else resetTrail();
 if (guideMode) {
-  // The first-paint copy stays visible until the live shared Trail is open.
+  // The temporary copy stays hidden; show only the real Trail for a new investigation.
   // Disable only the first entrance transition so no underlying page flashes.
   openingTrail.element.classList.add('opening-first-paint');
   openingTrail.open({resetSteps:true});
   document.getElementById('openingCheckbookBoot')?.remove();
   requestAnimationFrame(() => openingTrail.element.classList.remove('opening-first-paint'));
 } else {
-  // The visitor used the first-paint X before the module finished loading.
+  // Session reuse requires no opening Trail.
   document.getElementById('openingCheckbookBoot')?.remove();
 }
 refreshControls();
