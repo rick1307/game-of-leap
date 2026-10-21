@@ -646,6 +646,16 @@
     .nav-card,
     .nav-arrow { transition: none; }
   }
+
+  /* Direct Owner reference links; replaces the retired Library page. */
+  .owner-references { padding: 0 24px 24px; }
+  .owner-references h2 { margin: 4px 0 14px; font-size: 1.25rem; letter-spacing: -.02em; }
+  .owner-reference-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .owner-reference-grid .nav-card { min-height: 145px; padding: 18px; border-radius: 18px; }
+  .owner-reference-grid .nav-title { font-size: 1.15rem; }
+  .owner-reference-grid .nav-description { font-size: .81rem; }
+  @media (max-width: 900px) { .owner-reference-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .owner-references { padding: 0 14px 18px; } .owner-reference-grid { grid-template-columns: 1fr; } }
 </style>
   <link rel="stylesheet" href="wildLedgerControls.css">
   <link rel="stylesheet" href="wildLedgerBackend.css">
@@ -659,7 +669,6 @@
             <button class="logout-button wl-header-control" id="ownerLogout" type="button">Log Out</button>
           </div>
           <div class="top-navigation">
-            <a class="professional-library-link wl-header-control" href="viewCommunityLibrary.html?role=owner&from=owner" aria-label="Open Wild Ledger Library" title="Open Wild Ledger Library">Library</a>
           </div>
         </div>
         <h1 id="owner-title">Owner Console</h1>
@@ -795,6 +804,64 @@
           </div>
         </a>
       </nav>
+
+      <section class="owner-references" aria-labelledby="owner-references-title">
+        <h2 id="owner-references-title">Owner References</h2>
+        <div class="owner-reference-grid">
+          <a class="nav-card" href="documentation/leapProtocol.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">LEAP Protocol</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">The current authoritative standard: LEAP identity, authority, namespace, memo grammar, ledger records, validity, and protocol rules.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/operationsManual.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Operations Manual</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">How Wild Ledger is operated: wallets, allocation, distribution, replenishment, recognition, community operations, and procedures.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/workingRules.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Working Rules</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">AI-to-AI handoff rules for working safely on Wild Ledger: source of truth, scope, authority, ambiguity, and narrow execution.</p></div>
+          </a>
+          <a class="nav-card" href="test-harness/configStateTest.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">CONFIG State Harness</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Step 3 proof: QR wallet address, current Operating Wallet authority, CONFIG Schema 1 publication, XRPL validation, independent readback, off-ledger CONFIG validation, and Operator-backend handoff.</p></div>
+          </a>
+          <a class="nav-card" href="testHub.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Open Full Test Hub</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Owner-only index of Wild Ledger diagnostic and proof harnesses.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/wildLedger.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Wild Ledger</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Prospect-facing overview of the multi-community LEAP platform, offer, and circulation-based replenishment model.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/stateMachine.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">LEAP Logbook</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">How the Sailing Frog’s Leap community uses ledger state as a living logbook.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/chatDocumentation.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Community Chat / Lounge</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Architecture and design principles for community rooms, Member Record access, temporary aliases, presence, recognition, and XRP tipping.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/accessArchitecture.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Access Architecture</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Working architecture for Owner, Operator, and demo access: workspace routing, session boundaries, future authentication, and the separation between application access and XRPL authority.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/marketing.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Marketing</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Positioning, messaging, and the outward-facing explanation of the LEAP idea.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/kudo.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">KUDO</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Future-layer concept: a behavior and recognition game that ultimately feeds back into LEAP.</p></div>
+          </a>
+          <a class="nav-card" href="documentation/globalStateMachine.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Global State Machine</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">The bigger secular thesis: blockspace as shared global state capacity.</p></div>
+          </a>
+          <a class="nav-card" href="ambientStateEngine/ambientStateEngine.html">
+            <div class="nav-copy"><div class="nav-title-row"><div class="nav-title">Ambient State Engine</div><span class="nav-arrow" aria-hidden="true">→</span></div>
+              <p class="nav-description">Experimental engine for translating live signals into expressive site state.</p></div>
+          </a>
+        </div>
+      </section>
     </section>
   </main>
 
