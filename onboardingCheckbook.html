@@ -1690,9 +1690,7 @@ function createCell(label, valueNode) {
 }
 
 // Issuance Trail: no second page and no duplicate membership-request scanner.
-// Once signed, retain only the exact signed transaction for safe retry; never
-// generate a second signature to recover an uncertain submission.
-const ISSUANCE_PENDING_KEY = "wildLedger.firstLeapSignedCheck";
+// Keep signed transaction bytes in memory during the active issuance Trail.
 const issueStage = Array(7).fill("pending");
 const issue = { busy:false, signing:false, cancelled:false, selected:null, signer:null, prepared:null,
   signedBlob:"", pendingHash:"", verified:null, confirmed:false, qrRetries:0, recoveryAttempts:0, retryTimer:null, pairingPending:false };
@@ -1725,7 +1723,6 @@ const issueTrail = createLedgerTrail({
     issue.closedByHuman=true;
     issue.runId++;
     if (!issue.signing && issue.signer) void issue.signer.disconnect().catch(()=>{});
-    // The exact signed Check remains in sessionStorage for later recovery.
   }
 });
 issueTrail.element.id="issuanceLedgerTrail";
@@ -1776,7 +1773,7 @@ function issueFail(stage,error) {
   issue.signing=false;
   const message=String(error?.message||error||"Unknown failure");
   issueUpdate(stage,"failed",message);
-  issueEvidence(`${message}\n${issue.signedBlob ? "The original signed Check remains saved; no new signature is needed." : "No Check was submitted."}`);
+  issueEvidence(`${message}\n${issue.signedBlob ? "The original signed Check remains available while this page is open." : "No Check was submitted."}`);
 }
 async function issueGuarded(fn) {
   if (issue.busy || issue.cancelled) return;
@@ -1855,22 +1852,7 @@ function assertCheck(tx, withSigningFields = false) {
     }
   }
 }
-function readSavedSignedCheck() {
-  try {
-    const record = JSON.parse(sessionStorage.getItem(ISSUANCE_PENDING_KEY) || "null");
-    if (!record || record.version !== 1 || record.communityId !== issue.selected.communityId ||
-        record.operatorWallet !== issue.selected.operatorWallet || record.applicant !== issue.selected.applicant ||
-        record.requestHash !== issue.selected.requestHash ||
-        !/^[0-9A-Fa-f]{80,}$/.test(record.signedBlob || "")) return null;
-    return record;
-  } catch (_) { return null; }
-}
-function persistSignedCheck() {
-  sessionStorage.setItem(ISSUANCE_PENDING_KEY,JSON.stringify({version:1, ...issue.selected,
-    signedBlob:issue.signedBlob,txHash:issue.pendingHash}));
-}
 function clearSavedSignedCheck() {
-  sessionStorage.removeItem(ISSUANCE_PENDING_KEY);
   issue.signedBlob="";
 }
 async function startIssuePreflight() {
@@ -1946,7 +1928,6 @@ async function signIssueCheck() {
   assertCheck(decode(blob),true);
   issue.signedBlob=blob;
   issue.pendingHash=await signedCheckHash(blob);
-  persistSignedCheck();
   assertIssueOpen();
   hideIssueHandoff();
   issueUpdate(3,"done","Bifrost returned the exact signed Check; no XRPL submission has occurred yet.");
@@ -2058,7 +2039,6 @@ async function submitIssueCheck() {
   if (already) { await verifyIssuedCheck(); return; }
   // Mark possible submission BEFORE opening the transport. If X is pressed
   // while the socket opens, no submission takes place after it closes.
-  persistSignedCheck();
   issueUpdate(4,"working","Submitting the exact Bifrost-signed Check to XRPL…");
   try {
     const client=new DirectXRPLClient(issueServer);
@@ -2079,7 +2059,7 @@ async function submitIssueCheck() {
     if (issue.cancelled) return;
     if (!transientIssueRead(error)) throw error;
     // A transport interruption may occur AFTER XRPL received the signed blob.
-    // Recover by looking up this exact saved hash, never creating a new Check.
+    // Look up the original transaction hash without creating another Check.
     issueUpdate(4,"working","XRPL submission response interrupted; verifying the original transaction hash…");
   }
   const confirmed=await awaitValidatedIssue();
@@ -2088,26 +2068,13 @@ async function submitIssueCheck() {
   issueUpdate(4,"done",`CheckCreate validated in ledger ${confirmed.ledger_index}.`);
   await verifyIssuedCheck();
 }
-async function reconcileSignedCheck() {
-  issueUpdate(4,"working","Reconciling the previously signed Check by its original transaction hash…");
-  // Resubmitting identical signed bytes is permitted only when this saved blob
-  // has not yet been submitted in the current continuation. It is the same
-  // XRPL transaction and can never create a second Check.
-  await submitIssueCheck();
-}
-function beginCheckIssuance(request, recoveryOnly=false) {
+function beginCheckIssuance(request) {
   const session=readOperatorSession();
   const report=session&&checkedHandoff(session);
   const matching=report?.requests.find(row=>row.applicant===request.applicant&&row.hash===request.hash);
   const eligible=matching?.recognition?.status==="awaiting"&&matching?.onboardingCheck?.status==="unissued";
-  const unresolved=(()=>{try{return JSON.parse(sessionStorage.getItem(ISSUANCE_PENDING_KEY)||"null");}catch(_){return null;}})();
-  if (unresolved && unresolved.communityId===session?.communityId && unresolved.operatorWallet===session?.wallet &&
-      (!matching || unresolved.applicant!==matching.applicant || unresolved.requestHash!==matching.hash)) {
-    window.alert("A different signed onboarding Check remains unresolved. Reconcile it before starting another Check.");
-    return;
-  }
-  if ((!eligible && !(recoveryOnly&&unresolved&&matching)) || issue.busy || issueTrail.element.classList.contains("show")) {
-    if (!eligible && !recoveryOnly) window.alert("This request is no longer eligible for first issuance. Return to the verified Checkbook.");
+  if (!eligible || issue.busy || issueTrail.element.classList.contains("show")) {
+    if (!eligible) window.alert("This request is no longer eligible for first issuance. Return to the verified Checkbook.");
     return;
   }
   issue.selected={communityId:session.communityId,operatorWallet:session.wallet,
@@ -2117,27 +2084,9 @@ function beginCheckIssuance(request, recoveryOnly=false) {
   issueStage.fill("pending");
   issueTrail.open({resetSteps:true});
   $("issuanceEvidencePanel").hidden=false;
-  issueEvidence(`Verified membership request: ${matching.hash}\nSource: validated XRPL Payment\nIssuing wallet: ${session.wallet}`);
-  const saved=readSavedSignedCheck();
-  if (saved) {
-    issue.signedBlob=saved.signedBlob;
-    issue.pendingHash=String(saved.txHash||"").toUpperCase();
-    [0,1,2,3].forEach(n=>issueUpdate(n,"done",["Request previously verified","Previous transaction prepared","Previously connected","Original signed Check restored"][n]));
-    void issueGuarded(reconcileSignedCheck);
-  } else void issueGuarded(startIssuePreflight);
+  issueEvidence(`Verified membership request: ${matching.hash}\\nSource: validated XRPL Payment\\nIssuing wallet: ${session.wallet}`);
+  void issueGuarded(startIssuePreflight);
 }
-// Return from Bifrost may reload Safari; a previously signed Check must
-// reopen only if the human has NOT closed this Trail with X in this session.
-window.addEventListener("wildLedgerMembershipRequestsVerified",()=>{
-  if (issue.closedByHuman || issueTrail.element.classList.contains("show")) return;
-  const session=readOperatorSession();
-  const report=session&&checkedHandoff(session);
-  let saved=null;
-  try {saved=JSON.parse(sessionStorage.getItem(ISSUANCE_PENDING_KEY)||"null");} catch(_) {}
-  if (!saved || !session || saved.communityId!==session.communityId || saved.operatorWallet!==session.wallet) return;
-  const row=report?.requests?.find(r=>r.applicant===saved.applicant && r.hash===saved.requestHash);
-  if (row) beginCheckIssuance(row,true);
-});
 
 // An inert symbol: unlike Issue Check and Cancel Check it must never be
 // mistaken for a button. Accessible name describes the actual XRPL state.
@@ -2449,7 +2398,6 @@ function openReport({strictReserve = false, skipReserve = false} = {}) {
 // successful validated CheckCancel, independently verify its Check object is
 // gone, reconstruct the entire verified Checkbook, await the reserve display,
 // then dismiss this Trail to reveal the already-updated page.
-const CANCEL_PENDING_KEY = "wildLedger.firstLeapSignedCancel";
 const cancelTrailKeys = ["identify","authority","outstanding","prepare","wallet","sign","verify"];
 const cancelTrailTitles = ["Identify Check","Confirm authority","Verify outstanding Check","Prepare CheckCancel","Connect Bifrost","Sign and submit","Verify cancellation"];
 const cancelTrailDefaults = [
@@ -2467,7 +2415,7 @@ const cancelTx = {selected:null, prepared:null, signer:null, signing:false, sign
 function cancelTrailStop() {
   ++cancelTrailRun;
   cancelTrailSelectedId = "";
-  // Signing may finish after X; its exact signed bytes are retained before any
+  // Signing may finish after X; its signed bytes remain in memory before any
   // submission, even though the Trail will not continue invisibly.
   if (!cancelTx.signing && cancelTx.signer) {
     void cancelTx.signer.disconnect().catch(()=>{});
@@ -2598,27 +2546,6 @@ function cancelTrailAssertTx(tx, prepared = null) {
     }
   }
 }
-function cancelTrailSavedRaw() { return sessionStorage.getItem(CANCEL_PENDING_KEY); }
-function cancelTrailReadSaved() {
-  const raw=cancelTrailSavedRaw();
-  if (!raw) return null;
-  let saved;
-  try { saved=JSON.parse(raw); } catch (_) { throw new Error("Saved CheckCancel evidence is unreadable. Do not sign another cancellation."); }
-  if (saved?.version!==1 || !/^[A-Fa-f0-9]{64}$/.test(saved.checkId || "") ||
-      !isClassicAddress(saved.operatorWallet || "") || !isClassicAddress(saved.applicant || "") ||
-      !/^[A-Fa-f0-9]{80,}$/.test(saved.signedBlob || "") ||
-      !/^[A-Fa-f0-9]{64}$/.test(saved.txHash || "") || !saved.prepared ||
-      !String(saved.communityId || "").trim())
-    throw new Error("Saved CheckCancel evidence is incomplete. Do not request another signature.");
-  return saved;
-}
-function cancelTrailPersistSigned() {
-  const s=cancelTx.selected;
-  // Must succeed before sending anything. A reload can then reconcile exactly
-  // these signed bytes without asking Bifrost for another signature.
-  sessionStorage.setItem(CANCEL_PENDING_KEY,JSON.stringify({version:1,...s,
-    prepared:cancelTx.prepared,signedBlob:cancelTx.signedBlob,txHash:cancelTx.txHash,submitAttempted:cancelTx.submitAttempted}));
-}
 async function cancelTrailCheckSigned() {
   const blob=cancelTx.signedBlob;
   if (!/^[A-F0-9]{80,}$/.test(blob) || !/^[A-F0-9]{64}$/.test(cancelTx.txHash))
@@ -2734,7 +2661,7 @@ async function cancelTrailReadbackCheckpoint(run, label, work) {
       // If the Operator changed, security requires re-authentication; network
       // retries cannot fix an invalid identity. Preserve all signed evidence.
       cancelTrailCurrentSession();
-      if (!cancelTrailSavedRaw() || !cancelTx.confirmed)
+      if (!cancelTx.confirmed)
         throw error;
       cancelTrailSetStep("verify","active",`${label} · checking again automatically…`);
       cancelTrailSetStatus(`Cancellation is validated. ${label} still in progress; automatically retrying (${attempts + 1}). No action or new signature needed.`,"busy");
@@ -2807,7 +2734,6 @@ async function cancelTrailFinishVerified(run) {
 
   // Release signed evidence only after all checkpoints have succeeded.
   cancelTx.refreshed=true;
-  sessionStorage.removeItem(CANCEL_PENDING_KEY);
   cancelTrailSetStep("verify","done","Canceled Check removed; Checkbook counts and XRP reserve refreshed.");
   cancelTrailSetStatus("Cancellation verified. Onboarding Checkbook is already up to date.");
   cancelTrail.finish({message:"Completed",onFinished:()=>cancelTrailClose()});
@@ -2848,10 +2774,8 @@ async function cancelTrailSubmitSameSigned(run) {
     try {
       await cancelTrailRetryRead(run,()=>client.connect(),"sign","XRPL connection interrupted; reconnecting to submit the signed CheckCancel…");
       cancelTrailEnsureOpen(run);
-      // Persist intent BEFORE requesting submit: an interrupted response is
-      // uncertain, so recovery must query the exact hash, never send again.
+      // Record submission intent in memory before requesting submit.
       cancelTx.submitAttempted=true;
-      cancelTrailPersistSigned();
       const response=await client.request("submit",{tx_blob:cancelTx.signedBlob,fail_hard:false},20000);
       cancelTrailEnsureOpen(run);
       const result=response?.result||{};
@@ -2922,7 +2846,6 @@ async function cancelTrailConnectAndSign(run) {
     cancelTrailAssertTx(decode(cancelTx.signedBlob),cancelTx.prepared);
     cancelTx.txHash=await signedCheckHash(cancelTx.signedBlob);
     await cancelTrailCheckSigned();
-    cancelTrailPersistSigned();
   } finally {
     cancelTx.signing=false;
   }
@@ -2930,27 +2853,20 @@ async function cancelTrailConnectAndSign(run) {
   cancelTrailSetStep("sign","active","Bifrost signature verified and saved; submitting the exact signed CheckCancel…");
   await cancelTrailSubmitSameSigned(run);
 }
-async function cancelTrailPreflight(checkId,run,recover=false) {
+async function cancelTrailPreflight(checkId,run) {
   let active="identify";
   try {
     cancelTrailSetStep(active,"active","Checking the Check ID and current Operator session…");
     cancelTrailSetStatus("Identifying the selected Check…","busy");
     const session=readOperatorSession();
     const report=session && checkedHandoff(session);
-    const saved=cancelTrailReadSaved();
-    if (saved && (!session || saved.communityId!==session.communityId || saved.operatorWallet!==session.wallet))
-      throw new Error("An unresolved signed CheckCancel belongs to another Operator session. Do not sign a new cancellation.");
-    if (saved && !recover && saved.checkId!==checkId)
-      throw new Error("A different signed CheckCancel is unresolved. Reconcile it before starting another cancellation.");
     const check=report?.checks?.find(row=>row.id===checkId);
-    if (!session || !report || (!check && !saved) || (check &&
-        (check.issuingWallet!==session.wallet || !isClassicAddress(check.applicant))) ||
-        (!saved && check?.status!=="issued"))
+    if (!session || !report || !check ||
+        check.issuingWallet!==session.wallet || !isClassicAddress(check.applicant) ||
+        check.status!=="issued")
       throw new Error("This Check is not a verified outstanding Check issued by your current Operating Wallet. Reopen through Get Wild.");
     cancelTx.selected={communityId:session.communityId,operatorWallet:session.wallet,
-      applicant:saved?.applicant || check.applicant,checkId};
-    if (saved && (saved.checkId!==checkId || (check && check.applicant!==saved.applicant)))
-      throw new Error("Saved cancellation evidence differs from the selected Check. No new signature will be requested.");
+      applicant:check.applicant,checkId};
     cancelTrailEnsureOpen(run);
     cancelTrailSetStep("identify","done",`Check ID ${checkId.slice(0,12)}…${checkId.slice(-8)} · recipient ${cancelTx.selected.applicant}`);
     active="authority";
@@ -2959,21 +2875,6 @@ async function cancelTrailPreflight(checkId,run,recover=false) {
     await cancelTrailRetryRead(run,cancelTrailCheckAuthority,"authority","XRPL read interrupted; verifying Operator authority again…");
     cancelTrailEnsureOpen(run);
     cancelTrailSetStep("authority","done",`${session.communityId} · authorized Operating Wallet ${session.wallet}`);
-
-    if (saved) {
-      cancelTx.prepared=saved.prepared;
-      cancelTx.signedBlob=String(saved.signedBlob).toUpperCase();
-      cancelTx.txHash=String(saved.txHash).toUpperCase();
-      cancelTx.submitAttempted=saved.submitAttempted===true;
-      await cancelTrailCheckSigned();
-      cancelTrailEnsureOpen(run);
-      cancelTrailSetStep("outstanding","done","Original Check ID and validated issuance record identified.");
-      cancelTrailSetStep("prepare","done","Previously prepared cancellation recovered from this tab.");
-      cancelTrailSetStep("wallet","done","Bifrost signature already obtained; no new approval.");
-      active="sign";
-      await cancelTrailSubmitSameSigned(run);
-      return;
-    }
 
     active="outstanding";
     cancelTrailSetStep(active,"active","Checking the selected Check ID in the validated ledger…");
@@ -2990,7 +2891,7 @@ async function cancelTrailPreflight(checkId,run,recover=false) {
     if (run!==cancelTrailRun) return;
     cancelTrailHideHandoff();
     cancelTx.signing=false;
-    const hasSignature=!!cancelTrailSavedRaw();
+    const hasSignature=!!cancelTx.signedBlob;
     cancelTrailSetStep(cancelTx.confirmed?"verify":hasSignature?"sign":active,"failed",String(error?.message||error));
     cancelTrailSetStatus(String(error?.message||error),"error");
     // A genuine invalid signature, authority or wallet rejection cannot be
@@ -2998,7 +2899,7 @@ async function cancelTrailPreflight(checkId,run,recover=false) {
   }
 }
 
-function cancelTrailOpen(checkId,recover=false) {
+function cancelTrailOpen(checkId) {
   if (!/^[0-9A-F]{64}$/.test(checkId) || cancelTrail.element.classList.contains("show")) return;
   cancelTrailSelectedId=checkId;
   if (cancelTx.signer && !cancelTx.signing) { void cancelTx.signer.disconnect().catch(()=>{});cancelTx.signer=null; }
@@ -3006,25 +2907,13 @@ function cancelTrailOpen(checkId,recover=false) {
   cancelTx.confirmed=false;cancelTx.refreshed=false;cancelTx.signing=false;cancelTx.submitAttempted=false;
   const run=++cancelTrailRun;
   cancelTrail.open({resetSteps:true});
-  void cancelTrailPreflight(checkId,run,recover);
+  void cancelTrailPreflight(checkId,run);
 }
 document.addEventListener("click",event=>{
   const button=event.target.closest?.("button.cancel-onboarding-check");
   if (!button || button.disabled || !$("authorizedContent").contains(button)) return;
   cancelTrailOpen(String(button.dataset.checkId||"").toUpperCase());
 });
-// Mobile Safari may reload on return from Bifrost. Reopen a signed cancellation
-// only after the ordinary Checkbook's XRPL authority/history checks complete.
-window.addEventListener("wildLedgerMembershipRequestsVerified",()=>{
-  if (cancelTrail.element.classList.contains("show")) return;
-  let saved=null;
-  try { saved=cancelTrailReadSaved(); } catch (_) { return; }
-  if (!saved) return;
-  const session=readOperatorSession();
-  if (session && saved.communityId===session.communityId && saved.operatorWallet===session.wallet)
-    cancelTrailOpen(String(saved.checkId).toUpperCase(),true);
-});
-
 // The verification machinery above owns this operation. Do not open the
 // report on page load or replay XRPL reads: render only after its fourth proof.
 window.addEventListener("wildLedgerMembershipRequestsVerified", openReport);
