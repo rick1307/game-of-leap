@@ -1051,6 +1051,17 @@ let openingRun = 1;
 const OPENING_CLOSED = Symbol("Opening Ledger Trail closed");
 const stepStates = ["pending", "pending", "pending", "pending"];
 const runContext = { session:null, requests:null, checks:null, scanned:0, pages:0, excluded:0, priceStatements:0 };
+// Reassess required properties on every load. Get Wild owns authorization;
+// this page consumes its established session and gathers only missing report data.
+const openingRequirements = (() => {
+  const user = readUserSession();
+  const operator = readCentralOperatorSession();
+  const identityReady = user?.authority === "operator" && isClassicAddress(user.wallet) &&
+    !!operator?.communityId && !!operator?.communityName;
+  const reportReady = identityReady &&
+    Array.isArray(operator.membershipRequests) && Array.isArray(operator.checkRecords);
+  return { identityReady, reportReady, user, operator };
+})();
 const titles = ["Identify your community", "Check Authority", "Find membership requests", "Prove report readiness"];
 const openingStepIds = ["identify", "authority", "requests", "ready"];
 const openingTrail = createLedgerTrail({
@@ -1124,6 +1135,15 @@ async function performStep(number, checkActive = () => {}) {
     $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(session.communityId)}&role=operator`;
     document.title = `Onboarding Checkbook · ${communityName} | Wild Ledger`;
     $("requestStatus").classList.remove("error");
+    if (openingRequirements.reportReady) {
+      // The required XRPL-derived report is already in the central Operator session.
+      // An empty result array means the XRPL investigation returned zero rows.
+      runContext.requests = openingRequirements.operator.membershipRequests;
+      runContext.checks = openingRequirements.operator.checkRecords;
+      $("requestStatus").textContent = "Using membership requests already gathered from XRPL.";
+      return {message:`${runContext.requests.length} membership requests already available from XRPL.`,
+        evidence:"Existing Operator session contains the completed Checkbook report."};
+    }
     $("requestStatus").textContent = "Finding membership-request payments in XRPL history…";
     // Obtain the historical authority chain for request verification here.
     // This is ledger evidence, not a current-Operator access gate.
@@ -1198,16 +1218,19 @@ async function performStep(number, checkActive = () => {}) {
     const operator = readCentralOperatorSession();
     if (!operator || operator.communityId !== current.communityId)
       throw new Error("The Operator community changed during verification.");
-    const membershipRequests = requests.map(row => ({
+    const membershipRequests = (Array.isArray(operator.membershipRequests)
+      ? operator.membershipRequests : requests.map(row => ({
       applicant: row.applicant,
       hash: row.hash,
       ledger: row.ledger,
       txIndex: row.txIndex,
       recognition: { status: row.recognition.status },
       onboardingCheck: row.onboardingCheck
-    }));
-    const checkRecords = runContext.checks;
-    if (!updateOperatorSession({ membershipRequests, checkRecords, checkbookLoadedFor: current.wallet }))
+    })));
+    const checkRecords = Array.isArray(operator.checkRecords)
+      ? operator.checkRecords : runContext.checks;
+    if (!openingRequirements.reportReady &&
+        !updateOperatorSession({ membershipRequests, checkRecords, checkbookLoadedFor: current.wallet }))
       throw new Error("The verified Checkbook could not be saved to the Operator session.");
     $("backLink").hidden = false;
     document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
@@ -1288,46 +1311,42 @@ async function runNext() {
     if (succeeded && openingActive(run) && !completed) void runNext();
   }
 }
-// The module creates the only opening Trail X. Underlying evidence is
-// progressive disclosure, not a second way to trigger the network operation.
-// A completed investigation belongs to this Operator and community for this tab.
-// Empty arrays are valid completed results; only the explicit marker grants reuse.
-const cachedOperator = readCentralOperatorSession();
-const cachedSession = readOperatorSession();
-const reuseCheckbook = !!(cachedSession && cachedOperator &&
-  cachedOperator.checkbookLoadedFor === cachedSession.wallet &&
-  Array.isArray(cachedOperator.membershipRequests) &&
-  Array.isArray(cachedOperator.checkRecords));
-if (reuseCheckbook) {
-  runContext.session = cachedSession;
-  runContext.requests = cachedOperator.membershipRequests;
-  runContext.checks = cachedOperator.checkRecords;
-  stepStates.fill("done");
-  completed = true;
+// The opening Trail is a tool for gathering missing requirements, not a
+// mandatory presentation. Inspect the actual central-session properties first.
+if (openingRequirements.reportReady) {
+  // Get Wild already established identity and the XRPL-derived report is present.
+  // Do not run the opening Trail or repeat historical ledger reads.
+  const {user, operator} = openingRequirements;
   guideMode = false;
-  $("communityName").textContent = cachedSession.communityName;
-  $("communityId").textContent = cachedSession.communityId;
-  $("operatorWallet").textContent = cachedSession.wallet;
-  $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(cachedSession.communityId)}`;
+  completed = true;
+  stepStates.fill("done");
+  runContext.session = {wallet:user.wallet, communityId:operator.communityId,
+    communityName:operator.communityName};
+  runContext.requests = operator.membershipRequests;
+  runContext.checks = operator.checkRecords;
+  $("communityName").textContent = operator.communityName;
+  $("communityId").textContent = operator.communityId;
+  $("operatorWallet").textContent = user.wallet;
+  $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(operator.communityId)}&role=operator`;
   $("backLink").hidden = false;
-  document.title = `Onboarding Checkbook · ${cachedSession.communityName} | Wild Ledger`;
+  $("requestStatus").textContent = "Membership requests ready.";
+  document.title = `Onboarding Checkbook · ${operator.communityName} | Wild Ledger`;
   $("authorizedContent").hidden = false;
+  // The report renderer lives in a separate module; its ready-on-load check
+  // also handles module evaluation order without triggering an XRPL scan.
   document.getElementById("openingCheckbookBoot")?.remove();
-  // Notify Worker 2 immediately; its own startup also checks for a completed handoff.
-  window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified"));
-} else resetTrail();
-if (guideMode) {
-  // The temporary copy stays hidden; show only the real Trail for a new investigation.
-  // Disable only the first entrance transition so no underlying page flashes.
-  openingTrail.element.classList.add('opening-first-paint');
-  openingTrail.open({resetSteps:true});
-  document.getElementById('openingCheckbookBoot')?.remove();
-  requestAnimationFrame(() => openingTrail.element.classList.remove('opening-first-paint'));
 } else {
-  // Session reuse requires no opening Trail.
-  document.getElementById('openingCheckbookBoot')?.remove();
+  resetTrail();
+  if (guideMode) {
+    openingTrail.element.classList.add("opening-first-paint");
+    openingTrail.open({resetSteps:true});
+    document.getElementById("openingCheckbookBoot")?.remove();
+    requestAnimationFrame(() => openingTrail.element.classList.remove("opening-first-paint"));
+    void runNext();
+  } else {
+    document.getElementById("openingCheckbookBoot")?.remove();
+  }
 }
-if (guideMode) void runNext();
 window.addEventListener("wildLedgerIssuanceAudit", event => {
   const { resolve, reject, checkActive = () => {} } = event.detail || {};
   void (async () => {
