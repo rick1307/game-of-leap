@@ -936,6 +936,22 @@
   }
 </style>
   <link rel="stylesheet" href="wildLedgerControls.css">
+<style>
+/* Tokenomics-only motion; retain Wild Ledger's shared Ledger Trail palette. */
+.ledger-trail .trail-route .tokenomics-api-entry {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 280ms ease 110ms, transform 350ms ease 110ms;
+}
+.ledger-trail .trail-route .tokenomics-api-entry.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ledger-trail .trail-route { transition: none !important; }
+  .ledger-trail .trail-route .tokenomics-api-entry { transition: none !important; opacity: 1; transform: none; }
+}
+</style>
 </head>
 <body>
   <main class="shell">
@@ -1306,6 +1322,21 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     row.querySelector(".trail-copy span").textContent = detail;
   }
 
+  // Animate the existing Wild Ledger Trail's real height as API rows arrive.
+  // All colors, typography, markers and completion behavior remain shared.
+  function animateTrailGrowth(previousHeight) {
+    const route = tokenomicsTrailRoute;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Freeze the route at its current rendered height before measuring new content.
+    route.style.height = `${previousHeight}px`;
+    route.style.overflow = "hidden";
+    route.style.transition = "none";
+    const targetHeight = route.scrollHeight;
+    void route.offsetHeight;
+    route.style.transition = "height 420ms cubic-bezier(.22, 1, .36, 1)";
+    route.style.height = `${targetHeight}px`;
+  }
+
   function recordLedgerCall(socket, payload) {
     const sequence = ++tokenomicsRequestCount;
     const row = document.createElement("div");
@@ -1319,7 +1350,11 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     const detail = document.createElement("span");
     copy.append(title, detail);
     row.append(marker, copy);
+    const previousHeight = tokenomicsTrailRoute.getBoundingClientRect().height;
     tokenomicsTrailRoute.insertBefore(row, tokenomicsTrailLast);
+    row.classList.add("tokenomics-api-entry");
+    animateTrailGrowth(previousHeight);
+    requestAnimationFrame(() => row.classList.add("is-visible"));
     const record = { row, started: performance.now(), description: describeLedgerCall(payload) };
     updateCallRow(row, "working", `${record.description} Request sent (ID ${String(payload.id ?? "none")}).`);
     let pending = tokenomicsRequests.get(socket);
