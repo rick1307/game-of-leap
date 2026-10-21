@@ -134,6 +134,7 @@
   <script type="module">
     import QRCode from "https://esm.sh/qrcode@1.5.4?bundle";
     import { createLedgerTrail } from "./js/ledgerTrail.js";
+    import { readUserSession, updateUserSession } from "./js/wildLedgerSession.js";
     import { submitSignedTransaction } from "./js/xrplTransport.js";
     import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
     import {
@@ -285,8 +286,23 @@
       if (community.configured) {
         const open = document.createElement("a");
         open.className = "open";
-        open.href = `viewCommunity.html?community=${encodeURIComponent(community.communityId)}&role=owner`;
+        open.href = "viewCommunity.html";
         open.textContent = "Open Community →";
+        open.addEventListener("click", event => {
+          event.preventDefault();
+          const user = readUserSession();
+          if (user?.authority !== "owner") {
+            window.alert("Owner session unavailable. Return to Get Wild and sign in again.");
+            return;
+          }
+          try {
+            const updated = updateUserSession({ selectedCommunity: community.communityId });
+            if (!updated) throw new Error("Owner session unavailable.");
+            window.location.href = open.href;
+          } catch (error) {
+            window.alert(error?.message || "Could not select the community.");
+          }
+        });
         actions.appendChild(open);
       } else {
         const pending = document.createElement("span");
