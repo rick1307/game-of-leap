@@ -1402,8 +1402,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
       tokenomicsTrail.setStatus(String(failure), "error");
     } else {
       tokenomicsTrail.setStep("start", "done", `${tokenomicsRequestCount} individual XRPL API requests recorded.`);
-      tokenomicsTrail.setStep("complete", "done", "Dashboard calculations completed.");
-      tokenomicsTrail.setStatus("Completed", "success");
+      tokenomicsTrail.finish({ message: "Completed" });
     }
   }
 
