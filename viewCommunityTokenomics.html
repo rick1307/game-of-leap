@@ -20,6 +20,9 @@
     --shadow: 0 28px 78px rgba(0, 16, 24, .38);
   }
 
+  /* Keep the dashboard out of the first paint until the Ledger Trail finishes. */
+  body:not(.tokenomics-dashboard-visible) > main.shell { visibility: hidden; }
+
   * { box-sizing: border-box; }
 
   html { min-height: 100%; }
@@ -1281,7 +1284,8 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     steps: [
       { id: "start", title: "Read validated ledger evidence", detail: "Waiting to start." },
       { id: "complete", title: "Tokenomics ready", detail: "Waiting for the ledger reads." }
-    ]
+    ],
+    onClose: () => document.body.classList.add("tokenomics-dashboard-visible")
   });
   const tokenomicsTrailRoute = tokenomicsTrail.element.querySelector(".trail-route");
   const tokenomicsTrailLast = tokenomicsTrailRoute.lastElementChild;
@@ -1458,7 +1462,13 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
       tokenomicsTrail.setStatus(String(failure), "error");
     } else {
       tokenomicsTrail.setStep("start", "done", `${tokenomicsRequestCount} individual XRPL API requests recorded.`);
-      tokenomicsTrail.finish({ message: "Completed" });
+      tokenomicsTrail.finish({
+        message: "Completed",
+        onFinished: () => {
+          document.body.classList.add("tokenomics-dashboard-visible");
+          tokenomicsTrail.close();
+        }
+      });
     }
   }
 
