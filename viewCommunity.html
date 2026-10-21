@@ -245,7 +245,7 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
           <a class="community-link" id="communityTokenomicsLink" href="viewCommunityTokenomics.html">Tokenomics</a>
           <a class="community-link" id="communityRecognitionLink" href="viewCommunityRecognition.html">Recognition</a>
           <a class="community-link" id="communityMembershipRequestsLink" href="onboardingCheckbook.html">Onboarding Checkbook</a>
-          <a class="community-link" id="communityLibraryLink" href="viewCommunityLibrary.html">Library</a>
+          <a class="community-link" id="communityOperationsManualLink" href="documentation/operationsManual.html">Operations Manual</a>
         </div>
       </header>
     </section>
@@ -303,7 +303,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
   const communityTokenomicsLink = document.getElementById("communityTokenomicsLink");
   const communityRecognitionLink = document.getElementById("communityRecognitionLink");
   const communityMembershipRequestsLink = document.getElementById("communityMembershipRequestsLink");
-  const communityLibraryLink = document.getElementById("communityLibraryLink");
+  const communityOperationsManualLink = document.getElementById("communityOperationsManualLink");
   const communityEditLink = document.getElementById("communityEditLink");
 
   if (ownerCommunitiesBack && role !== "owner") {
@@ -319,28 +319,24 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     });
   }
 
-
   if (communityRecognitionLink) {
     communityRecognitionLink.href = `viewCommunityRecognition.html?community=${encodeURIComponent(requestedId)}&role=${encodeURIComponent(role)}`;
   }
 
   if (communityMembershipRequestsLink) {
     if (role === "operator") {
-      communityMembershipRequestsLink.href = `onboardingCheckbook.html?community=${encodeURIComponent(requestedId)}&role=operator`;
+      communityMembershipRequestsLink.href = "onboardingCheckbook.html";
     } else {
       communityMembershipRequestsLink.remove();
     }
   }
 
-  if (communityLibraryLink) {
-    communityLibraryLink.href = `viewCommunityLibrary.html?community=${encodeURIComponent(requestedId)}&role=${encodeURIComponent(role)}&from=viewCommunity`;
-  }
 
   if (communityEditLink) {
     communityEditLink.href = `setup.html?mode=edit&community=${encodeURIComponent(requestedId)}&role=${encodeURIComponent(role)}`;
   }
 
-  [ownerCommunitiesBack, communityEditLink, communityTokenomicsLink, communityRecognitionLink, ...(role === "operator" ? [communityMembershipRequestsLink] : []), communityLibraryLink]
+  [ownerCommunitiesBack, communityEditLink, communityTokenomicsLink, communityRecognitionLink, ...(role === "operator" ? [communityMembershipRequestsLink] : []), communityOperationsManualLink]
     .filter(Boolean)
     .forEach(link => link.addEventListener("click", event => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
