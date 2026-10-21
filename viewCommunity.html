@@ -256,6 +256,10 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
 import { readUserSession, readOperatorSession, clearWildLedgerSessions } from "./js/wildLedgerSession.js";
 (() => {
   let viewIsLeaving = false;
+  window.addEventListener("pageshow", () => {
+    viewIsLeaving = false;
+    document.body.classList.remove("wl-view-leaving");
+  });
   const fadeNavigate = (url, { replace = false } = {}) => {
     if (viewIsLeaving) return;
     viewIsLeaving = true;
