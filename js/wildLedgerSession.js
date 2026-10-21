@@ -71,11 +71,12 @@ export function writeOperatorSession({ communityId, communityName, membershipReq
   const previous = readOperatorSession();
   const sameCommunity = previous?.communityId === communityId.trim();
   const requests = membershipRequests === undefined
-    ? (sameCommunity ? previous.membershipRequests : []) : membershipRequests;
+    ? (sameCommunity ? previous.membershipRequests : null) : membershipRequests;
   const checks = checkRecords === undefined
-    ? (sameCommunity ? previous.checkRecords : []) : checkRecords;
-  if (!Array.isArray(requests) || !Array.isArray(checks))
-    throw new Error('Operator membership requests and Check records must be arrays.');
+    ? (sameCommunity ? previous.checkRecords : null) : checkRecords;
+  if ((requests !== null && !Array.isArray(requests)) ||
+      (checks !== null && !Array.isArray(checks)))
+    throw new Error('Operator membership requests and Check records must be arrays or null.');
   const loadedFor = checkbookLoadedFor === undefined
     ? (sameCommunity ? previous.checkbookLoadedFor : null) : checkbookLoadedFor;
   const operator = {
@@ -92,10 +93,10 @@ export function readOperatorSession() {
   const operator = readObject(OPERATOR_KEY);
   return operator && typeof operator.communityId === 'string' && !!operator.communityId.trim() &&
     typeof operator.communityName === 'string' && !!operator.communityName.trim() &&
-    (operator.membershipRequests === undefined || Array.isArray(operator.membershipRequests)) &&
-    (operator.checkRecords === undefined || Array.isArray(operator.checkRecords))
+    (operator.membershipRequests == null || Array.isArray(operator.membershipRequests)) &&
+    (operator.checkRecords == null || Array.isArray(operator.checkRecords))
     ? { communityId: operator.communityId, communityName: operator.communityName,
-        membershipRequests: operator.membershipRequests || [], checkRecords: operator.checkRecords || [],
+        membershipRequests: operator.membershipRequests ?? null, checkRecords: operator.checkRecords ?? null,
         checkbookLoadedFor: operator.checkbookLoadedFor || null } : null;
 }
 
