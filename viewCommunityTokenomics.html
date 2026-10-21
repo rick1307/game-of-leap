@@ -1058,7 +1058,7 @@
 <script src="js/wildLedgerConfig.js"></script>
 <script type="module">
 import { resolveCommunityAuthority, isAuthorizedAtLedger } from "./js/communityAuthority.js";
-import { readUserSession, readOperatorSession } from "./js/wildLedgerSession.js";
+import { readUserSession, readOperatorSession, clearWildLedgerSessions } from "./js/wildLedgerSession.js";
 (() => {
   const FALLBACK_CONFIG = Object.freeze({
     leapIssuer: "rh7SidU91xGW2Za5RvoKiCgS2YB2psTBgq",
@@ -1107,8 +1107,7 @@ import { readUserSession, readOperatorSession } from "./js/wildLedgerSession.js"
     operatorLogout.remove();
   } else if (operatorLogout) {
     operatorLogout.addEventListener("click", () => {
-      sessionStorage.removeItem("wildLedgerRole");
-      sessionStorage.removeItem("wildLedgerCommunity");
+      clearWildLedgerSessions();
       window.location.href = "getWild.html";
     });
   }
