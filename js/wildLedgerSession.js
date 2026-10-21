@@ -65,21 +65,34 @@ export function removeUserSession() {
   sessionStorage.removeItem(MEMBER_KEY);
 }
 
-export function writeOperatorSession({ communityId, communityName }) {
+export function writeOperatorSession({ communityId, communityName, membershipRequests, checkRecords }) {
   if (typeof communityId !== 'string' || !communityId.trim()) throw new Error('Community ID is required.');
   if (typeof communityName !== 'string' || !communityName.trim()) throw new Error('Community name is required.');
-  const operator = { communityId: communityId.trim(), communityName: communityName.trim() };
   const previous = readOperatorSession();
+  const sameCommunity = previous?.communityId === communityId.trim();
+  const requests = membershipRequests === undefined
+    ? (sameCommunity ? previous.membershipRequests : []) : membershipRequests;
+  const checks = checkRecords === undefined
+    ? (sameCommunity ? previous.checkRecords : []) : checkRecords;
+  if (!Array.isArray(requests) || !Array.isArray(checks))
+    throw new Error('Operator membership requests and Check records must be arrays.');
+  const operator = {
+    communityId: communityId.trim(), communityName: communityName.trim(),
+    membershipRequests: requests, checkRecords: checks
+  };
   sessionStorage.setItem(OPERATOR_KEY, JSON.stringify(operator));
-  if (!previous || previous.communityId !== operator.communityId) sessionStorage.removeItem(MEMBER_KEY);
+  if (!sameCommunity) sessionStorage.removeItem(MEMBER_KEY);
   return operator;
 }
 
 export function readOperatorSession() {
   const operator = readObject(OPERATOR_KEY);
   return operator && typeof operator.communityId === 'string' && !!operator.communityId.trim() &&
-    typeof operator.communityName === 'string' && !!operator.communityName.trim()
-    ? { communityId: operator.communityId, communityName: operator.communityName } : null;
+    typeof operator.communityName === 'string' && !!operator.communityName.trim() &&
+    (operator.membershipRequests === undefined || Array.isArray(operator.membershipRequests)) &&
+    (operator.checkRecords === undefined || Array.isArray(operator.checkRecords))
+    ? { communityId: operator.communityId, communityName: operator.communityName,
+        membershipRequests: operator.membershipRequests || [], checkRecords: operator.checkRecords || [] } : null;
 }
 
 export function updateOperatorSession(changes) {
