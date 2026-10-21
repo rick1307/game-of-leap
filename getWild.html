@@ -363,42 +363,18 @@ async function currentConfigFor(match, configState) {
   return null;
 }
 
-function writeOperatorSession(match, configState, config = null) {
-  const establishedAt = new Date().toISOString();
-  const connectedWallet = activeAccount;
-  const session = {
-    version: 2,
-    role: "operator",
-    communityId: String(match.communityId || "").trim().toUpperCase(),
-    communityName: String(config?.communityName || match.communityName || match.communityId || "Community"),
-    namespace: String(match.namespace || config?.leapNamespace || ""),
-    connectedWallet,
-    source: "wallet-connect + validated-xrpl-authority",
-    authoritySource: String(match.source || "Validated XRPL history"),
-    authorityResolvedAt: String(lastAccess?.resolvedAt || establishedAt),
-    firstOperatingWallet: String(match?.establishment?.firstWallet || match?.establishment?.operatingWallet || connectedWallet),
-    configSchema: configState?.state?.schema || null,
-    configLedger: configState?.state?.current?.ledger || null,
-    configTransactionHash: configState?.state?.current?.hash || "",
-    layoutId: String(config?.layoutId || ""),
-    skinId: String(config?.skinId || ""),
-    establishedAt
-  };
-
-
-
-
+function writeOperatorSession(match, config = null) {
+  const communityId = String(match.communityId || "").trim().toUpperCase();
+  const communityName = String(config?.communityName || match.communityName || match.communityId || "Community");
 
   writeUserSession({
     wallet: activeAccount,
     authority: "operator"
   });
   saveOperatorSession({
-    communityId: session.communityId,
-    communityName: session.communityName
+    communityId,
+    communityName
   });
-
-  return session;
 }
 
 async function openOperator(match) {
@@ -428,22 +404,23 @@ async function openOperator(match) {
     : "No complete community CONFIG yet; first-launch Setup is required.");
 
   setTrailStep("session", "active", "Establishing the verified Operator session for this browser tab.");
-  const session = writeOperatorSession(current, configState, config);
-  setTrailStep("session", "done", `${session.communityId} Operator session established.`);
+  writeOperatorSession(current, config);
+  const communityId = String(current.communityId || "").trim().toUpperCase();
+  setTrailStep("session", "done", `${communityId} Operator session established.`);
 
   setTrailStep("ready", "active", configState?.state?.current ? "Opening the community workspace." : "Opening first-launch Community Setup.");
-  setTrailStep("ready", "done", configState?.state?.current ? `${session.communityId} is ready.` : `${session.communityId} is ready for Setup.`);
+  setTrailStep("ready", "done", configState?.state?.current ? `${communityId} is ready.` : `${communityId} is ready for Setup.`);
   setTrailStatus("Ledger route verified. Wild Ledger is opening the destination.");
   await showTrailCompletion();
 
   if (!configState?.state?.current) {
-    setStatus(`${session.communityId} identified. Opening Community Setup…`, "good");
-    fadeNavigate(`setup.html?community=${encodeURIComponent(session.communityId)}&role=operator&mode=provisioned`);
+    setStatus(`${communityId} identified. Opening Community Setup…`, "good");
+    fadeNavigate(`setup.html?community=${encodeURIComponent(communityId)}&role=operator&mode=provisioned`);
     return;
   }
 
-  setStatus(`${session.communityId} identified. Opening the community workspace…`, "good");
-  fadeNavigate(`viewCommunity.html?community=${encodeURIComponent(session.communityId)}&role=operator`);
+  setStatus(`${communityId} identified. Opening the community workspace…`, "good");
+  fadeNavigate(`viewCommunity.html?community=${encodeURIComponent(communityId)}&role=operator`);
 }
 
 function renderCommunityChoices(matches) {
