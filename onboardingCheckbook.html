@@ -1606,8 +1606,8 @@ if (reuseCheckbook) {
   $("trailPanel").hidden = true;
   $("authorizedContent").hidden = false;
   document.getElementById("openingCheckbookBoot")?.remove();
-  // Notify Worker 2 after both module scripts have installed their listeners.
-  setTimeout(() => window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified")), 0);
+  // Notify Worker 2 immediately; its own startup also checks for a completed handoff.
+  window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified"));
 } else resetTrail();
 if (guideMode) {
   // The first-paint copy stays visible until the live shared Trail is open.
@@ -3028,6 +3028,11 @@ window.addEventListener("wildLedgerMembershipRequestsVerified",()=>{
 // The verification machinery above owns this operation. Do not open the
 // report on page load or replay XRPL reads: render only after its fourth proof.
 window.addEventListener("wildLedgerMembershipRequestsVerified", openReport);
+// Module execution order is not guaranteed. If Worker 1 already completed
+// its session reuse before this listener existed, render the ready report now.
+if (!$("authorizedContent").hidden && $("requestList").children.length === 0) {
+  openReport();
+}
 </script>
 </body>
 </html>
