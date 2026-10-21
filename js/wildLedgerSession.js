@@ -19,11 +19,22 @@ export function clearWildLedgerSessions() {
   }
 }
 
-export function writeUserSession({ wallet, authority }) {
+export function writeUserSession({ wallet, authority, selectedCommunity }) {
   if (typeof wallet !== 'string' || !wallet.trim()) throw new Error('User wallet is required.');
   if (!['owner', 'operator', 'member'].includes(authority)) throw new Error('Invalid user authority.');
   const previous = readUserSession();
-  const user = { wallet: wallet.trim(), authority };
+  const sameIdentity = previous && previous.wallet === wallet.trim() && previous.authority === authority;
+  const selection = selectedCommunity === undefined
+    ? (sameIdentity ? previous.selectedCommunity : null)
+    : selectedCommunity;
+  if (authority === 'owner' && selection !== null &&
+      (typeof selection !== 'string' || !selection.trim())) {
+    throw new Error('Selected community must be a community ID or null.');
+  }
+  const user = {
+    wallet: wallet.trim(), authority,
+    ...(authority === 'owner' ? { selectedCommunity: selection === null ? null : selection.trim() } : {})
+  };
   sessionStorage.setItem(USER_KEY, JSON.stringify(user));
   if (!previous || previous.wallet !== user.wallet) {
     sessionStorage.removeItem(OPERATOR_KEY);
@@ -34,9 +45,13 @@ export function writeUserSession({ wallet, authority }) {
 
 export function readUserSession() {
   const user = readObject(USER_KEY);
-  return user && typeof user.wallet === 'string' && !!user.wallet.trim() &&
-    ['owner', 'operator', 'member'].includes(user.authority)
-    ? { wallet: user.wallet, authority: user.authority } : null;
+  if (!user || typeof user.wallet !== 'string' || !user.wallet.trim() ||
+      !['owner', 'operator', 'member'].includes(user.authority)) return null;
+  if (user.authority !== 'owner') return { wallet: user.wallet, authority: user.authority };
+  const selectedCommunity = user.selectedCommunity === undefined ? null : user.selectedCommunity;
+  if (selectedCommunity !== null &&
+      (typeof selectedCommunity !== 'string' || !selectedCommunity.trim())) return null;
+  return { wallet: user.wallet, authority: user.authority, selectedCommunity };
 }
 
 export function updateUserSession(changes) {
