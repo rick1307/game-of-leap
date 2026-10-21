@@ -659,10 +659,9 @@
 <script type="module">
 import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { DirectXRPLClient, isClassicAddress } from "./js/xrplTransport.js";
-import { resolveWalletAccess } from "./js/communityAccess.js";
 import { readUserSession, readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
-import { isAuthorizedAtLedger } from "./js/communityAuthority.js";
-import { readCommunityJoinRequestPrice, DEFAULT_JOIN_REQUEST_DROPS } from "./js/communityJoinPrice.js";
+import { isCanonicalNoOpAccountSet } from "./js/communityAuthority.js";
+import { joinRequestPriceMemo, DEFAULT_JOIN_REQUEST_DROPS } from "./js/communityJoinPrice.js";
 import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog, PERMANENT_LEAP_DISTRIBUTOR } from "./js/recognitionCatalog.js";
 
 const $ = id => document.getElementById(id);
@@ -679,9 +678,8 @@ function readOperatorSession() {
     communityName: operator.communityName };
 }
 
-// Step 3: Read each Operating Wallet in the community authority chain,
-// including former wallets. Verify each request against the authority and
-// published price in force at its exact validated ledger position.
+// Step 3: Read the one Operating Wallet established by Get Wild.
+// Match requests against the published price at each ledger position.
 function memoText(hex) {
   const value = String(hex || "");
   if (!value || !/^(?:[0-9a-fA-F]{2})+$/.test(value)) return "";
@@ -709,10 +707,10 @@ function matchingPayment(entry, destination, communityId) {
     otherAmount: tx.Amount !== undefined && tx.DeliverMax !== undefined ? tx.DeliverMax : null };
 }
 
-function verifyRequestAtLedger(candidate, authority, priceHistory) {
+function verifyRequestAtLedger(candidate, operatingWallet, priceHistory) {
   // An unknown transaction position can never receive a Verified designation.
   if (!Number.isInteger(candidate.txIndex) || candidate.txIndex < 0) return null;
-  if (!isAuthorizedAtLedger(authority, candidate.destination, candidate.ledger, candidate.txIndex)) return null;
+  if (candidate.destination !== operatingWallet) return null;
   const flags = Number(candidate.flags);
   if (!Number.isSafeInteger(flags) || flags < 0 || (flags & 0x00020000) !== 0 ||
       candidate.paths !== undefined || candidate.sendMax !== undefined || candidate.deliverMin !== undefined ||
@@ -732,13 +730,35 @@ function verifyRequestAtLedger(candidate, authority, priceHistory) {
   return { ...candidate, expectedDrops, priceStatement };
 }
 
-async function discoverMatchingPayments(communityId, authority, priceHistory, onProgress = () => {}, checkActive = () => {}) {
-  // The same validated authority intervals already used by Wild Ledger's
-  // historical price reader establish which wallet histories must be searched.
-  const accounts = [...new Set((authority?.intervals || []).map(interval => String(interval?.account || "").trim()))];
-  if (!authority?.authorityEstablished || !accounts.length || accounts.some(account => !isClassicAddress(account))) {
-    throw new Error("Community authority history does not provide a valid Operating Wallet chain.");
-  }
+// Price statements are extracted from the SAME validated Operating Wallet scan.
+// No authority-chain lookup, synthetic interval, or second account_tx scan.
+function singleWalletPriceStatement(entry, communityId, operatingWallet) {
+  if (entry?.validated !== true) return null;
+  const tx = entry.tx_json || entry.tx || entry.transaction || {};
+  const meta = entry.meta || entry.metaData || {};
+  if (tx.Account !== operatingWallet || !isCanonicalNoOpAccountSet(tx) ||
+      meta.TransactionResult !== "tesSUCCESS") return null;
+  const ledger = Number(entry.ledger_index ?? tx.ledger_index);
+  const txIndex = Number(meta.TransactionIndex);
+  const hash = String(entry.hash || tx.hash || "").toUpperCase();
+  if (!Number.isInteger(ledger) || ledger < 1 || !Number.isInteger(txIndex) || txIndex < 0 ||
+      !/^[A-F0-9]{64}$/.test(hash)) return null;
+  const memos = Array.isArray(tx.Memos) ? tx.Memos : [];
+  if (memos.length !== 1 || !memos[0]?.Memo || memos[0].Memo.MemoType ||
+      memos[0].Memo.MemoFormat) return null;
+  const memo = memoText(memos[0].Memo.MemoData);
+  const prefix = `WILD-LEDGER/JOIN-REQUEST-PRICE-DROPS/${communityId}=`;
+  if (!memo.startsWith(prefix)) return null;
+  const drops = memo.slice(prefix.length);
+  try { if (joinRequestPriceMemo(communityId, drops) !== memo) return null; }
+  catch (_) { return null; }
+  return {communityId, drops, account:operatingWallet, ledger, txIndex, hash, memo};
+}
+
+async function discoverMatchingPayments(communityId, operatingWallet, onProgress = () => {}, checkActive = () => {}) {
+  // The single Get Wild Operating Wallet is the only history to search.
+  if (!isClassicAddress(operatingWallet)) throw new Error("Get Wild Operating Wallet is unavailable.");
+  const accounts = [operatingWallet];
   const client = new DirectXRPLClient(xrplServer);
   const found = new Map();
   const onboardingCreates = new Map();
@@ -746,6 +766,7 @@ async function discoverMatchingPayments(communityId, authority, priceHistory, on
   let scanned = 0;
   let pages = 0;
   let excluded = 0;
+  const priceHistory = [];
   try {
     await client.connect();
     checkActive();
@@ -765,15 +786,15 @@ async function discoverMatchingPayments(communityId, authority, priceHistory, on
           scanned += 1;
           // Use this same Operator-wallet history scan for onboarding Check evidence.
           // Old recognition Checks are not onboarding Checks.
-          const createdCheck = onboardingCheckCreate(entry, account, communityId, authority);
+          const priceRecord = singleWalletPriceStatement(entry, communityId, operatingWallet);
+          if (priceRecord) priceHistory.push(priceRecord);
+          const createdCheck = onboardingCheckCreate(entry, account, communityId);
           if (createdCheck) onboardingCreates.set(createdCheck.id, createdCheck);
           const cancellation = successfulCheckAction(entry, "CheckCancel", account);
           if (cancellation) checkCancels.set(cancellation.id, cancellation);
           const candidate = matchingPayment(entry, account, communityId);
           if (!candidate) continue;
-          const verified = verifyRequestAtLedger(candidate, authority, priceHistory);
-          if (verified) found.set(verified.hash, verified);
-          else excluded += 1;
+          found.set(candidate.hash, candidate);
         }
         checkActive();
         onProgress({scanned, pages, matches:found.size, excluded,
@@ -784,9 +805,16 @@ async function discoverMatchingPayments(communityId, authority, priceHistory, on
   } finally {
     client.close();
   }
+  priceHistory.sort((a,b) => a.ledger - b.ledger || a.txIndex - b.txIndex);
+  const verified = [];
+  for (const candidate of found.values()) {
+    const request = verifyRequestAtLedger(candidate, operatingWallet, priceHistory);
+    if (request) verified.push(request);
+    else excluded += 1;
+  }
   return {
-    requests: [...found.values()].sort((a, b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash)),
-    excluded, scanned, pages, walletCount:accounts.length,
+    requests: verified.sort((a, b) => b.ledger - a.ledger || b.txIndex - a.txIndex || a.hash.localeCompare(b.hash)),
+    excluded, scanned, pages, walletCount:1, priceHistory,
     onboardingCreates:[...onboardingCreates.values()], checkCancels:[...checkCancels.values()]
   };
 }
@@ -839,10 +867,8 @@ function checkCreatedId(meta) {
   }
   return "";
 }
-function recognitionFromHistory(entries, applicant, communityId, authority, catalog, issuer, currency, legacyDistributors) {
+function recognitionFromHistory(entries, applicant, communityId, operatingWallet, catalog, issuer, currency, legacyDistributors) {
   const namespace = `${communityId}-LEAP`;
-  const firstLedger = Number(authority?.establishment?.ledger);
-  const firstIndex = Number(authority?.establishment?.txIndex);
   const cashes = new Map();
   for (const entry of entries) {
     if (!successfulRecognitionEntry(entry)) continue;
@@ -866,9 +892,8 @@ function recognitionFromHistory(entries, applicant, communityId, authority, cata
     const tx = recognitionTx(entry), meta = entry.meta || entry.metaData || {};
     if (!(["CheckCreate","Payment"].includes(tx.TransactionType)) || tx.Destination !== applicant) continue;
     const ledger = Number(entry.ledger_index ?? tx.ledger_index), txIndex = Number(meta.TransactionIndex);
-    const legacy = legacyDistributors.has(tx.Account) && Number.isFinite(firstLedger) && firstLedger > 0 &&
-      (ledger < firstLedger || (ledger === firstLedger && Number.isSafeInteger(firstIndex) && txIndex < firstIndex));
-    if (!isAuthorizedAtLedger(authority, tx.Account, ledger, txIndex) && !legacy) continue;
+    const legacy = tx.Account !== operatingWallet && legacyDistributors.has(tx.Account);
+    if (tx.Account !== operatingWallet && !legacy) continue;
     const reason = recognitionReason(tx, namespace, legacy);
     if (!reason || recognitionAvailabilityFromCatalog({catalog,category:reason.category,id:reason.id,
       ledgerIndex:ledger,transactionIndex:txIndex}).available !== true) continue;
@@ -914,11 +939,11 @@ function ledgerCheckPosition(entry) {
   const hash = String(entry?.hash || tx.hash || "").toUpperCase();
   return /^[0-9A-F]{64}$/.test(hash) ? {ledger,txIndex,hash} : null;
 }
-function onboardingCheckCreate(entry, source, communityId, authority) {
+function onboardingCheckCreate(entry, source, communityId) {
   const tx = recognitionTx(entry), position = ledgerCheckPosition(entry);
   if (!position || tx.TransactionType !== "CheckCreate" || tx.Account !== source ||
       !isClassicAddress(tx.Destination) || tx.Expiration !== undefined ||
-      !isAuthorizedAtLedger(authority, source, position.ledger, position.txIndex)) return null;
+      tx.Account !== source) return null;
   const expectedIssuer = String(window.WILD_LEDGER_CONFIG?.leapIssuer || "");
   const expectedCurrency = String(window.WILD_LEDGER_CONFIG?.leapCurrency || "").toUpperCase();
   if (!isClassicAddress(expectedIssuer) || !expectedCurrency ||
@@ -996,13 +1021,13 @@ function onboardingChecksById(requests, creates, cancellations, cashes) {
     b.issuedTxIndex - a.issuedTxIndex || a.id.localeCompare(b.id));
 }
 
-async function verifyApplicantsRecognition(requests, communityId, authority, onProgress = () => {}, onApplicantHistory = () => {}, checkActive = () => {}) {
+async function verifyApplicantsRecognition(requests, communityId, operatingWallet, onProgress = () => {}, onApplicantHistory = () => {}, checkActive = () => {}) {
   const applicants = [...new Set(requests.map(request => request.applicant))];
   if (!applicants.length) return requests;
   const cfg = window.WILD_LEDGER_CONFIG || {};
   const issuer = String(cfg.leapIssuer || "");
   const currency = String(cfg.leapCurrency || "");
-  const initialWallet = String(authority?.establishment?.operatingWallet || authority?.establishment?.firstWallet || "");
+  const initialWallet = String(operatingWallet || "");
   if (!isClassicAddress(issuer) || !currency || !isClassicAddress(initialWallet))
     throw new Error("Canonical LEAP identity or original community wallet is unavailable. Membership status cannot be verified.");
   onProgress({stage:"catalog", index:0, total:applicants.length});
@@ -1032,7 +1057,7 @@ async function verifyApplicantsRecognition(requests, communityId, authority, onP
         marker = response.result.marker;
       } while (marker !== undefined && marker !== null);
       onApplicantHistory(applicant, entries);
-      proofByApplicant.set(applicant,recognitionFromHistory(entries,applicant,communityId,authority,catalog,issuer,currency,legacyDistributors));
+      proofByApplicant.set(applicant,recognitionFromHistory(entries,applicant,communityId,operatingWallet,catalog,issuer,currency,legacyDistributors));
       onProgress({stage:"member", index:index+1,total:applicants.length});
     }
   } finally { client.close(); }
@@ -1145,40 +1170,27 @@ async function performStep(number, checkActive = () => {}) {
         evidence:"Existing Operator session contains the completed Checkbook report."};
     }
     $("requestStatus").textContent = "Finding membership-request payments in XRPL history…";
-    // Obtain the historical authority chain for request verification here.
-    // This is ledger evidence, not a current-Operator access gate.
-    if (!xrplServer) throw new Error("Wild Ledger has no configured XRPL server for historical request verification.");
-    updateGuideStatus("Reading the community's historical Operating Wallet chain…");
-    const access = await resolveWalletAccess({ account:session.wallet, serverUrl:xrplServer, force:true });
-    checkActive();
-    assertSessionUnchanged();
-    const matched = (access?.operatorMatches || []).find(item =>
-      String(item.communityId || "").trim().toUpperCase() === session.communityId &&
-      item.authorityEstablished === true && Array.isArray(item.intervals) && item.intervals.length > 0
-    );
-    if (!matched) throw new Error("Validated historical Operating Wallet records are unavailable for this community.");
-    // Read historical, Operator-authorized price statements using Wild Ledger's
-    // existing Protocol 0.24 reader. CONFIG drafts and today's price are not proof.
-    updateGuideStatus("Checking the community's historical Join Request Prices…");
-    const price = await readCommunityJoinRequestPrice({ communityId:session.communityId, authority:matched, serverUrl:xrplServer });
-    checkActive();
-    assertSessionUnchanged();
-    runContext.priceStatements = price.history.length;
-    const result = await discoverMatchingPayments(session.communityId, matched, price.history, progress => {
+    // Get Wild supplies the one Operating Wallet. Scan it once for prices,
+    // requests, and onboarding Checks; no authority reconstruction.
+    if (!xrplServer) throw new Error("Wild Ledger has no configured XRPL server for Checkbook history.");
+    updateGuideStatus("Reading the established Operating Wallet's XRPL history…");
+    const result = await discoverMatchingPayments(session.communityId, session.wallet, progress => {
       checkActive();
       runContext.scanned = progress.scanned;
       runContext.pages = progress.pages;
       runContext.excluded = progress.excluded;
-      const message = `Reading wallet ${progress.walletIndex} of ${progress.walletCount}… ${progress.scanned} entries checked; ${progress.matches} verified ${progress.matches === 1 ? "request" : "requests"}.`;
-      updateGuideStatus(message);
+      updateGuideStatus(`Reading Operating Wallet history… ${progress.scanned} entries checked; ${progress.matches} candidate ${progress.matches === 1 ? "request" : "requests"}.`);
     }, checkActive);
+    checkActive();
+    assertSessionUnchanged();
+    runContext.priceStatements = result.priceHistory.length;
     checkActive();
     assertSessionUnchanged();
     // Reuse the completed ledger request scan; the member-status verification is
     // still part of this same guided step, never a second destination scan.
     const checkCashes = new Map();
     const checkCancels = new Map(result.checkCancels.map(c => [c.id,c]));
-    const withRecognition = await verifyApplicantsRecognition(result.requests, session.communityId, matched, p => {
+    const withRecognition = await verifyApplicantsRecognition(result.requests, session.communityId, session.wallet, p => {
       checkActive();
       const message = p.stage === "catalog" ? "Checking the community's recognition history…" :
         `Checking member ${p.index} of ${p.total} for delivered LEAP…`;
@@ -1206,7 +1218,7 @@ async function performStep(number, checkActive = () => {}) {
     ).join("\n\n");
     return {
       message:`${result.requests.length} ${result.requests.length === 1 ? "membership request" : "membership requests"} found and verified.`,
-      evidence:`Community: ${session.communityId}\nOperating Wallet histories searched: ${result.walletCount}\nTransactions read: ${result.scanned}\nHistory pages: ${result.pages}\nHistorical price statements: ${price.history.length}\nVerified requests: ${result.requests.length}\nMembers confirmed: ${withRecognition.filter(r=>r.recognition.status === "fulfilled").length}\nAwaiting LEAP: ${withRecognition.filter(r=>r.recognition.status === "awaiting").length}\nCandidates that did not qualify: ${result.excluded}\nChecked: Community ID and exact memo; validated successful native-XRP Payment without paths or partial payment; authorized Operating Wallet and Join Request Price immediately before payment.${proofs ? `\n\nSample verified transaction evidence (up to 5):\n${proofs}` : ""}`
+      evidence:`Community: ${session.communityId}\nOperating Wallet searched: ${session.wallet}\nTransactions read: ${result.scanned}\nHistory pages: ${result.pages}\nHistorical price statements: ${result.priceHistory.length}\nVerified requests: ${result.requests.length}\nMembers confirmed: ${withRecognition.filter(r=>r.recognition.status === "fulfilled").length}\nAwaiting LEAP: ${withRecognition.filter(r=>r.recognition.status === "awaiting").length}\nCandidates that did not qualify: ${result.excluded}\nChecked: Community ID and exact memo; validated successful native-XRP Payment without paths or partial payment; established Operating Wallet and Join Request Price immediately before payment.${proofs ? `\n\nSample verified transaction evidence (up to 5):\n${proofs}` : ""}`
     };
   }
   if (number === 4) {
@@ -1234,7 +1246,7 @@ async function performStep(number, checkActive = () => {}) {
       throw new Error("The verified Checkbook could not be saved to the Operator session.");
     $("backLink").hidden = false;
     document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
-    return {message:"All checks passed. Membership Requests are ready.",evidence:`Session rechecked: ${current.communityId}\nOperator wallet: ${current.wallet}\nVerified report rows: ${requests.length}\nCandidates not qualifying under Protocol 0.24: ${runContext.excluded}\nHistorical Operating Wallet request records included.`};
+    return {message:"All checks passed. Membership Requests are ready.",evidence:`Session rechecked: ${current.communityId}\nOperator wallet: ${current.wallet}\nVerified report rows: ${requests.length}\nCandidates not qualifying under Protocol 0.24: ${runContext.excluded}\nOperating Wallet request records included.`};
   }
   throw new Error("Unknown Ledger Trail step.");
 }
