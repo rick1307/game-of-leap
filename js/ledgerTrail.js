@@ -46,6 +46,7 @@ function requireText(value, field) {
  * @param {string} [config.description] - Page-specific intro below title.
  * @param {Array<{id:string,title:string,detail?:string}>} config.steps
  * @param {function} [config.onClose] - Called after the human closes the Trail.
+ * @param {boolean} [config.activityFeed=false] - Opt-in animated, numbered activity entries.
  * @param {HTMLElement} [config.mount] - Defaults to document.body.
  * @returns {{open:function,close:function,reset:function,setStep:function,
  *           setStatus:function,showPrompt:function,hidePrompt:function,
@@ -56,9 +57,11 @@ export function createLedgerTrail({
   description = '',
   steps,
   onClose = null,
-  mount = document.body
+  mount = document.body,
+  activityFeed = false
 } = {}) {
   requireText(title, 'title');
+  if (typeof activityFeed !== 'boolean') throw new TypeError('Ledger Trail: activityFeed must be a boolean.');
   if (!Array.isArray(steps) || !steps.length) {
     throw new TypeError('Ledger Trail: provide at least one checkpoint.');
   }
@@ -128,7 +131,19 @@ export function createLedgerTrail({
   const status = element('p', 'trail-status', 'Starting the trail…');
   status.setAttribute('role', 'status');
   status.setAttribute('aria-live', 'polite');
-  panel.append(topline, heading, lede, prompt, route, status);
+  // Opt-in activity feed. No DOM or styling changes to legacy Trails.
+  const feed = activityFeed ? element('div', 'trail-feed') : null;
+  const feedScroll = activityFeed ? element('div', 'trail-feed-scroll') : null;
+  if (feed) {
+    feed.setAttribute('aria-label', 'Ledger activity');
+    feedScroll.appendChild(element('div', 'trail-feed-items'));
+    feed.appendChild(feedScroll);
+  }
+  const feedItems = feedScroll?.firstElementChild || null;
+  const activities = new Map();
+  let nextActivity = 0;
+  if (feed) panel.append(topline, heading, lede, prompt, route, feed, status);
+  else panel.append(topline, heading, lede, prompt, route, status);
   overlay.appendChild(panel);
   mount.appendChild(overlay);
 
@@ -204,9 +219,69 @@ export function createLedgerTrail({
     if (detail !== undefined) record.detail.textContent = String(detail);
   }
 
+  function resizeFeed() {
+    if (!feed) return;
+    const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
+    // scrollHeight measures actual contents even while the viewport is clipped.
+    const target = Math.min(feedItems.scrollHeight, 240);
+    feedScroll.style.height = `${target}px`;
+    if (reduced) feedScroll.style.transition = 'none';
+    if (target >= 240) requestAnimationFrame(() => {
+      feedScroll.scrollTop = feedScroll.scrollHeight;
+    });
+  }
+
+  /** Add one actual activity (for example, one XRPL API request). */
+  function addActivity({ title: activityTitle, detail = '', state = 'working' } = {}) {
+    assertAlive();
+    if (!feed) throw new Error('Ledger Trail: enable activityFeed to add activities.');
+    requireText(activityTitle, 'activity title');
+    if (!['working', 'done', 'failed'].includes(state)) throw new TypeError('Ledger Trail: invalid activity state.');
+    const id = ++nextActivity;
+    const row = element('div', 'trail-feed-entry');
+    const number = element('div', 'trail-feed-number', String(id));
+    const copy = element('div', 'trail-feed-copy');
+    const label = element('strong', '', activityTitle);
+    const description = element('span', '', detail);
+    const result = element('div', 'trail-feed-result');
+    result.setAttribute('aria-hidden', 'true');
+    copy.append(label, description);
+    row.append(number, copy, result);
+    feedItems.appendChild(row);
+    activities.set(id, {row, description});
+    updateActivity(id, {state});
+    resizeFeed();
+    requestAnimationFrame(() => row.classList.add('is-visible'));
+    return id;
+  }
+
+  /** Update a previously reported activity; does not generate or time API calls. */
+  function updateActivity(id, {state, detail} = {}) {
+    assertAlive();
+    const record = activities.get(id);
+    if (!record) throw new RangeError(`Ledger Trail: unknown activity ${id}.`);
+    if (state !== undefined) {
+      if (!['working', 'done', 'failed'].includes(state)) throw new TypeError('Ledger Trail: invalid activity state.');
+      record.row.dataset.state = state;
+      record.row.lastElementChild.textContent = state === 'done' ? '✓' : state === 'failed' ? '×' : '◌';
+    }
+    if (detail !== undefined) record.description.textContent = String(detail);
+    resizeFeed();
+  }
+
+  function resetActivities() {
+    if (!feed) return;
+    feedItems.replaceChildren();
+    activities.clear();
+    nextActivity = 0;
+    feedScroll.style.height = '0px';
+    feedScroll.scrollTop = 0;
+  }
+
   function reset() {
     assertAlive();
     cancelCompletion();
+    resetActivities();
     for (const {definition} of records.values()) {
       setStep(definition.id, 'pending', definition.detail);
     }
@@ -284,6 +359,7 @@ export function createLedgerTrail({
 
   return Object.freeze({
     element: overlay,
-    open, close, reset, setStep, setStatus, showPrompt, hidePrompt, finish, destroy
+    open, close, reset, setStep, setStatus, showPrompt, hidePrompt, finish, destroy,
+    addActivity, updateActivity
   });
 }
