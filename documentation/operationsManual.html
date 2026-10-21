@@ -47,6 +47,8 @@ strong{color:var(--forest-deep)}
 .placeholder{opacity:.78}.placeholder .body{font-style:italic}
 .card-art{display:block;width:100%;height:auto;border-bottom:1px solid var(--line)}
 .status-btn{display:inline-block;margin-top:10px;padding:10px 14px;border:1px solid var(--line);border-radius:4px;background:var(--panel2);color:var(--muted);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-weight:700;cursor:not-allowed;opacity:.72}
+.manual-back{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border:1px solid var(--line);border-radius:4px;color:var(--forest-deep);background:var(--paper);font:650 .86rem/1.35 system-ui,-apple-system,"Segoe UI",sans-serif;text-decoration:none;margin:0 0 26px;min-height:36px}
+.manual-back:hover,.manual-back:focus-visible{background:var(--panel2);border-color:var(--forest-soft)}
 footer{margin-top:60px;color:var(--muted);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:.84rem;border-top:2px solid var(--gold);padding-top:20px;text-align:center}
 a{color:var(--forest);text-underline-offset:3px}
 .vocab-table{width:100%;border-collapse:collapse;font-size:.95rem}
@@ -72,6 +74,7 @@ a{color:var(--forest);text-underline-offset:3px}
 @media print{
   html,body{background:white!important;color:#111!important}
   main{box-shadow:none;max-width:none;border-top:4px solid var(--forest);padding:20px}
+  .manual-back{display:none}
   .card{break-inside:avoid;box-shadow:none}
   .section{break-inside:auto}
   .card summary{color:#111}
@@ -79,6 +82,7 @@ a{color:var(--forest);text-underline-offset:3px}
 </style>
 </head>
 <body><main>
+<nav aria-label="Return navigation"><a class="manual-back" href="viewCommunity.html" aria-label="Back to View Community">← View Community</a></nav>
 <div class="eyebrow">Wild Ledger</div>
 <h1>Operations Manual</h1>
 <p class="intro">A practical guide for operating a Wild Ledger community. Start with the job in front of you. Open the deeper pieces only when they help.</p>
