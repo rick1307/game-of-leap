@@ -1338,9 +1338,6 @@ function resetTrail() {
   $("signinLink").hidden = true;
   $("authorizedContent").hidden = true;
   $("backLink").hidden = true;
-  // The current Checkbook is unavailable until this Ledger Trail verifies it again.
-  const operator = readCentralOperatorSession();
-  if (operator) updateOperatorSession({ membershipRequests: [], checkRecords: [] });
   runContext.session = null; runContext.requests = null; runContext.checks = null;
   runContext.scanned = 0; runContext.pages = 0; runContext.excluded = 0; runContext.priceStatements = 0;
   for (let n = 1; n <= 4; n++) {
@@ -1483,7 +1480,7 @@ async function performStep(number, checkActive = () => {}) {
       onboardingCheck: row.onboardingCheck
     }));
     const checkRecords = runContext.checks;
-    if (!updateOperatorSession({ membershipRequests, checkRecords }))
+    if (!updateOperatorSession({ membershipRequests, checkRecords, checkbookLoadedFor: current.wallet }))
       throw new Error("The verified Checkbook could not be saved to the Operator session.");
     $("backLink").hidden = false;
     document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
@@ -1585,7 +1582,33 @@ async function runNext() {
 }
 // The module creates the only opening Trail X. Underlying evidence is
 // progressive disclosure, not a second way to trigger the network operation.
-resetTrail();
+// A completed investigation belongs to this Operator and community for this tab.
+// Empty arrays are valid completed results; only the explicit marker grants reuse.
+const cachedOperator = readCentralOperatorSession();
+const cachedSession = readOperatorSession();
+const reuseCheckbook = !!(cachedSession && cachedOperator &&
+  cachedOperator.checkbookLoadedFor === cachedSession.wallet &&
+  Array.isArray(cachedOperator.membershipRequests) &&
+  Array.isArray(cachedOperator.checkRecords));
+if (reuseCheckbook) {
+  runContext.session = cachedSession;
+  runContext.requests = cachedOperator.membershipRequests;
+  runContext.checks = cachedOperator.checkRecords;
+  stepStates.fill("done");
+  completed = true;
+  guideMode = false;
+  $("communityName").textContent = cachedSession.communityName;
+  $("communityId").textContent = cachedSession.communityId;
+  $("operatorWallet").textContent = cachedSession.wallet;
+  $("backLink").href = `viewCommunity.html?community=${encodeURIComponent(cachedSession.communityId)}`;
+  $("backLink").hidden = false;
+  document.title = `Onboarding Checkbook · ${cachedSession.communityName} | Wild Ledger`;
+  $("trailPanel").hidden = true;
+  $("authorizedContent").hidden = false;
+  document.getElementById("openingCheckbookBoot")?.remove();
+  // Notify Worker 2 after both module scripts have installed their listeners.
+  setTimeout(() => window.dispatchEvent(new Event("wildLedgerMembershipRequestsVerified")), 0);
+} else resetTrail();
 if (guideMode) {
   // The first-paint copy stays visible until the live shared Trail is open.
   // Disable only the first entrance transition so no underlying page flashes.
