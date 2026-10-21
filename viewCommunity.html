@@ -217,12 +217,6 @@
     .top-nav { gap: 10px; margin-bottom: 28px; }
   }
 
-/* Wild Ledger cinematic view dissolve — local demo */
-html{background:#071d2a}
-body{animation:wildViewIn .34s ease both}
-body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
-@keyframes wildViewIn{from{opacity:0}to{opacity:1}}
-@media(prefers-reduced-motion:reduce){body{animation:none}body.wl-view-leaving{transition:none}}
 </style>
 <link rel="stylesheet" href="wildLedgerControls.css">
   <link rel="stylesheet" href="wildLedgerBackend.css">
@@ -252,47 +246,75 @@ body.wl-view-leaving{opacity:0;transition:opacity .28s ease;pointer-events:none}
   </main>
 
 <script src="js/communityConfig.js" data-registry-only="true"></script>
-<script type="module">
-import { readUserSession, readOperatorSession, clearWildLedgerSessions } from "./js/wildLedgerSession.js";
+<script>
 (() => {
-  let viewIsLeaving = false;
-  const fadeNavigate = (url, { replace = false } = {}) => {
-    if (viewIsLeaving) return;
-    viewIsLeaving = true;
-    document.body.classList.add("wl-view-leaving");
-    const reduced = globalThis.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
-    setTimeout(() => {
-      if (replace) window.location.replace(url);
-      else window.location.href = url;
-    }, reduced ? 0 : 280);
-  };
-
   const params = new URLSearchParams(window.location.search);
+  const registry = window.WILD_LEDGER_COMMUNITY_REGISTRY || {};
+  const defaultCommunity = Object.values(registry)[0] || null;
+  const defaultBackendId = window.WILD_LEDGER_BACKEND_COMMUNITY_ID?.(defaultCommunity) || "";
 
-  // Verified sign-in is the source of authority; URL parameters never grant access.
-  const userSession = readUserSession();
-  const activeOperator = readOperatorSession();
+  function readOperatorSession() {
+    try {
+      const session = JSON.parse(sessionStorage.getItem("wildLedgerOperatorSession") || "null");
+      if (!session || typeof session !== "object") return null;
+      if (String(session.role || "").trim().toLowerCase() !== "operator") return null;
+
+      const version = Number(session.version);
+      const communityId = String(session.communityId || "").trim().toUpperCase();
+      const source = String(session.source || "").trim();
+      const wallet = String(
+        version === 2 ? session.connectedWallet : session.verifiedWallet
+      ).trim();
+
+      if (!communityId || !/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(wallet)) return null;
+
+      const legacyProofSession = version === 1 && source === "wallet-proof + validated-xrpl-authority";
+      const walletConnectSession = version === 2 && source === "wallet-connect + validated-xrpl-authority";
+      if (!legacyProofSession && !walletConnectSession) return null;
+
+      return { ...session, communityId, operatorWallet: wallet, role: "operator" };
+    } catch (_) {
+      return null;
+    }
+  }
+
+  function clearOperatorSession() {
+    sessionStorage.removeItem("wildLedgerRole");
+    sessionStorage.removeItem("wildLedgerCommunity");
+    sessionStorage.removeItem("wildLedgerOperatorWallet");
+    sessionStorage.removeItem("wildLedgerOperatorSession");
+    sessionStorage.removeItem("wildLedger.activeWallet");
+    sessionStorage.removeItem("wildLedger.currentCommunityConfig");
+    sessionStorage.removeItem("wildLedger.currentPublishedConfig");
+  }
+
+  const operatorSession = readOperatorSession();
   const urlRole = String(params.get("role") || "").trim().toLowerCase();
-  const operatorRequested = urlRole === "operator" || urlRole === "manager";
-  const operatorSession = userSession?.authority === "operator" && activeOperator
-    ? activeOperator : null;
-  const role = userSession?.authority === "owner" && !operatorRequested
-    ? "owner" : operatorSession ? "operator" : null;
-  if (!role) {
-    document.body.textContent = "Operator session unavailable. Return to Get Wild and sign in again.";
+  const storedRole = String(sessionStorage.getItem("wildLedgerRole") || "").trim().toLowerCase();
+  const operatorRequested = urlRole === "operator" || urlRole === "manager" || storedRole === "operator";
+
+  // Operator access is session-led. A typed role/community URL never creates Operator context.
+  if (operatorRequested && !operatorSession) {
+    clearOperatorSession();
+    window.location.replace("getWild.html?operatorSession=required");
     return;
   }
-  const requestedCommunity = role === "operator"
+
+  const role = operatorSession ? "operator" : "owner";
+  const requestedCommunity = operatorSession
     ? operatorSession.communityId
-    : (userSession.selectedCommunity || params.get("community") || "");
-  if (!requestedCommunity) {
-    document.body.textContent = "No community selected. Return to Communities and choose a community.";
-    return;
-  }
+    : (params.get("community") || sessionStorage.getItem("wildLedgerCommunity") || defaultBackendId);
   const community = window.WILD_LEDGER_GET_COMMUNITY?.(requestedCommunity) || null;
-  const requestedId = role === "operator"
+  const requestedId = operatorSession
     ? operatorSession.communityId
     : (window.WILD_LEDGER_BACKEND_COMMUNITY_ID?.(community) || String(requestedCommunity || "").trim().toUpperCase());
+
+  if (operatorSession) {
+    // Synchronize old downstream keys, but the wallet-connected Operator session remains authoritative here.
+    sessionStorage.setItem("wildLedgerRole", "operator");
+    sessionStorage.setItem("wildLedgerCommunity", operatorSession.communityId);
+    sessionStorage.setItem("wildLedgerOperatorWallet", operatorSession.operatorWallet);
+  }
 
   const viewCommunityTitle = document.getElementById("view-community-title");
   const ownerCommunitiesBack = document.getElementById("ownerCommunitiesBack");
@@ -311,8 +333,8 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     operatorLogout.remove();
   } else if (operatorLogout) {
     operatorLogout.addEventListener("click", () => {
-      clearWildLedgerSessions();
-      fadeNavigate("getWild.html");
+      clearOperatorSession();
+      window.location.href = "getWild.html";
     });
   }
 
@@ -340,17 +362,15 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     communityEditLink.href = `setup.html?mode=edit&community=${encodeURIComponent(requestedId)}&role=${encodeURIComponent(role)}`;
   }
 
-  [ownerCommunitiesBack, communityEditLink, communityTokenomicsLink, communityRecognitionLink, ...(role === "operator" ? [communityMembershipRequestsLink] : []), communityLibraryLink]
-    .filter(Boolean)
-    .forEach(link => link.addEventListener("click", event => {
-      if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
-      event.preventDefault();
-      fadeNavigate(link.href);
-    }));
+  let cachedCommunityName = "";
+  try {
+    const cached = JSON.parse(sessionStorage.getItem("wildLedger.currentCommunityConfig") || "null");
+    if (cached && String(cached.communityId || "").trim().toUpperCase() === String(requestedId || "").trim().toUpperCase()) {
+      cachedCommunityName = String(cached?.config?.communityName || "").trim();
+    }
+  } catch (_) {}
 
-  const displayName = role === "operator"
-    ? operatorSession.communityName
-    : (community?.communityName || requestedId || "Community");
+  const displayName = cachedCommunityName || operatorSession?.communityName || community?.communityName || requestedId || "Community";
   viewCommunityTitle.textContent = displayName;
   document.title = `${displayName} | Wild Ledger`;
 })();
