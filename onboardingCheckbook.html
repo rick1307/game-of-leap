@@ -877,6 +877,7 @@
 import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { DirectXRPLClient, isClassicAddress } from "./js/xrplTransport.js";
 import { resolveWalletAccess } from "./js/communityAccess.js";
+import { readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
 import { isAuthorizedAtLedger } from "./js/communityAuthority.js";
 import { readCommunityJoinRequestPrice, DEFAULT_JOIN_REQUEST_DROPS } from "./js/communityJoinPrice.js";
 import { loadRecognitionCatalog, recognitionAvailabilityFromCatalog, PERMANENT_LEAP_DISTRIBUTOR } from "./js/recognitionCatalog.js";
@@ -1349,7 +1350,9 @@ function resetTrail() {
   $("signinLink").hidden = true;
   $("authorizedContent").hidden = true;
   $("backLink").hidden = true;
-  try { sessionStorage.removeItem("wildLedger.membershipRequestsHandoff"); } catch (_) { /* Step 1 checks the session. */ }
+  // The current Checkbook is unavailable until this Ledger Trail verifies it again.
+  const operator = readCentralOperatorSession();
+  if (operator) updateOperatorSession({ membershipRequests: [], checkRecords: [] });
   runContext.session = null; runContext.matched = null; runContext.requests = null; runContext.checks = null;
   runContext.scanned = 0; runContext.pages = 0; runContext.excluded = 0; runContext.priceStatements = 0;
   for (let n = 1; n <= 4; n++) {
@@ -1490,37 +1493,21 @@ async function performStep(number, checkActive = () => {}) {
     const requests = runContext.requests;
     if (!Array.isArray(requests) || !Array.isArray(runContext.checks))
       throw new Error("The search has not finished. Return to the previous step.");
-    // This page owns the read-only Trail, report, and issuance handoff.
-    // Store proven results for the existing report; issuance performs a fresh check.
-    const handoff = {
-      version: 2,
-      source: "membershipRequestsBootstrap",
-      communityId: current.communityId,
-      operatorWallet: current.wallet,
-      communityName: $("communityName").textContent,
-      verifiedAt: Date.now(),
-      checks: runContext.checks,
-      requests: requests.map(row => ({
-        recognition: row.recognition,
-        onboardingCheck: row.onboardingCheck,
-        applicant: row.applicant,
-        destination: row.destination,
-        drops: row.drops,
-        expectedDrops: row.expectedDrops,
-        ledger: row.ledger,
-        txIndex: row.txIndex,
-        hash: row.hash,
-        priceStatement: row.priceStatement ? {
-          ledger: row.priceStatement.ledger,
-          txIndex: row.priceStatement.txIndex
-        } : null
-      }))
-    };
-    try {
-      sessionStorage.setItem("wildLedger.membershipRequestsHandoff", JSON.stringify(handoff));
-    } catch (_) {
-      throw new Error("The verified Onboarding Checkbook results could not be saved in this browser tab. No ledger transaction was sent. Please free some browser storage and try this step again.");
-    }
+    // Publish only the verified Checkbook data to the Operator's central session.
+    const operator = readCentralOperatorSession();
+    if (!operator || operator.communityId !== current.communityId)
+      throw new Error("The Operator community changed during verification.");
+    const membershipRequests = requests.map(row => ({
+      applicant: row.applicant,
+      hash: row.hash,
+      ledger: row.ledger,
+      txIndex: row.txIndex,
+      recognition: { status: row.recognition.status },
+      onboardingCheck: row.onboardingCheck
+    }));
+    const checkRecords = runContext.checks;
+    if (!updateOperatorSession({ membershipRequests, checkRecords }))
+      throw new Error("The verified Checkbook could not be saved to the Operator session.");
     $("backLink").hidden = false;
     document.title = `Onboarding Checkbook · ${$("communityName").textContent} | Wild Ledger`;
     return {message:"All checks passed. Membership Requests are ready.",evidence:`Session rechecked: ${current.communityId}\nOperator wallet: ${current.wallet}\nVerified report rows: ${requests.length}\nCandidates not qualifying under Protocol 0.24: ${runContext.excluded}\nHistorical Operating Wallet request records included.`};
@@ -1659,10 +1646,9 @@ import { createLedgerTrail } from "./js/ledgerTrail.js";
 import { WalletConnectXrplSigner } from "./js/walletConnectSigner.js";
 import { isClassicAddress, DirectXRPLClient, prepareTransaction, submitSignedTransaction } from "./js/xrplTransport.js";
 import { resolveWalletAccess } from "./js/communityAccess.js";
+import { readOperatorSession as readCentralOperatorSession, updateOperatorSession } from "./js/wildLedgerSession.js";
 
 const $ = id => document.getElementById(id);
-const HANDOFF_KEY = "wildLedger.membershipRequestsHandoff";
-const MAX_HANDOFF_AGE_MS = 60 * 60 * 1000;
 const params = new URLSearchParams(window.location.search);
 const xrplServer = String(window.WILD_LEDGER_CONFIG?.xrplWebSocket || "").trim();
 
@@ -1685,69 +1671,12 @@ function readOperatorSession() {
 }
 
 function checkedHandoff(session) {
-  try {
-    const raw = sessionStorage.getItem(HANDOFF_KEY);
-    if (!raw || raw.length > 5_000_000) return null;
-    const data = JSON.parse(raw);
-    const when = Number(data.verifiedAt);
-    if (data.version !== 2 || data.source !== "membershipRequestsBootstrap" ||
-        data.communityId !== session.communityId || data.operatorWallet !== session.wallet ||
-        !Number.isFinite(when) || when > Date.now() + 30_000 ||
-        Date.now() - when > MAX_HANDOFF_AGE_MS || !Array.isArray(data.requests) ||
-        !Array.isArray(data.checks)) return null;
-    // A handoff is a short-lived browser copy of the Bootstrap's proof, not an
-    // independent authority statement. Do not silently certify arbitrary rows.
-    const validRows = data.requests.every(r => r &&
-      isClassicAddress(r.applicant) && isClassicAddress(r.destination) &&
-      typeof r.drops === "string" && /^[1-9][0-9]*$/.test(r.drops) &&
-      typeof r.expectedDrops === "string" && /^[1-9][0-9]*$/.test(r.expectedDrops) &&
-      r.drops === r.expectedDrops &&
-      Number.isSafeInteger(r.ledger) && r.ledger > 0 &&
-      Number.isSafeInteger(r.txIndex) && r.txIndex >= 0 &&
-      typeof r.hash === "string" && /^[0-9A-F]{64}$/.test(r.hash) &&
-      (r.priceStatement === null || (r.priceStatement &&
-        Number.isSafeInteger(r.priceStatement.ledger) && r.priceStatement.ledger > 0 &&
-        Number.isSafeInteger(r.priceStatement.txIndex) && r.priceStatement.txIndex >= 0)) &&
-      r.onboardingCheck && ["unissued","issued","cashed","canceled"].includes(r.onboardingCheck.status) &&
-      typeof r.onboardingCheck.id === "string" &&
-      (r.onboardingCheck.id === "" || /^[0-9A-F]{64}$/.test(r.onboardingCheck.id)) &&
-      typeof r.onboardingCheck.issuedHash === "string" &&
-      (r.onboardingCheck.issuedHash === "" || /^[0-9A-F]{64}$/.test(r.onboardingCheck.issuedHash)) &&
-      typeof r.onboardingCheck.cashHash === "string" &&
-      (r.onboardingCheck.cashHash === "" || /^[0-9A-F]{64}$/.test(r.onboardingCheck.cashHash)) &&
-      r.recognition && ["awaiting","fulfilled"].includes(r.recognition.status) &&
-      (r.recognition.status === "awaiting" ? r.recognition.proof === null : (
-        r.recognition.proof && ["CheckCash","Payment"].includes(r.recognition.proof.type) &&
-        Number.isSafeInteger(r.recognition.proof.amount) && r.recognition.proof.amount > 0 &&
-        Number.isSafeInteger(r.recognition.proof.ledger) && r.recognition.proof.ledger > 0 &&
-        Number.isSafeInteger(r.recognition.proof.awardLedger) && r.recognition.proof.awardLedger > 0 &&
-        typeof r.recognition.proof.reason === "string" &&
-        /^(BADGE|EVENT|CHALLENGE)=[A-Z0-9-]+$/.test(r.recognition.proof.reason) &&
-        /^[0-9A-F]{64}$/.test(r.recognition.proof.hash) &&
-        /^[0-9A-F]{64}$/.test(r.recognition.proof.awardHash))));
-    // Report Checks must have unique validated Check IDs, a known requesting
-    // wallet, and a request transaction earlier than their CheckCreate.
-    const requestByHash = new Map(data.requests.map(r => [r.hash,r]));
-    const checkIds = new Set();
-    const validChecks = data.checks.every(c => {
-      const request = requestByHash.get(c?.requestHash);
-      if (!c || !request || request.applicant !== c.applicant ||
-          !isClassicAddress(c.issuingWallet) || !isClassicAddress(c.applicant) ||
-          typeof c.id !== "string" || !/^[0-9A-F]{64}$/.test(c.id) || checkIds.has(c.id) ||
-          !["issued","cashed","canceled"].includes(c.status) ||
-          typeof c.issuedHash !== "string" || !/^[0-9A-F]{64}$/.test(c.issuedHash) ||
-          !Number.isSafeInteger(c.issuedLedger) || c.issuedLedger < 1 ||
-          !Number.isSafeInteger(c.issuedTxIndex) || c.issuedTxIndex < 0 ||
-          (c.issuedLedger < request.ledger ||
-           (c.issuedLedger === request.ledger && c.issuedTxIndex <= request.txIndex)) ||
-          typeof c.cashHash !== "string" || (c.cashHash !== "" && !/^[0-9A-F]{64}$/.test(c.cashHash)) ||
-          typeof c.cancelHash !== "string" || (c.cancelHash !== "" && !/^[0-9A-F]{64}$/.test(c.cancelHash)) ||
-          (c.status === "cashed" && !c.cashHash) || (c.status === "canceled" && !c.cancelHash)) return false;
-      checkIds.add(c.id);
-      return true;
-    });
-    return validRows && validChecks ? data : null;
-  } catch (_) { return null; }
+  // Only the Operator's verified XRPL data, published by Worker 1, is consumed.
+  const operator = readCentralOperatorSession();
+  if (!operator || !session || operator.communityId !== session.communityId) return null;
+  if (!Array.isArray(operator.membershipRequests) || !Array.isArray(operator.checkRecords)) return null;
+  return { requests: operator.membershipRequests, checks: operator.checkRecords,
+    communityName: operator.communityName };
 }
 
 function formatXrp(drops) {
@@ -2522,8 +2451,7 @@ function openReport({strictReserve = false, skipReserve = false} = {}) {
   showMatchingPayments(data.requests, data.checks);
   showCashedHistory(data.checks);
   const reserveRead = skipReserve ? Promise.resolve() : showCurrentOnboardingReserve(data.checks, session.wallet, {strict:strictReserve});
-  const stamp = new Date(data.verifiedAt);
-  $("verificationNote").textContent = `Results verified by the Ledger Trail ${stamp.toLocaleString()}. This report is a snapshot, not a live search.`;
+
   return reserveRead;
 }
 
