@@ -4,7 +4,7 @@ name = "Sailing Frog's Leap"
 
 [[TOKENS]]
 issuer = "rh7SidU91xGW2Za5RvoKiCgS2YB2psTBgq"
-currency = "LEAP"
+currency = "4C45415000000000000000000000000000000000"
 name = "LEAP"
 desc = "The community token of Sailing Frog's Leap."
 icon = "https://sailingfrogsleap.com/leap-logo.png"
