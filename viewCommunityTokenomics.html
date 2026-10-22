@@ -939,22 +939,7 @@
   }
 </style>
   <link rel="stylesheet" href="wildLedgerControls.css">
-<style>
-/* Tokenomics-only motion; retain Wild Ledger's shared Ledger Trail palette. */
-.ledger-trail .trail-route .tokenomics-api-entry {
-  opacity: 0;
-  transform: translateY(8px);
-  transition: opacity 280ms ease 110ms, transform 350ms ease 110ms;
-}
-.ledger-trail .trail-route .tokenomics-api-entry.is-visible {
-  opacity: 1;
-  transform: translateY(0);
-}
-@media (prefers-reduced-motion: reduce) {
-  .ledger-trail .trail-route { transition: none !important; }
-  .ledger-trail .trail-route .tokenomics-api-entry { transition: none !important; opacity: 1; transform: none; }
-}
-</style>
+
 </head>
 <body>
   <main class="shell">
@@ -1275,201 +1260,42 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     }
   }
 
-  // Tokenomics-only API reporting. Keep shared XRPL modules unchanged.
-  // Every actual WebSocket API send becomes its own standard Ledger Trail row,
-  // including calls made inside the shared community authority resolver.
+  // The standard shared Ledger Trail reports meaningful, sequential phases only.
   const tokenomicsTrail = createLedgerTrail({
     title: "Community Tokenomics",
-    description: "Follow each ledger check as your community’s statistics are prepared.",
+    description: "Reading validated XRP Ledger evidence for your community.",
     steps: [
-      { id: "start", title: "Read validated ledger evidence", detail: "Waiting to start." },
-      { id: "complete", title: "Tokenomics ready", detail: "Waiting for the ledger reads." }
+      { id: "identify", title: "Identify community", detail: "Waiting to verify community authority." },
+      { id: "allocations", title: "Verify allocations", detail: "Waiting to review allocation Checks." },
+      { id: "distribution", title: "Trace distribution", detail: "Waiting to review community transfers." },
+      { id: "holdings", title: "Check current holdings", detail: "Waiting to read current LEAP balances." },
+      { id: "calculate", title: "Calculate tokenomics", detail: "Waiting to calculate community metrics." },
+      { id: "complete", title: "Tokenomics ready", detail: "Waiting for results." }
     ],
     onClose: () => document.body.classList.add("tokenomics-dashboard-visible")
   });
-  const tokenomicsTrailRoute = tokenomicsTrail.element.querySelector(".trail-route");
-  const tokenomicsTrailLast = tokenomicsTrailRoute.lastElementChild;
-  const tokenomicsRequests = new Map();
-  const watchedSockets = new WeakSet();
-  const nativeWebSocketSend = WebSocket.prototype.send;
-  let tokenomicsRequestCount = 0;
-  let tokenomicsWatching = false;
-
-  // User-facing labels describe the purpose of each request, not XRPL API syntax.
-  // The request ID still correlates responses internally; it is not shown to users.
-  function ledgerCallLabel(payload) {
-    const command = String(payload.command || "");
-    const account = String(payload.account || "");
-    if (command === "account_tx") {
-      if (account === globalDistributionWallet) return "Checking LEAP allocation history";
-      if (account === authority?.currentAccount) return "Reading your community’s transaction history";
-      if (communityOperatingWallets.has(account)) return "Reading a previous community wallet’s history";
-      return "Verifying wallet activity and authorization";
+  const trailPhases = ["identify", "allocations", "distribution", "holdings", "calculate", "complete"];
+  let currentTrailPhase = null;
+  function beginTrailPhase(id, detail) {
+    if (currentTrailPhase && currentTrailPhase !== id) {
+      tokenomicsTrail.setStep(currentTrailPhase, "done");
     }
-    if (command === "account_lines") {
-      if (account === issuer) return "Checking current LEAP holdings";
-      return "Checking wallet balances";
-    }
-    return ({
-      ledger_entry: "Checking a recorded ledger item",
-      tx: "Verifying a recorded transaction",
-      server_info: "Checking the ledger connection",
-      account_info: "Checking wallet information",
-      account_objects: "Checking wallet records"
-    })[command] || "Checking XRP Ledger information";
+    currentTrailPhase = id;
+    tokenomicsTrail.setStep(id, "working", detail);
   }
-
-  function describeLedgerCall(payload) {
-    const title = ledgerCallLabel(payload);
-    const nextPage = payload.marker !== undefined && payload.marker !== null;
-    const detail = ({
-      account_tx: "Looking up validated transactions recorded for this wallet.",
-      account_lines: "Reading the latest validated LEAP balances.",
-      ledger_entry: "Reading a validated record from the ledger.",
-      tx: "Confirming the details of a recorded transaction.",
-      server_info: "Checking that the ledger service is available.",
-      account_info: "Reading the wallet’s validated account information.",
-      account_objects: "Reading validated records belonging to this wallet."
-    })[String(payload.command || "")] || "Requesting validated information from the XRP Ledger.";
-    return `${detail}${nextPage ? " Continuing with the next page of records." : ""}`;
-  }
-
-  function updateCallRow(row, state, detail) {
-    row.className = `trail-step ${state === "working" ? "active" : state}`;
-    const marker = row.querySelector(".trail-marker");
-    marker.replaceChildren();
-    if (state === "working") {
-      const activity = document.createElement("span");
-      activity.className = "trail-activity";
-      activity.setAttribute("aria-hidden", "true");
-      marker.appendChild(activity);
-    } else marker.textContent = state === "done" ? "✓" : "×";
-    row.querySelector(".trail-copy span").textContent = detail;
-  }
-
-  // Animate the existing Wild Ledger Trail's real height as API rows arrive.
-  // All colors, typography, markers and completion behavior remain shared.
-  function animateTrailGrowth(previousHeight) {
-    const route = tokenomicsTrailRoute;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    // Freeze the route at its current rendered height before measuring new content.
-    route.style.height = `${previousHeight}px`;
-    route.style.overflow = "hidden";
-    route.style.transition = "none";
-    const targetHeight = route.scrollHeight;
-    void route.offsetHeight;
-    route.style.transition = "height 420ms cubic-bezier(.22, 1, .36, 1)";
-    route.style.height = `${targetHeight}px`;
-  }
-
-  function recordLedgerCall(socket, payload) {
-    const sequence = ++tokenomicsRequestCount;
-    const row = document.createElement("div");
-    row.className = "trail-step";
-    const marker = document.createElement("div");
-    marker.className = "trail-marker";
-    const copy = document.createElement("div");
-    copy.className = "trail-copy";
-    const title = document.createElement("strong");
-    title.textContent = `${sequence}. ${ledgerCallLabel(payload)}`;
-    const detail = document.createElement("span");
-    copy.append(title, detail);
-    row.append(marker, copy);
-    const previousHeight = tokenomicsTrailRoute.getBoundingClientRect().height;
-    tokenomicsTrailRoute.insertBefore(row, tokenomicsTrailLast);
-    row.classList.add("tokenomics-api-entry");
-    animateTrailGrowth(previousHeight);
-    requestAnimationFrame(() => row.classList.add("is-visible"));
-    const record = { row, started: performance.now(), description: describeLedgerCall(payload) };
-    updateCallRow(row, "working", `${record.description} Request sent.`);
-    let pending = tokenomicsRequests.get(socket);
-    if (!pending) { pending = new Map(); tokenomicsRequests.set(socket, pending); }
-    pending.set(String(payload.id), record);
-    tokenomicsTrail.setStatus(`Checking ledger records — request ${sequence}`, "busy");
-  }
-
-  function finishLedgerCall(socket, response) {
-    const pending = tokenomicsRequests.get(socket);
-    const key = String(response.id);
-    if (!pending?.has(key)) return;
-    const record = pending.get(key);
-    pending.delete(key);
-    const elapsed = Math.round(performance.now() - record.started);
-    const error = response.status === "error" || response.error || response.result?.error;
-    const message = error ? String(response.error || response.result?.error || "XRPL request failed")
-      : `Response received in ${elapsed} ms${response.result?.marker !== undefined ? "; additional page available" : ""}.`;
-    updateCallRow(record.row, error ? "failed" : "done", `${record.description} ${message}`);
-  }
-
-  function watchLedgerSocket(socket) {
-    if (watchedSockets.has(socket)) return;
-    watchedSockets.add(socket);
-    socket.addEventListener("message", event => {
-      let response;
-      try { response = JSON.parse(event.data); } catch (_) { return; }
-      if (response && response.id !== undefined) finishLedgerCall(socket, response);
-    });
-    const failPending = () => {
-      const pending = tokenomicsRequests.get(socket);
-      if (!pending) return;
-      for (const record of pending.values()) updateCallRow(record.row, "failed", `${record.description} Connection closed before a response.`);
-      pending.clear();
-    };
-    socket.addEventListener("close", failPending);
-    socket.addEventListener("error", failPending);
-  }
-
-  function startLedgerCallReporting() {
-    tokenomicsTrail.open();
-    tokenomicsTrail.setStep("start", "working", "Reading community XRPL evidence.");
-    tokenomicsWatching = true;
-    WebSocket.prototype.send = function(data) {
-      if (tokenomicsWatching && typeof data === "string") {
-        try {
-          const payload = JSON.parse(data);
-          if (payload && typeof payload.command === "string") {
-            watchLedgerSocket(this);
-            recordLedgerCall(this, payload);
-          }
-        } catch (error) { console.error("Tokenomics Ledger Trail reporting:", error); }
-      }
-      try {
-        return nativeWebSocketSend.call(this, data);
-      } catch (error) {
-        const pending = tokenomicsRequests.get(this);
-        let id;
-        try { id = String(JSON.parse(data).id); } catch (_) {}
-        if (id !== undefined && pending?.has(id)) {
-          const record = pending.get(id);
-          pending.delete(id);
-          updateCallRow(record.row, "failed", `${record.description} Send failed: ${error.message}`);
-        }
-        throw error;
-      }
-    };
-  }
-
-  function stopLedgerCallReporting(failure) {
-    tokenomicsWatching = false;
-    WebSocket.prototype.send = nativeWebSocketSend;
-    for (const pending of tokenomicsRequests.values()) {
-      for (const record of pending.values()) updateCallRow(record.row, "failed", `${record.description} No response received.`);
-      pending.clear();
-    }
+  function finishTrail(failure) {
     if (failure) {
-      tokenomicsTrail.setStep("start", "failed", "XRPL retrieval did not complete.");
-      tokenomicsTrail.setStep("complete", "blocked", String(failure));
+      if (currentTrailPhase) tokenomicsTrail.setStep(currentTrailPhase, "failed", String(failure));
+      const index = trailPhases.indexOf(currentTrailPhase);
+      trailPhases.slice(index + 1).forEach(id => tokenomicsTrail.setStep(id, "blocked"));
       tokenomicsTrail.setStatus(String(failure), "error");
-    } else {
-      tokenomicsTrail.setStep("start", "done", `${tokenomicsRequestCount} individual XRPL API requests recorded.`);
-      tokenomicsTrail.finish({
-        message: "Completed",
-        onFinished: () => {
-          document.body.classList.add("tokenomics-dashboard-visible");
-          tokenomicsTrail.close();
-        }
-      });
+      return;
     }
+    if (currentTrailPhase) tokenomicsTrail.setStep(currentTrailPhase, "done");
+    tokenomicsTrail.finish({ message: "Completed", onFinished: () => {
+      document.body.classList.add("tokenomics-dashboard-visible");
+      tokenomicsTrail.close();
+    }});
   }
 
   function openSocket() {
@@ -1852,7 +1678,8 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
   }
 
   async function loadCommunityDashboard() {
-    startLedgerCallReporting();
+    tokenomicsTrail.open();
+    beginTrailPhase("identify", "Resolving validated community authority.");
     let ledgerTrailFailure = null;
     setLoading();
     let ws;
@@ -1864,12 +1691,12 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
       let requestNumber = 0;
       const nextId = prefix => `${prefix}-${++requestNumber}`;
 
-      const [operatingHistories, globalHistory] = await Promise.all([
-        Promise.all(authority.accounts.map((account, index) =>
-          fetchAccountHistory(ws, nextId, account, `operating-history-${index + 1}`)
-        )),
-        fetchAccountHistory(ws, nextId, globalDistributionWallet, "global-distribution-history")
-      ]);
+      beginTrailPhase("allocations", "Reading allocation Checks and community wallet histories.");
+      const operatingHistories = [];
+      for (const [index, account] of authority.accounts.entries()) {
+        operatingHistories.push(await fetchAccountHistory(ws, nextId, account, `operating-history-${index + 1}`));
+      }
+      const globalHistory = await fetchAccountHistory(ws, nextId, globalDistributionWallet, "global-distribution-history");
       const operatingHistory = dedupeHistory(operatingHistories.flat());
 
       // Allocation ownership is established by the canonical community memo, not by
@@ -1878,17 +1705,21 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
       const knownOperatingAccounts = new Set(authority.accounts || []);
       const allocationDestinations = allocationDeliveryDestinations(globalHistory)
         .filter(account => account && account !== globalDistributionWallet && !knownOperatingAccounts.has(account));
-      const allocationDeliveryHistories = await Promise.all(allocationDestinations.map((account, index) =>
-        fetchAccountHistory(ws, nextId, account, `allocation-destination-history-${index + 1}`)
-      ));
+      const allocationDeliveryHistories = [];
+      for (const [index, account] of allocationDestinations.entries()) {
+        allocationDeliveryHistories.push(await fetchAccountHistory(ws, nextId, account, `allocation-destination-history-${index + 1}`));
+      }
       const allocationDeliveryHistory = dedupeHistory([
         ...operatingHistory,
         ...allocationDeliveryHistories.flat()
       ]);
 
       const allocations = analyzeAllocations(globalHistory, allocationDeliveryHistory);
+      beginTrailPhase("distribution", "Tracing historical LEAP distributions.");
       const distribution = analyzeCommunityDistribution(operatingHistory);
+      beginTrailPhase("holdings", "Checking current LEAP holdings and recipients.");
       const balances = await loadIssuerLines(ws, nextId, distribution.recipients);
+      beginTrailPhase("calculate", "Calculating deployment, circulation and replenishment.");
       const completedAllocation = allocations
         .filter(item => item.status === "Cashed")
         .reduce((sum, item) => sum + item.amount, 0);
@@ -1910,6 +1741,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
       setMetric(metricEligibleReplenishment, `${formatLeap(eligibleReplenishment)} LEAP`);
       setReplenishmentEligibility(replenishmentEligible, eligibleReplenishment);
       renderAllocationLog(allocations);
+      beginTrailPhase("complete", "Community tokenomics prepared.");
 
       if (metricsSection) {
         metricsSection.title = `Validated XRP Ledger data for ${communityName}. Current Community Operating Wallet: ${authority.currentAccount}. Historical authority wallets: ${authority.accounts.length}.`;
@@ -1925,7 +1757,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
       setUnavailable(error?.message || "Community ledger data unavailable.");
       ledgerTrailFailure = error?.message || "Community ledger data unavailable.";
     } finally {
-      stopLedgerCallReporting(ledgerTrailFailure);
+      finishTrail(ledgerTrailFailure);
       if (ws) {
         try { ws.close(); } catch (_) {}
       }
