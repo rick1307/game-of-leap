@@ -243,10 +243,8 @@ export function createLedgerTrail({
     const copy = element('div', 'trail-feed-copy');
     const label = element('strong', '', activityTitle);
     const description = element('span', '', detail);
-    const result = element('div', 'trail-feed-result');
-    result.setAttribute('aria-hidden', 'true');
     copy.append(label, description);
-    row.append(number, copy, result);
+    row.append(number, copy);
     feedItems.appendChild(row);
     activities.set(id, {row, description});
     updateActivity(id, {state});
@@ -263,7 +261,6 @@ export function createLedgerTrail({
     if (state !== undefined) {
       if (!['working', 'done', 'failed'].includes(state)) throw new TypeError('Ledger Trail: invalid activity state.');
       record.row.dataset.state = state;
-      record.row.lastElementChild.textContent = state === 'done' ? '✓' : state === 'failed' ? '×' : '◌';
     }
     if (detail !== undefined) record.description.textContent = String(detail);
     resizeFeed();
