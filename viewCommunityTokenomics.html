@@ -939,6 +939,22 @@
   }
 </style>
   <link rel="stylesheet" href="wildLedgerControls.css">
+<style>
+/* Tokenomics-only motion; retain Wild Ledger's shared Ledger Trail palette. */
+.ledger-trail .trail-route .tokenomics-api-entry {
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 280ms ease 110ms, transform 350ms ease 110ms;
+}
+.ledger-trail .trail-route .tokenomics-api-entry.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ledger-trail .trail-route { transition: none !important; }
+  .ledger-trail .trail-route .tokenomics-api-entry { transition: none !important; opacity: 1; transform: none; }
+}
+</style>
 </head>
 <body>
   <main class="shell">
@@ -1269,9 +1285,10 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
       { id: "start", title: "Read validated ledger evidence", detail: "Waiting to start." },
       { id: "complete", title: "Tokenomics ready", detail: "Waiting for the ledger reads." }
     ],
-    activityFeed: true,
     onClose: () => document.body.classList.add("tokenomics-dashboard-visible")
   });
+  const tokenomicsTrailRoute = tokenomicsTrail.element.querySelector(".trail-route");
+  const tokenomicsTrailLast = tokenomicsTrailRoute.lastElementChild;
   const tokenomicsRequests = new Map();
   const watchedSockets = new WeakSet();
   const nativeWebSocketSend = WebSocket.prototype.send;
@@ -1317,25 +1334,58 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     return `${detail}${nextPage ? " Continuing with the next page of records." : ""}`;
   }
 
-  // Each real WebSocket request is reported through the shared, opt-in activity feed.
-  // Tokenomics owns the meaning of the request; ledgerTrail.js owns presentation.
+  function updateCallRow(row, state, detail) {
+    row.className = `trail-step ${state === "working" ? "active" : state}`;
+    const marker = row.querySelector(".trail-marker");
+    marker.replaceChildren();
+    if (state === "working") {
+      const activity = document.createElement("span");
+      activity.className = "trail-activity";
+      activity.setAttribute("aria-hidden", "true");
+      marker.appendChild(activity);
+    } else marker.textContent = state === "done" ? "✓" : "×";
+    row.querySelector(".trail-copy span").textContent = detail;
+  }
+
+  // Animate the existing Wild Ledger Trail's real height as API rows arrive.
+  // All colors, typography, markers and completion behavior remain shared.
+  function animateTrailGrowth(previousHeight) {
+    const route = tokenomicsTrailRoute;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    // Freeze the route at its current rendered height before measuring new content.
+    route.style.height = `${previousHeight}px`;
+    route.style.overflow = "hidden";
+    route.style.transition = "none";
+    const targetHeight = route.scrollHeight;
+    void route.offsetHeight;
+    route.style.transition = "height 420ms cubic-bezier(.22, 1, .36, 1)";
+    route.style.height = `${targetHeight}px`;
+  }
+
   function recordLedgerCall(socket, payload) {
     const sequence = ++tokenomicsRequestCount;
-    const description = describeLedgerCall(payload);
-    const activityId = tokenomicsTrail.addActivity({
-      title: ledgerCallLabel(payload),
-      detail: `${description} Request sent.`,
-      state: "working"
-    });
-    const record = { activityId, started: performance.now(), description };
+    const row = document.createElement("div");
+    row.className = "trail-step";
+    const marker = document.createElement("div");
+    marker.className = "trail-marker";
+    const copy = document.createElement("div");
+    copy.className = "trail-copy";
+    const title = document.createElement("strong");
+    title.textContent = `${sequence}. ${ledgerCallLabel(payload)}`;
+    const detail = document.createElement("span");
+    copy.append(title, detail);
+    row.append(marker, copy);
+    const previousHeight = tokenomicsTrailRoute.getBoundingClientRect().height;
+    tokenomicsTrailRoute.insertBefore(row, tokenomicsTrailLast);
+    row.classList.add("tokenomics-api-entry");
+    animateTrailGrowth(previousHeight);
+    requestAnimationFrame(() => row.classList.add("is-visible"));
+    const record = { row, started: performance.now(), description: describeLedgerCall(payload) };
+    updateCallRow(row, "working", `${record.description} Request sent.`);
     let pending = tokenomicsRequests.get(socket);
     if (!pending) { pending = new Map(); tokenomicsRequests.set(socket, pending); }
     pending.set(String(payload.id), record);
     tokenomicsTrail.setStatus(`Checking ledger records — request ${sequence}`, "busy");
-  }
-
-  function updateCallRow(record, state, detail) {
-    tokenomicsTrail.updateActivity(record.activityId, { state, detail });
   }
 
   function finishLedgerCall(socket, response) {
@@ -1348,7 +1398,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     const error = response.status === "error" || response.error || response.result?.error;
     const message = error ? String(response.error || response.result?.error || "XRPL request failed")
       : `Response received in ${elapsed} ms${response.result?.marker !== undefined ? "; additional page available" : ""}.`;
-    updateCallRow(record, error ? "failed" : "done", `${record.description} ${message}`);
+    updateCallRow(record.row, error ? "failed" : "done", `${record.description} ${message}`);
   }
 
   function watchLedgerSocket(socket) {
@@ -1362,7 +1412,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     const failPending = () => {
       const pending = tokenomicsRequests.get(socket);
       if (!pending) return;
-      for (const record of pending.values()) updateCallRow(record, "failed", `${record.description} Connection closed before a response.`);
+      for (const record of pending.values()) updateCallRow(record.row, "failed", `${record.description} Connection closed before a response.`);
       pending.clear();
     };
     socket.addEventListener("close", failPending);
@@ -1392,7 +1442,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
         if (id !== undefined && pending?.has(id)) {
           const record = pending.get(id);
           pending.delete(id);
-          updateCallRow(record, "failed", `${record.description} Send failed: ${error.message}`);
+          updateCallRow(record.row, "failed", `${record.description} Send failed: ${error.message}`);
         }
         throw error;
       }
@@ -1403,7 +1453,7 @@ import { readUserSession, readOperatorSession, clearWildLedgerSessions } from ".
     tokenomicsWatching = false;
     WebSocket.prototype.send = nativeWebSocketSend;
     for (const pending of tokenomicsRequests.values()) {
-      for (const record of pending.values()) updateCallRow(record, "failed", `${record.description} No response received.`);
+      for (const record of pending.values()) updateCallRow(record.row, "failed", `${record.description} No response received.`);
       pending.clear();
     }
     if (failure) {
