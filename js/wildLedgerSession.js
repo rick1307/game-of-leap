@@ -27,13 +27,13 @@ export function writeUserSession({ wallet, authority, selectedCommunity }) {
   const selection = selectedCommunity === undefined
     ? (sameIdentity ? previous.selectedCommunity : null)
     : selectedCommunity;
-  if (authority === 'owner' && selection !== null &&
+  if (selection !== null &&
       (typeof selection !== 'string' || !selection.trim())) {
     throw new Error('Selected community must be a community ID or null.');
   }
   const user = {
     wallet: wallet.trim(), authority,
-    ...(authority === 'owner' ? { selectedCommunity: selection === null ? null : selection.trim() } : {})
+    selectedCommunity: selection === null ? null : selection.trim()
   };
   sessionStorage.setItem(USER_KEY, JSON.stringify(user));
   if (!previous || previous.wallet !== user.wallet) {
@@ -47,7 +47,6 @@ export function readUserSession() {
   const user = readObject(USER_KEY);
   if (!user || typeof user.wallet !== 'string' || !user.wallet.trim() ||
       !['owner', 'operator', 'member'].includes(user.authority)) return null;
-  if (user.authority !== 'owner') return { wallet: user.wallet, authority: user.authority };
   const selectedCommunity = user.selectedCommunity === undefined ? null : user.selectedCommunity;
   if (selectedCommunity !== null &&
       (typeof selectedCommunity !== 'string' || !selectedCommunity.trim())) return null;
