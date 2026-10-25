@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#081b24">
+<title>LEAP Leaderboard — The Game of Leap</title>
+<style>
+:root{color-scheme:dark;--bg:#081b24;--panel:#102a32;--ink:#f4f4e8;--muted:#b4c7c5;--lime:#d8f078;--line:#34505a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}body:before{content:"";position:absolute;top:0;left:0;right:0;height:570px;pointer-events:none;background:radial-gradient(ellipse at 80% 10%,#24534b80,transparent 56%),radial-gradient(ellipse at 5% 40%,#143b4380,transparent 55%)}
+.wrap{width:min(100% - 40px,920px);margin:auto;position:relative}.top{display:flex;justify-content:space-between;align-items:center;padding:28px 0}.brand{font-weight:850;letter-spacing:.12em;font-size:.8rem;text-transform:uppercase}.pill{border:1px solid #5d8276;border-radius:30px;padding:5px 13px;color:var(--lime);font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}.hero{text-align:center;padding:70px 0 40px}.eyebrow{text-transform:uppercase;color:var(--lime);letter-spacing:.22em;font-size:.77rem;font-weight:800}h1{font-size:clamp(2.7rem,8vw,5.5rem);line-height:1.04;letter-spacing:-.06em;margin:18px auto}h1 span{color:var(--lime)}.lead{color:var(--muted);margin:0 auto;max-width:560px}a{color:var(--lime)}.board{background:var(--panel);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin:20px 0 25px}.board-head,.holder{display:grid;grid-template-columns:45px minmax(0,1fr) auto;gap:12px;align-items:center;padding:16px 22px}.board-head{border-bottom:1px solid var(--line);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}.holder+.holder{border-top:1px solid var(--line)}.rank{color:var(--lime);font-weight:900}.address{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.balance{font-variant-numeric:tabular-nums;font-weight:850;text-align:right}.status{color:var(--muted);text-align:center;padding:34px 20px}.controls{text-align:center;margin:18px 0 55px}.controls button{background:var(--lime);color:#12231a;border:0;border-radius:100px;padding:12px 27px;font:inherit;font-weight:850;cursor:pointer}.controls button:disabled{opacity:.55;cursor:wait}.note{text-align:center;color:var(--muted);font-size:.85rem;max-width:650px;margin:12px auto 30px}footer{border-top:1px solid var(--line);padding:25px 0 35px;text-align:center;color:#8ea7a7;font-size:.85rem}.back{text-align:center;margin-bottom:55px}@media(max-width:520px){.board-head,.holder{grid-template-columns:28px minmax(0,1fr) auto;gap:8px;padding:15px 12px}.address{font-size:.76rem}.balance{font-size:.86rem}.hero{padding-top:55px}.pill{font-size:.62rem;padding:5px 9px}}
+</style>
+</head>
+<body><div class="wrap">
+<header class="top"><div class="brand">Sailing Frog's LEAP</div><div class="pill">The Game of Leap</div></header>
+<main><div class="hero"><div class="eyebrow">Live from the XRP Ledger</div><h1>LEAP <span>Leaderboard.</span></h1><p class="lead">The top 25 wallets holding LEAP, ranked by current balance.</p></div>
+<div class="board" aria-label="LEAP holders leaderboard"><div class="board-head"><span>#</span><span>XRPL Wallet</span><span>LEAP Balance</span></div><div id="results" aria-live="polite"><div class="status">Connecting to the XRP Ledger…</div></div></div>
+<div class="controls"><button id="refresh" type="button">Refresh Leaderboard</button><p class="note" id="updated">Balances are read from the public XRP Ledger, not from a game database.</p></div>
+<div class="back"><a href="index.html">← Back to The Game of Leap</a></div></main><footer>Sailing Frog's LEAP · A distribution game on the XRP Ledger</footer>
+</div>
+<script>
+'use strict';
+// LEAP issuer and currency are taken from Wild Ledger's published runtime configuration.
+const ISSUER = 'rh7SidU91xGW2Za5RvoKiCgS2YB2psTBgq';
+const CURRENCY = '4C45415000000000000000000000000000000000';
+const SERVERS = ['wss://s1.ripple.com/', 'wss://s2.ripple.com/'];
+const results = document.getElementById('results');
+const refresh = document.getElementById('refresh');
+const updated = document.getElementById('updated');
+const format = new Intl.NumberFormat('en-US', {maximumFractionDigits:6});
+let running = false;
+function rpc(ws, payload, timeout=18000){
+  return new Promise((resolve,reject)=>{
+    const id = payload.id;
+    const timer = setTimeout(()=>{ws.removeEventListener('message',onMessage);reject(new Error('XRPL request timed out'));},timeout);
+    function onMessage(event){
+      let msg;try{msg=JSON.parse(event.data)}catch{return}
+      if(msg.id!==id)return;
+      clearTimeout(timer);ws.removeEventListener('message',onMessage);
+      if(msg.status==='error'||msg.result?.error)reject(new Error(msg.error_message||msg.result?.error_message||msg.error||msg.result?.error));
+      else resolve(msg.result||msg);
+    }
+    ws.addEventListener('message',onMessage);
+    try{ws.send(JSON.stringify(payload))}catch(e){clearTimeout(timer);ws.removeEventListener('message',onMessage);reject(e)}
+  });
+}
+function connect(url){return new Promise((resolve,reject)=>{
+  const ws = new WebSocket(url);const timer=setTimeout(()=>{ws.close();reject(new Error('Connection timed out'))},12000);
+  ws.addEventListener('open',()=>{clearTimeout(timer);resolve(ws)},{once:true});
+  ws.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('Cannot connect to XRPL'))},{once:true});
+})}
+function showStatus(message){results.replaceChildren();const el=document.createElement('div');el.className='status';el.textContent=message;results.append(el)}
+function render(holders){results.replaceChildren();if(!holders.length){showStatus('No funded LEAP holders found.');return}
+  holders.sort((a,b)=>b.balance-a.balance||a.address.localeCompare(b.address));
+  holders.slice(0,25).forEach((item,i)=>{
+    const row=document.createElement('div');row.className='holder';
+    const rank=document.createElement('span');rank.className='rank';rank.textContent=String(i+1);
+    const addr=document.createElement('a');addr.className='address';addr.href='https://livenet.xrpl.org/accounts/'+encodeURIComponent(item.address);addr.target='_blank';addr.rel='noopener noreferrer';addr.textContent=item.address.slice(0,9)+'…'+item.address.slice(-7);addr.title=item.address;
+    const bal=document.createElement('span');bal.className='balance';bal.textContent=format.format(item.balance);
+    row.append(rank,addr,bal);results.append(row);
+  });
+}
+async function load(){if(running)return;running=true;refresh.disabled=true;showStatus('Connecting to the XRP Ledger…');let lastError;
+  for(const server of SERVERS){let ws;
+    try{
+      ws=await connect(server);let marker;let page=0;let id=0;const holders=[];
+      do{
+        showStatus(page===0?'Reading LEAP holders from the ledger…':`Reading LEAP holders… ${holders.length} balances found`);
+        const params={id:++id,command:'account_lines',account:ISSUER,ledger_index:'validated',limit:400};
+        if(marker!==undefined)params.marker=marker;
+        const response=await rpc(ws,params);
+        for(const line of response.lines||[]){
+          if(line.currency!==CURRENCY&&line.currency!=='LEAP')continue;
+          // On the issuer's trust line, issued tokens are a negative balance.
+          const balance=-Number(line.balance);
+          if(Number.isFinite(balance)&&balance>0)holders.push({address:line.account,balance});
+        }
+        marker=response.marker;page++;
+        if(page>10000)throw new Error('Too many ledger pages');
+      }while(marker!==undefined);
+      render(holders);
+      updated.textContent=`${holders.length} funded LEAP holder${holders.length===1?'':'s'} found · Updated ${new Date().toLocaleString()} · Refresh for current balances.`;
+      ws.close();running=false;refresh.disabled=false;return;
+    }catch(error){lastError=error;if(ws)ws.close()}
+  }
+  showStatus('Unable to load the leaderboard right now. Please try Refresh.');
+  updated.textContent='Could not reach the XRP Ledger: '+(lastError?.message||'Connection error');
+  running=false;refresh.disabled=false;
+}
+refresh.addEventListener('click',load);load();
+</script>
+</body></html>
