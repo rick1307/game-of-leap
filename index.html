@@ -79,7 +79,7 @@
           headers: { 'Accept': 'application/json' }
         });
         if (!response.ok) throw new Error('Submission failed');
-        signupStatus.textContent = 'Request sent!';
+        signupStatus.textContent = 'Request received! You will receive a Check for 100 LEAP from the LEAP Distributor (rnbmFoUKhnMZ8QCJ6kA5J2uwfP8rm9cUdU) within the next 24 hours.';
         signupForm.reset();
       } catch (error) {
         signupStatus.textContent = 'Could not confirm delivery. Please try again.';
