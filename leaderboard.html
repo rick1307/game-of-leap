@@ -50,7 +50,7 @@ function render(holders){results.replaceChildren();if(!holders.length){showStatu
   holders.forEach((item,i)=>{
     const row=document.createElement('div');row.className='holder';
     const rank=document.createElement('span');rank.className='rank';rank.textContent=String(i+1);
-    const addr=document.createElement('a');addr.className='address';addr.href='https://livenet.xrpl.org/accounts/'+encodeURIComponent(item.address);addr.target='_blank';addr.rel='noopener noreferrer';addr.textContent=item.address.slice(0,9)+'…'+item.address.slice(-7);addr.title=item.address;
+    const addr=document.createElement('span');addr.className='address';addr.textContent=item.address.slice(0,10)+'…'+item.address.slice(-10);
     const bal=document.createElement('span');bal.className='balance';bal.textContent=format.format(item.balance);
     row.append(rank,addr,bal);results.append(row);
   });
