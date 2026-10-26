@@ -10,6 +10,7 @@
     *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}
     body:before{content:"";position:absolute;top:0;left:0;right:0;height:670px;pointer-events:none;background:radial-gradient(ellipse at 80% 10%,#24534b80,transparent 56%),radial-gradient(ellipse at 5% 40%,#143b4380,transparent 55%)}
     .wrap{width:min(100% - 40px,920px);margin:auto;position:relative}.top{display:flex;justify-content:space-between;align-items:center;padding:28px 0}.brand{font-weight:850;letter-spacing:.12em;font-size:.8rem;text-transform:uppercase}.pill{border:1px solid #5d8276;border-radius:30px;padding:5px 13px;color:var(--lime);font-size:.72rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase}
+    .game-logo{display:block;width:200px;max-width:48vw;height:auto;object-fit:contain}
     .hero{text-align:center;padding:80px 0 72px}.eyebrow{text-transform:uppercase;color:var(--lime);letter-spacing:.22em;font-size:.77rem;font-weight:800}.hero h1{font-size:clamp(3rem,8vw,6.5rem);line-height:1.02;letter-spacing:-.07em;margin:20px auto;max-width:850px}.hero h1 span{color:var(--lime)}.lead{max-width:640px;margin:0 auto;color:var(--muted);font-size:clamp(1.1rem,2.4vw,1.35rem)}
     .founder-quote{max-width:680px;margin:0 auto;color:var(--muted);font-size:clamp(1.1rem,2.4vw,1.35rem);font-style:italic;line-height:1.6}.founder-quote cite{display:inline;color:inherit;font:inherit}
     .rule{border-top:1px solid var(--line);padding:26px 0;display:grid;grid-template-columns:70px 1fr;gap:20px}.num{font-size:1.9rem;font-weight:900;color:var(--lime);letter-spacing:-.05em}.rule h3{margin:0 0 6px;font-size:1.3rem}.rule p{margin:0;color:var(--muted)}
@@ -30,7 +31,7 @@
 </head>
 <body>
   <div class="wrap">
-    <header class="top"><div class="brand">Sailing Frog's LEAP</div><div class="pill">The Game of Leap</div></header>
+    <header class="top"><div class="brand">Sailing Frog's LEAP</div><img src="gameOfLeap.png" alt="The Game of Leap" class="game-logo"></header>
     <main>
       <div class="hero"><div class="eyebrow">A game played on the XRP Ledger</div><h1>Welcome to<br><span>Sailing Frog's LEAP.</span></h1><p class="founder-quote">“Your LEAP is yours. Spend it, save it, give it away. But only smart distribution earns your next allotment.” <cite>— Rick</cite></p></div>
       <section id="rules"><div class="eyebrow">How the game works</div><h2>Spread LEAP. Earn more.</h2>
