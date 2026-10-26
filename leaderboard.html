@@ -11,7 +11,7 @@
 </head>
 <body><div class="wrap">
 <header class="top"><div class="brand">Sailing Frog's LEAP</div><img src="gameOfLeap.png" alt="The Game of Leap" class="game-logo"></header>
-<main><div class="hero"><div class="eyebrow">Live from the XRP Ledger</div><h1>LEAP <span>Leaderboard.</span></h1><p class="lead">The top 25 wallets holding LEAP, ranked by current balance.</p></div>
+<main><div class="hero"><div class="eyebrow">Live from the XRP Ledger</div><h1>LEAP <span>Leaderboard.</span></h1><p class="lead">Every wallet holding LEAP, ranked by current balance.</p></div>
 <div class="board" aria-label="LEAP holders leaderboard"><div class="board-head"><span>#</span><span>XRPL Wallet</span><span>LEAP Balance</span></div><div id="results" aria-live="polite"><div class="status">Connecting to the XRP Ledger…</div></div></div>
 
 <div class="back"><a href="index.html">← Back to The Game of Leap</a></div></main><footer>The Game of Leap · A distribution game on the XRP Ledger</footer>
@@ -47,7 +47,7 @@ function connect(url){return new Promise((resolve,reject)=>{
 function showStatus(message){results.replaceChildren();const el=document.createElement('div');el.className='status';el.textContent=message;results.append(el)}
 function render(holders){results.replaceChildren();if(!holders.length){showStatus('No funded LEAP holders found.');return}
   holders.sort((a,b)=>b.balance-a.balance||a.address.localeCompare(b.address));
-  holders.slice(0,25).forEach((item,i)=>{
+  holders.forEach((item,i)=>{
     const row=document.createElement('div');row.className='holder';
     const rank=document.createElement('span');rank.className='rank';rank.textContent=String(i+1);
     const addr=document.createElement('a');addr.className='address';addr.href='https://livenet.xrpl.org/accounts/'+encodeURIComponent(item.address);addr.target='_blank';addr.rel='noopener noreferrer';addr.textContent=item.address.slice(0,9)+'…'+item.address.slice(-7);addr.title=item.address;
