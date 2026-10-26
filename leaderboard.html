@@ -6,25 +6,22 @@
 <style>
 :root{color-scheme:dark;--bg:#081b24;--panel:#102a32;--ink:#f4f4e8;--muted:#b4c7c5;--lime:#d8f078;--line:#34505a}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;line-height:1.6}body:before{content:"";position:absolute;top:0;left:0;right:0;height:570px;pointer-events:none;background:radial-gradient(ellipse at 80% 10%,#24534b80,transparent 56%),radial-gradient(ellipse at 5% 40%,#143b4380,transparent 55%)}
-.wrap{width:min(100% - 40px,920px);margin:auto;position:relative}.top{display:flex;justify-content:space-between;align-items:center;padding:28px 0}.brand{font-weight:850;letter-spacing:.12em;font-size:.8rem;text-transform:uppercase}.game-logo{display:block;width:200px;max-width:48vw;height:auto;object-fit:contain}.hero{text-align:center;padding:70px 0 40px}.eyebrow{text-transform:uppercase;color:var(--lime);letter-spacing:.22em;font-size:.77rem;font-weight:800}h1{font-size:clamp(2.7rem,8vw,5.5rem);line-height:1.04;letter-spacing:-.06em;margin:18px auto}h1 span{color:var(--lime)}.lead{color:var(--muted);margin:0 auto;max-width:560px}a{color:var(--lime)}.board{background:var(--panel);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin:20px 0 25px}.board-head,.holder{display:grid;grid-template-columns:45px minmax(0,1fr) auto;gap:12px;align-items:center;padding:16px 22px}.board-head{border-bottom:1px solid var(--line);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}.holder+.holder{border-top:1px solid var(--line)}.rank{color:var(--lime);font-weight:900}.address{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.balance{font-variant-numeric:tabular-nums;font-weight:850;text-align:right}.status{color:var(--muted);text-align:center;padding:34px 20px}.controls{text-align:center;margin:18px 0 55px}.controls button{background:var(--lime);color:#12231a;border:0;border-radius:100px;padding:12px 27px;font:inherit;font-weight:850;cursor:pointer}.controls button:disabled{opacity:.55;cursor:wait}.note{text-align:center;color:var(--muted);font-size:.85rem;max-width:650px;margin:12px auto 30px}footer{border-top:1px solid var(--line);padding:25px 0 35px;text-align:center;color:#8ea7a7;font-size:.85rem}.back{text-align:center;margin-bottom:55px}@media(max-width:520px){.board-head,.holder{grid-template-columns:28px minmax(0,1fr) auto;gap:8px;padding:15px 12px}.address{font-size:.76rem}.balance{font-size:.86rem}.hero{padding-top:55px}}
+.wrap{width:min(100% - 40px,920px);margin:auto;position:relative}.top{display:flex;justify-content:space-between;align-items:center;padding:28px 0}.brand{font-weight:850;letter-spacing:.12em;font-size:.8rem;text-transform:uppercase}.game-logo{display:block;width:200px;max-width:48vw;height:auto;object-fit:contain}.hero{text-align:center;padding:70px 0 40px}.eyebrow{text-transform:uppercase;color:var(--lime);letter-spacing:.22em;font-size:.77rem;font-weight:800}h1{font-size:clamp(2.7rem,8vw,5.5rem);line-height:1.04;letter-spacing:-.06em;margin:18px auto}h1 span{color:var(--lime)}.lead{color:var(--muted);margin:0 auto;max-width:560px}a{color:var(--lime)}.board{background:var(--panel);border:1px solid var(--line);border-radius:20px;overflow:hidden;margin:20px 0 25px}.board-head,.holder{display:grid;grid-template-columns:45px minmax(0,1fr) auto;gap:12px;align-items:center;padding:16px 22px}.board-head{border-bottom:1px solid var(--line);font-size:.74rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:800}.holder+.holder{border-top:1px solid var(--line)}.rank{color:var(--lime);font-weight:900}.address{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.9rem}.balance{font-variant-numeric:tabular-nums;font-weight:850;text-align:right}.status{color:var(--muted);text-align:center;padding:34px 20px}footer{border-top:1px solid var(--line);padding:25px 0 35px;text-align:center;color:#8ea7a7;font-size:.85rem}.back{text-align:center;margin-bottom:55px}@media(max-width:520px){.board-head,.holder{grid-template-columns:28px minmax(0,1fr) auto;gap:8px;padding:15px 12px}.address{font-size:.76rem}.balance{font-size:.86rem}.hero{padding-top:55px}}
 </style>
 </head>
 <body><div class="wrap">
 <header class="top"><div class="brand">Sailing Frog's LEAP</div><img src="gameOfLeap.png" alt="The Game of Leap" class="game-logo"></header>
 <main><div class="hero"><div class="eyebrow">Live from the XRP Ledger</div><h1>LEAP <span>Leaderboard.</span></h1><p class="lead">The top 25 wallets holding LEAP, ranked by current balance.</p></div>
 <div class="board" aria-label="LEAP holders leaderboard"><div class="board-head"><span>#</span><span>XRPL Wallet</span><span>LEAP Balance</span></div><div id="results" aria-live="polite"><div class="status">Connecting to the XRP Ledger…</div></div></div>
-<div class="controls"><button id="refresh" type="button">Refresh Leaderboard</button><p class="note" id="updated">Balances are read from the public XRP Ledger, not from a game database.</p></div>
+
 <div class="back"><a href="index.html">← Back to The Game of Leap</a></div></main><footer>The Game of Leap · A distribution game on the XRP Ledger</footer>
 </div>
 <script>
 'use strict';
-// LEAP issuer and currency are taken from Wild Ledger's published runtime configuration.
 const ISSUER = 'rh7SidU91xGW2Za5RvoKiCgS2YB2psTBgq';
 const CURRENCY = '4C45415000000000000000000000000000000000';
 const SERVERS = ['wss://s1.ripple.com/', 'wss://s2.ripple.com/'];
 const results = document.getElementById('results');
-const refresh = document.getElementById('refresh');
-const updated = document.getElementById('updated');
 const format = new Intl.NumberFormat('en-US', {maximumFractionDigits:6});
 let running = false;
 function rpc(ws, payload, timeout=18000){
@@ -58,7 +55,7 @@ function render(holders){results.replaceChildren();if(!holders.length){showStatu
     row.append(rank,addr,bal);results.append(row);
   });
 }
-async function load(){if(running)return;running=true;refresh.disabled=true;showStatus('Connecting to the XRP Ledger…');let lastError;
+async function load(){if(running)return;running=true;showStatus('Connecting to the XRP Ledger…');
   for(const server of SERVERS){let ws;
     try{
       ws=await connect(server);let marker;let page=0;let id=0;const holders=[];
@@ -77,14 +74,12 @@ async function load(){if(running)return;running=true;refresh.disabled=true;showS
         if(page>10000)throw new Error('Too many ledger pages');
       }while(marker!==undefined);
       render(holders);
-      updated.textContent=`${holders.length} funded LEAP holder${holders.length===1?'':'s'} found · Updated ${new Date().toLocaleString()} · Refresh for current balances.`;
-      ws.close();running=false;refresh.disabled=false;return;
-    }catch(error){lastError=error;if(ws)ws.close()}
+      ws.close();running=false;return;
+    }catch(error){if(ws)ws.close()}
   }
-  showStatus('Unable to load the leaderboard right now. Please try Refresh.');
-  updated.textContent='Could not reach the XRP Ledger: '+(lastError?.message||'Connection error');
-  running=false;refresh.disabled=false;
+  showStatus('Unable to load the leaderboard right now. Please reload the page.');
+  running=false;
 }
-refresh.addEventListener('click',load);load();
+load();
 </script>
 </body></html>
