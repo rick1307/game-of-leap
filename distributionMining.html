@@ -11,6 +11,7 @@
 body:before{content:"";position:absolute;top:0;left:0;right:0;height:580px;pointer-events:none;background:radial-gradient(ellipse at 80% 10%,#24534b80,transparent 56%),radial-gradient(ellipse at 5% 40%,#143b4380,transparent 55%)}
 .wrap{width:min(100% - 40px,920px);margin:auto;position:relative}.top{display:flex;justify-content:space-between;align-items:center;padding:28px 0;gap:16px}.brand{font-weight:850;letter-spacing:.12em;font-size:.8rem;text-transform:uppercase}.game-logo{display:block;width:200px;max-width:45vw;height:auto;object-fit:contain}
 a{color:var(--lime)}.hero{text-align:center;padding:70px 0 65px}.eyebrow{color:var(--lime);text-transform:uppercase;letter-spacing:.2em;font-size:.75rem;font-weight:800}.hero h1{font-size:clamp(3.3rem,9vw,6.5rem);letter-spacing:-.07em;line-height:1.03;margin:18px auto 24px}.subtitle{font-size:clamp(1.2rem,2.8vw,1.65rem);max-width:720px;margin:auto;color:var(--muted);line-height:1.45}.story{max-width:720px;margin:0 auto}.story section{padding:32px 0 42px;border-top:1px solid var(--line)}.story h2{font-size:clamp(1.75rem,4vw,2.55rem);letter-spacing:-.045em;line-height:1.15;margin:4px 0 24px}.story p{font-size:1.085rem;margin:0 0 20px}.story strong{color:var(--ink)}.statement{font-size:clamp(1.25rem,3vw,1.6rem)!important;line-height:1.45;font-weight:800;color:var(--lime);margin:30px 0!important}.short{font-size:1.2rem!important}.closing{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:clamp(24px,5vw,42px);text-align:center;margin:12px 0 75px}.closing h2{margin:0 0 18px}.closing p{margin:0 0 12px}.closing .statement{margin:22px 0!important}.cta{display:inline-block;background:var(--lime);color:#12231a;text-decoration:none;border-radius:100px;font-weight:900;padding:13px 30px;margin-top:14px}footer{border-top:1px solid var(--line);padding:24px 0 36px;color:#8ea7a7;font-size:.85rem;text-align:center}@media(max-width:600px){.hero{padding:52px 0 54px}.story section{padding:28px 0 34px}.story p{font-size:1.03rem}}
+.market-intro{margin-bottom:28px}.market-heading{text-align:center;color:var(--muted);font-size:1.1rem;margin:28px 0 18px}.metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin:16px 0}.metric{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:22px 20px;min-width:0}.metric-label{color:var(--lime);font-size:.73rem;letter-spacing:.09em;text-transform:uppercase;font-weight:850}.metric-value{font-size:clamp(1.5rem,4vw,2.4rem);font-weight:850;line-height:1.2;letter-spacing:-.04em;overflow-wrap:anywhere;font-variant-numeric:tabular-nums;margin:10px 0 5px}.metric-detail{color:var(--muted);font-size:.84rem;line-height:1.45}.market-note{font-size:.85rem!important;color:var(--muted);text-align:center;margin:12px 0 0!important}@media(max-width:600px){.metrics{gap:10px}.metric{padding:16px 12px}.metric-label{font-size:.65rem}.metric-detail{font-size:.76rem}}
 </style>
 </head>
 <body><div class="wrap">
@@ -67,6 +68,21 @@ a{color:var(--lime)}.hero{text-align:center;padding:70px 0 65px}.eyebrow{color:v
 <p>That's why it's an experiment.</p>
 <p>And the Game of LEAP is how we're finding out.</p>
 </section>
+<section id="market-discovery" aria-labelledby="market-discovery-title"><h2 id="market-discovery-title">Market Discovery</h2>
+<p>The Game of LEAP rewards people for distributing LEAP, not for buying or selling it. However, as LEAP reaches more and more independent holders, those people are free to decide what to do with it.</p>
+<p>Some may hold. Some may offer to sell. Others may want to buy. Their different motivations create the conditions for both sides of a market to discover each other.</p>
+<p>These six measurements follow that journey—from tokens entering circulation and spreading across wallets to voluntary exchanges, price discovery, and the emergence of market value.</p>
+<h3 class="market-heading">The Journey from Distribution to Value</h3>
+<div class="metrics" aria-label="LEAP market discovery measurements">
+<div class="metric"><div class="metric-label">LEAP in Circulation</div><div class="metric-value" id="circulation">Loading…</div><div class="metric-detail">LEAP held outside the issuer wallet</div></div>
+<div class="metric"><div class="metric-label">LEAP Holders</div><div class="metric-value" id="holders">Loading…</div><div class="metric-detail">Wallets holding LEAP</div></div>
+<div class="metric"><div class="metric-label">LEAP Traded</div><div class="metric-value">—</div><div class="metric-detail">Lifetime completed trading volume · History not connected</div></div>
+<div class="metric"><div class="metric-label">XRP Exchanged</div><div class="metric-value">—</div><div class="metric-detail">Lifetime LEAP/XRP trades · History not connected</div></div>
+<div class="metric"><div class="metric-label">Last Traded Price</div><div class="metric-value">—</div><div class="metric-detail">XRP per LEAP · History not connected</div></div>
+<div class="metric"><div class="metric-label">Market Value</div><div class="metric-value">—</div><div class="metric-detail">Circulating LEAP × last traded price · Pending trade data</div></div>
+</div>
+<p class="market-note" id="data-status" role="status" aria-live="polite">Circulation and holder counts are read from the XRP Ledger. Lifetime trade history is not yet connected; a dash does not mean zero.</p>
+</section>
 <section><h2>Your Turn</h2>
 <p>You don't need expensive hardware.</p>
 <p>You don't need a mining facility.</p>
@@ -79,4 +95,14 @@ a{color:var(--lime)}.hero{text-align:center;padding:70px 0 65px}.eyebrow{color:v
 </article>
 <div class="closing"><h2>Ready to play?</h2><p>Start with 100 LEAP. Spread it wisely. Earn more.</p><a class="cta" href="index.html">Explore the Game of LEAP</a></div>
 </main><footer>Sailing Frog's LEAP · A distribution game on the XRP Ledger</footer>
-</div></body></html>
+</div><script>
+'use strict';
+const ISSUER='rh7SidU91xGW2Za5RvoKiCgS2YB2psTBgq';
+const CURRENCY='4C45415000000000000000000000000000000000';
+const SERVERS=['wss://s1.ripple.com/','wss://s2.ripple.com/'];
+const format=new Intl.NumberFormat('en-US',{maximumFractionDigits:6});
+function connect(url){return new Promise((resolve,reject)=>{const ws=new WebSocket(url);const timer=setTimeout(()=>{ws.close();reject(new Error('Connection timed out'))},12000);ws.addEventListener('open',()=>{clearTimeout(timer);resolve(ws)},{once:true});ws.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('Cannot connect to XRPL'))},{once:true})})}
+function rpc(ws,payload,timeout=18000){return new Promise((resolve,reject)=>{const timer=setTimeout(()=>{ws.removeEventListener('message',onMessage);reject(new Error('XRPL request timed out'))},timeout);function onMessage(event){let msg;try{msg=JSON.parse(event.data)}catch{return}if(msg.id!==payload.id)return;clearTimeout(timer);ws.removeEventListener('message',onMessage);if(msg.status==='error'||msg.result?.error)reject(new Error(msg.error_message||msg.result?.error_message||msg.error||msg.result?.error));else resolve(msg.result||msg)}ws.addEventListener('message',onMessage);try{ws.send(JSON.stringify(payload))}catch(e){clearTimeout(timer);ws.removeEventListener('message',onMessage);reject(e)}})}
+async function load(){for(const server of SERVERS){let ws;try{ws=await connect(server);let marker,id=0,total=0,count=0,page=0;do{const params={id:++id,command:'account_lines',account:ISSUER,ledger_index:'validated',limit:400};if(marker!==undefined)params.marker=marker;const result=await rpc(ws,params);for(const line of result.lines||[]){if(line.currency!==CURRENCY&&line.currency!=='LEAP')continue;const balance=-Number(line.balance);if(Number.isFinite(balance)&&balance>0){total+=balance;count++}}marker=result.marker;if(++page>10000)throw new Error('Too many ledger pages')}while(marker!==undefined);document.getElementById('circulation').textContent=format.format(total);document.getElementById('holders').textContent=format.format(count);ws.close();return}catch(e){if(ws)ws.close()}}document.getElementById('circulation').textContent='Unavailable';document.getElementById('holders').textContent='Unavailable';document.getElementById('data-status').textContent='Could not read the current XRPL holder data. Trading history is not connected; unavailable values are not zero.'}
+load();
+</script></body></html>
