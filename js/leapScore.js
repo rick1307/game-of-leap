@@ -13,7 +13,7 @@ function memos(tx){return (tx.Memos||[]).map(m=>{
  const h=m.Memo?.MemoData||'';if(!/^(?:[\da-f]{2})+$/i.test(h))return '';
  return new TextDecoder().decode(Uint8Array.from(h.match(/../g),b=>parseInt(b,16)));
 });}
-function allocation(tx,address,n){return memos(tx).some(m=>m===address+'-'+n||new RegExp('^[A-Z0-9]{3}-[PBN]-'+n+'$').test(m));}
+function allocation(tx,address,n){return memos(tx).some(m=>m===address+'-'+n);}
 function checkFields(e,kind){return (e.meta?.AffectedNodes||[]).map(n=>n[kind]).find(n=>n?.LedgerEntryType==='Check');}
 function receipts(records){
  const rows=[];
