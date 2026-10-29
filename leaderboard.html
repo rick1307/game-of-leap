@@ -10,7 +10,7 @@ html{-webkit-text-size-adjust:none;text-size-adjust:none}*{box-sizing:border-box
 .holder.is-you{background:#243f38;border-left:3px solid var(--lime)}.you-label{font-weight:900;color:var(--lime);font-size:.76rem;letter-spacing:.08em}.personal-divider{padding:14px 22px;text-align:center;color:var(--muted);border-top:1px solid var(--line);font-size:.8rem;letter-spacing:.08em;text-transform:uppercase}.wallet-cell{display:flex;align-items:center;gap:7px;min-width:0}.wallet-cell .address{flex:0 1 auto}.info-button{flex:none;display:inline-grid;place-items:center;width:17px;height:17px;padding:0;border:1px solid var(--muted);border-radius:50%;background:transparent;color:var(--muted);font-size:11px;font-weight:800;line-height:1;cursor:pointer}.info-button:hover,.info-button:focus-visible{color:var(--lime);border-color:var(--lime)}.info-dialog{max-width:min(410px,calc(100vw - 32px));padding:24px;background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 60px #0009}.info-dialog::backdrop{background:#0009}.info-dialog p{margin:10px 0}.dialog-close{margin-top:10px;background:var(--lime);color:var(--bg);border:0;border-radius:8px;padding:8px 18px;font-weight:800;cursor:pointer}
 .request-notice{margin:0 0 22px;padding:17px 20px;border:1px solid #c99d37;border-radius:14px;background:#493b1b;color:#fff0bd}.request-notice strong{display:block;font-size:1rem}.request-notice p{margin:4px 0 0;color:#ffe4a0}.request-notice[hidden]{display:none}.enable-leap{display:inline-block;margin-top:12px;padding:10px 16px;border-radius:9px;background:#f2cb50;color:#18251c;font-weight:850;text-decoration:none}.enable-leap[hidden]{display:none}.enable-leap:hover,.enable-leap:focus-visible{background:#ffe17d}
 
-.progress-card{padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);margin-bottom:22px}.progress-card[hidden]{display:none}.progress-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.progress-card h2{font-size:1.1rem;margin:0}.progress-card p{color:var(--muted);margin:8px 0 0;font-size:.9rem}.progress-card progress{display:block;width:100%;height:14px;margin-top:14px;accent-color:var(--lime)}.game-button{font:inherit;font-size:.9rem;font-weight:800;background:var(--lime);color:var(--bg);border:0;border-radius:9px;padding:10px 16px;cursor:pointer}.game-button:disabled{opacity:.45;cursor:not-allowed}.sort-controls{display:flex;justify-content:flex-end}.points{text-align:right;font-variant-numeric:tabular-nums}
+.progress-card{padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);margin-bottom:22px}.progress-card[hidden]{display:none}.progress-top{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}.progress-card h2{font-size:1.1rem;margin:0}.progress-card p{color:var(--muted);margin:8px 0 0;font-size:.9rem}.progress-card progress{display:block;width:100%;height:14px;margin-top:14px;accent-color:var(--lime)}.game-button{font:inherit;font-size:.9rem;font-weight:800;background:var(--lime);color:var(--bg);border:0;border-radius:9px;padding:10px 16px;cursor:pointer}.game-button:disabled{opacity:.45;cursor:not-allowed}.sort-link{border:0;background:none;padding:0;color:var(--lime);font:inherit;letter-spacing:inherit;text-transform:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.sort-link:disabled{color:var(--muted);cursor:wait}.sort-link[aria-pressed="true"]{color:var(--ink)}.points{text-align:right;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body><div class="wrap">
@@ -18,8 +18,7 @@ html{-webkit-text-size-adjust:none;text-size-adjust:none}*{box-sizing:border-box
 <main><div class="hero"><div class="eyebrow">Live from the XRP Ledger</div><h1>LEAP <span>Leaderboard.</span></h1><p class="lead">Game players, ranked by LEAP or lifetime points.</p></div>
 <div id="request-notice" class="request-notice" role="status" hidden><strong id="notice-title">Checking your onboarding status…</strong><p id="notice-message">Reading the public XRP Ledger.</p><a id="enable-leap" class="enable-leap" href="https://xaman.app/detect/7b225472616e73616374696f6e54797065223a225472757374536574222c22466c616773223a3133313037322c224c696d6974416d6f756e74223a7b2263757272656e6379223a2234433435343135303030303030303030303030303030303030303030303030303030303030303030222c22697373756572223a22726837536964553931784757325a613552766f4b6943675332594232707354426771222c2276616c7565223a2231303030303030227d7d" hidden>Enable LEAP Payments</a></div>
 <section id="progress-card" class="progress-card" aria-labelledby="progress-title" hidden><div class="progress-top"><div><h2 id="progress-title">Your next 200 LEAP</h2><span id="progress-count">Checking points…</span></div><button id="request-more" class="game-button" type="button" disabled>Request 200 more LEAP</button></div><progress id="points-meter" max="100" value="0" aria-label="Points toward your next 200 LEAP"></progress><p id="progress-message" role="status">100 new points since your last distribution.</p></section>
-<div class="sort-controls"><button id="sort-toggle" type="button" class="game-button" disabled>List by Points</button></div>
-<div class="board" aria-label="LEAP player leaderboard"><div class="board-head"><span>#</span><span>Player</span><span class="points">Points</span><span class="balance">LEAP</span></div><div id="results" aria-live="polite"><div class="status">Connecting to the XRP Ledger…</div></div></div>
+<div class="board" aria-label="LEAP player leaderboard"><div class="board-head"><span>#</span><span>Player</span><span class="points"><button id="sort-points" class="sort-link" type="button" aria-label="Rank by points" aria-pressed="false" disabled>Points</button></span><span class="balance"><button id="sort-leap" class="sort-link" type="button" aria-label="Rank by LEAP balance" aria-pressed="true" disabled>LEAP</button></span></div><div id="results" aria-live="polite"><div class="status">Connecting to the XRP Ledger…</div></div></div>
 
 <dialog id="wallet-info" class="info-dialog" aria-labelledby="info-title"><strong id="info-title">About wallet addresses</strong><p>Wallet addresses are abbreviated to discourage casual inspection. Blindly brute-forcing the hidden characters would take vastly longer than the age of the universe.</p><p>XRPL addresses are public and can still be identified through ledger data. Abbreviation does not provide anonymity.</p><form method="dialog"><button class="dialog-close">Close</button></form></dialog>
 <div class="back"><a href="index.html">← Back to The Game of Leap</a></div></main><footer>The Game of Leap · A distribution game on the XRP Ledger</footer>
@@ -138,7 +137,8 @@ const progressCount=document.getElementById('progress-count');
 const progressMessage=document.getElementById('progress-message');
 const requestMore=document.getElementById('request-more');
 const meter=document.getElementById('points-meter');
-const sortToggle=document.getElementById('sort-toggle');
+const sortPoints=document.getElementById('sort-points');
+const sortLeap=document.getElementById('sort-leap');
 let sortBy='balance', playerRows=[], currentPlayer=null;
 if(participantAddress)progressCard.hidden=false;
 function requestKey(player){return 'leap.distributionRequest:'+player.address+':'+player.cycleId;}
@@ -152,7 +152,11 @@ function updateProgress(){
  requestMore.disabled=pending||p.cyclePoints<100;requestMore.textContent=pending?'Request pending':'Request 200 more LEAP';
  progressMessage.textContent=pending?'Your meter resets when you receive your next distribution.':p.cyclePoints>=100?'You qualify to request 200 more LEAP.':'100 new points since your last distribution.';
 }
-sortToggle.addEventListener('click',()=>{sortBy=sortBy==='balance'?'points':'balance';sortToggle.textContent=sortBy==='balance'?'List by Points':'List by LEAP';render(playerRows);});
+function sortLeaderboard(by){
+ sortBy=by;sortPoints.setAttribute('aria-pressed',String(by==='points'));sortLeap.setAttribute('aria-pressed',String(by==='balance'));render(playerRows);
+}
+sortPoints.addEventListener('click',()=>sortLeaderboard('points'));
+sortLeap.addEventListener('click',()=>sortLeaderboard('balance'));
 requestMore.addEventListener('click',async()=>{
  const p=currentPlayer;if(!p||p.cyclePoints<100||p.pending||requestSent(p)||requestMore.disabled)return;
  requestMore.disabled=true;progressMessage.textContent='Sending your request…';
@@ -227,7 +231,7 @@ async function load(){if(running)return;running=true;showStatus('Connecting to t
       ws=await connect(server);
       showStatus('Reading player points and LEAP balances…');
       playerRows=await window.leapScore.load(payload=>rpc(ws,payload));
-      render(playerRows);sortToggle.disabled=false;updateProgress();
+      render(playerRows);sortPoints.disabled=false;sortLeap.disabled=false;updateProgress();
       try { await checkLeapReadiness(ws); }
       catch (error) { setOnboardingNotice('Unable to verify LEAP payments.', 'Please reload to check your LEAP trust line.'); }
       ws.close();running=false;return;
