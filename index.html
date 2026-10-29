@@ -50,7 +50,7 @@
       </section>
       <section><div class="eyebrow">Strategy matters</div><h2>Same LEAP. Different results.</h2><div class="comparison"><div class="case"><div class="eyebrow">Smart spread</div><b>10 recipients</b><p>10 wallets receive LEAP and have trust lines: <strong>100 points.</strong> Next allotment unlocked.</p></div><div class="case"><div class="eyebrow">Dead end</div><b class="bad">1 recipient</b><p>Give all 100 LEAP to one wallet. You earn at most <strong>10 points</strong>, have <strong>0 LEAP left</strong>, and your game ends unless you get more LEAP.</p></div></div><p class="mini">Each recipient contributes at most 3 receipt points and 7 trust-line points, once per player. Existing trust lines count. An issued but uncashed Check earns no receipt points.</p></section>
       <section class="cta" id="play"><div class="eyebrow">Your move</div><h2>Ready to spread LEAP?</h2><p>Bring your XRPL wallet. We'll bring the LEAP.</p><button type="button" id="show-signup" aria-expanded="false" aria-controls="signup-form">I Want to Play</button><a class="crypto-help" href="newToCryptos.html">Help me, I’m new to crypto</a>
-        <form id="signup-form" class="signup-form" action="https://usebasin.com/f/93034286b67b" method="POST" hidden>
+        <form id="signup-form" class="signup-form" action="https://usebasin.com/f/93034286b67b" method="POST" autocomplete="off" hidden>
           <label for="xrpl-address">Your XRPL address</label>
           <input id="xrpl-address" name="xrpl_address" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="r..." minlength="25" maxlength="35" pattern="r[1-9A-HJ-NP-Za-km-z]{24,34}" title="Enter a classic XRPL address starting with r" required>
           <input type="hidden" name="request_type" value="Sailing Frog's LEAP — I Want to Play">
@@ -65,6 +65,22 @@
     const showSignup = document.getElementById('show-signup');
     const signupForm = document.getElementById('signup-form');
     const signupStatus = document.getElementById('signup-status');
+    const addressInput = document.getElementById('xrpl-address');
+    const submitButton = document.getElementById('submit-signup');
+
+    function resetHomeIdentity() {
+      window.leap.participantHelpers.clearParticipant();
+      signupForm.reset();
+      addressInput.value = '';
+      signupForm.hidden = true;
+      showSignup.setAttribute('aria-expanded', 'false');
+      signupStatus.textContent = '';
+      submitButton.disabled = false;
+    }
+
+    // Clear on initial entry and when restored from the back/forward cache.
+    resetHomeIdentity();
+    window.addEventListener('pageshow', resetHomeIdentity);
     function openSignup() {
       signupForm.hidden = false;
       showSignup.setAttribute('aria-expanded', 'true');
@@ -75,20 +91,17 @@
     document.getElementById('hero-signup').addEventListener('click', openSignup);
     signupForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      const submitButton = document.getElementById('submit-signup');
       submitButton.disabled = true;
       signupStatus.textContent = 'Sending your request…';
       try {
-        const submittedAddress = document.getElementById('xrpl-address').value.trim();
         const response = await fetch(signupForm.action, {
           method: 'POST',
           body: new FormData(signupForm),
           headers: { 'Accept': 'application/json' }
         });
         if (!response.ok) throw new Error('Submission failed');
-        window.leap.participantHelpers.setParticipantAddress(submittedAddress);
-        signupStatus.textContent = 'Request received! You will receive a Check for 100 LEAP from the LEAP Distributor (rnbmFoUKhnMZ8QCJ6kA5J2uwfP8rm9cUdU) within the next 24 hours.';
-        signupForm.reset();
+        // A successful submission returns the visitor to a fresh, identity-free home page.
+        window.location.reload();
       } catch (error) {
         signupStatus.textContent = 'Could not confirm delivery. Please try again.';
       } finally {
