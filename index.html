@@ -60,6 +60,7 @@
     </main>
     <footer>Sailing Frog's LEAP · A distribution game on the XRP Ledger</footer>
   </div>
+<script src="js/leapParticipant.js"></script>
 <script>
     const showSignup = document.getElementById('show-signup');
     const signupForm = document.getElementById('signup-form');
@@ -78,12 +79,14 @@
       submitButton.disabled = true;
       signupStatus.textContent = 'Sending your request…';
       try {
+        const submittedAddress = document.getElementById('xrpl-address').value.trim();
         const response = await fetch(signupForm.action, {
           method: 'POST',
           body: new FormData(signupForm),
           headers: { 'Accept': 'application/json' }
         });
         if (!response.ok) throw new Error('Submission failed');
+        window.leap.participantHelpers.setParticipantAddress(submittedAddress);
         signupStatus.textContent = 'Request received! You will receive a Check for 100 LEAP from the LEAP Distributor (rnbmFoUKhnMZ8QCJ6kA5J2uwfP8rm9cUdU) within the next 24 hours.';
         signupForm.reset();
       } catch (error) {
