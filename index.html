@@ -36,7 +36,7 @@
   <div class="wrap">
     <header class="top"><div class="brand">Sailing Frog's LEAP</div><img src="gameOfLeap.png" alt="The Game of Leap" class="game-logo"></header>
     <main>
-      <div class="hero"><div class="eyebrow">A <a href="distributionMining.html" class="mining-link">distribution mining</a> game<br>played on the XRP Ledger</div><h1 class="hero-objective">How much LEAP can you accumulate?</h1><p class="hero-subtitle">Start with <strong>100 LEAP</strong>. Spread it wisely. Earn <strong>200 more</strong>.</p><button type="button" class="hero-action" id="hero-signup">See the Player's Leaderboard</button><a class="crypto-help" href="newToCryptos.html">Help me, I’m new to crypto</a><p class="hero-note">Free to join · Bring your XRPL wallet</p><p class="founder-quote" style="margin-top:42px">“Your LEAP is yours. Spend it, save it, give it away. But only smart distribution earns your next allotment... Good luck!” <cite>— Rick</cite></p></div>
+      <div class="hero"><div class="eyebrow">A <a href="distributionMining.html" class="mining-link">distribution mining</a> game<br>played on the XRP Ledger</div><h1 class="hero-objective">How much LEAP can you accumulate?</h1><p class="hero-subtitle">Start with <strong>100 LEAP</strong>. Spread it wisely. Earn <strong>200 more</strong>.</p></div>
       <section id="rules"><div class="eyebrow">How the game works</div><h2>Spread LEAP. Earn more.</h2>
         <div class="path" aria-label="100 LEAP, 100 points, 200 more LEAP"><div class="step"><b>100</b><span>LEAP</span></div><div class="step"><b>100</b><span>Points</span></div><div class="step"><b>200</b><span>More LEAP</span></div></div>
         <div class="phase"><div class="phase-label">Phase 1 · One time only</div><h3>Get in the game.</h3><p>Submit your XRPL address. After approval, receive your first <strong>100 LEAP</strong>.</p></div>
@@ -51,7 +51,6 @@
         </div>
       </section>
       <section><div class="eyebrow">Strategy matters</div><h2>Same LEAP. Different results.</h2><div class="comparison"><div class="case"><div class="eyebrow">Smart spread</div><b>10 recipients</b><p>10 wallets receive LEAP and have trust lines: <strong>100 points.</strong> Next allotment unlocked.</p></div><div class="case"><div class="eyebrow">Dead end</div><b class="bad">1 recipient</b><p>Give all 100 LEAP to one wallet. You earn at most <strong>10 points</strong>, have <strong>0 LEAP left</strong>, and your game ends unless you get more LEAP.</p></div></div><p class="mini">Each recipient contributes at most 3 receipt points and 7 trust-line points, once per player. Existing trust lines count. An issued but uncashed Check earns no receipt points.</p></section>
-      <section class="cta" id="play"><div class="eyebrow">Your move</div><h2>Ready to spread LEAP?</h2><p>Bring your XRPL wallet. We'll bring the LEAP.</p><button type="button" id="show-signup">See the Player's Leaderboard</button><a class="crypto-help" href="newToCryptos.html">Help me, I’m new to crypto</a></section>
     </main>
     <dialog id="leaderboard-dialog" class="leaderboard-dialog" aria-labelledby="leaderboard-dialog-title">
       <button type="button" class="dialog-close" id="close-leaderboard-dialog" aria-label="Close">×</button>
@@ -85,8 +84,6 @@
       leaderboardAddressInput.focus();
     }
     document.getElementById('see-leaderboard').addEventListener('click', showLeaderboardCard);
-    document.getElementById('hero-signup').addEventListener('click', showLeaderboardCard);
-    document.getElementById('show-signup').addEventListener('click', showLeaderboardCard);
     document.getElementById('close-leaderboard-dialog').addEventListener('click', () => leaderboardDialog.close());
 
     async function submitAddress(form, input, button, status) {
