@@ -25,7 +25,9 @@
     .loop-card{border:1px solid var(--line);background:var(--bg);border-radius:14px;padding:18px}
     .loop-card h4{font-size:1.12rem;margin:0 0 8px}.loop-card p{font-size:.92rem}
     .loop-arrow{align-self:center;color:var(--lime);font-size:1.7rem}
-    .leaderboard-link{text-align:center;padding:15px 0 2px;font-size:.87rem}.leaderboard-link a{color:var(--lime);text-decoration:underline;text-underline-offset:3px}
+    .leaderboard-link{text-align:center;padding:15px 0 2px;font-size:.87rem}.leaderboard-link .leaderboard-trigger{border:0;background:none;color:var(--lime);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+    .leaderboard-dialog{border:1px solid var(--line);border-radius:16px;background:var(--bg);color:var(--ink);padding:30px;max-width:min(92vw,510px);width:100%;box-shadow:0 20px 65px #0009}
+    .leaderboard-dialog::backdrop{background:#000b}.leaderboard-dialog h3{margin:0 0 12px}.leaderboard-dialog p{color:var(--muted);line-height:1.5}.leaderboard-dialog .dialog-close{float:right;background:none;border:0;color:var(--ink);font-size:1.5rem;cursor:pointer}.leaderboard-dialog .dialog-action{border:0;border-radius:100px;padding:13px 25px;background:var(--lime);color:#12231a;font-weight:800;cursor:pointer}.leaderboard-dialog .signup-form{margin:18px 0 0}.leaderboard-dialog .signup-form button{margin-top:16px}
     @media(max-width:600px){.hero{padding:62px 0}.example{grid-template-columns:1fr}.comparison{grid-template-columns:1fr}.path{gap:7px}.step{padding:17px 7px}.step span{font-size:.76rem}.rule{grid-template-columns:44px 1fr;gap:12px}.num{font-size:1.5rem}}
   .mining-link{color:inherit;text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}.mining-link:hover,.mining-link:focus-visible{color:var(--ink)}
 </style>
@@ -45,7 +47,7 @@
             <div class="loop-arrow" aria-hidden="true">→</div>
             <div class="loop-card"><h4>Earn 200 LEAP</h4><p>Every <strong>100 additional qualifying points</strong> unlocks a <strong>200 LEAP</strong> allotment, subject to approval.</p></div>
           </div>
-          <div class="leaderboard-link"><a href="leaderboard.html">LEAP Leaderboard</a></div>
+          <div class="leaderboard-link"><button type="button" id="see-leaderboard" class="leaderboard-trigger">See the Leaderboard</button></div>
         </div>
       </section>
       <section><div class="eyebrow">Strategy matters</div><h2>Same LEAP. Different results.</h2><div class="comparison"><div class="case"><div class="eyebrow">Smart spread</div><b>10 recipients</b><p>10 wallets receive LEAP and have trust lines: <strong>100 points.</strong> Next allotment unlocked.</p></div><div class="case"><div class="eyebrow">Dead end</div><b class="bad">1 recipient</b><p>Give all 100 LEAP to one wallet. You earn at most <strong>10 points</strong>, have <strong>0 LEAP left</strong>, and your game ends unless you get more LEAP.</p></div></div><p class="mini">Each recipient contributes at most 3 receipt points and 7 trust-line points, once per player. Existing trust lines count. An issued but uncashed Check earns no receipt points.</p></section>
@@ -58,6 +60,25 @@
           <p id="signup-status" class="signup-status" role="status" aria-live="polite"></p>
         </form></section>
     </main>
+    <dialog id="leaderboard-dialog" class="leaderboard-dialog" aria-labelledby="leaderboard-dialog-title">
+      <button type="button" class="dialog-close" id="close-leaderboard-dialog" aria-label="Close">×</button>
+      <div id="leaderboard-signin-card" hidden>
+        <h3 id="leaderboard-dialog-title">See the Leaderboard</h3>
+        <p>Enter your XRPL address and agree to play the Game of LEAP first.</p>
+        <form id="leaderboard-signin-form" class="signup-form" action="https://usebasin.com/f/93034286b67b" method="POST" autocomplete="off">
+          <label for="leaderboard-xrpl-address">Your XRPL address</label>
+          <input id="leaderboard-xrpl-address" name="xrpl_address" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="r..." minlength="25" maxlength="35" pattern="r[1-9A-HJ-NP-Za-km-z]{24,34}" required>
+          <input type="hidden" name="request_type" value="Sailing Frog's LEAP — I Want to Play">
+          <button type="submit" class="dialog-action" id="leaderboard-signin-submit">I Agree — Let's Play</button>
+          <p id="leaderboard-signin-status" class="signup-status" role="status" aria-live="polite"></p>
+        </form>
+      </div>
+      <div id="leaderboard-ready-card" hidden>
+        <h3>You're ready!</h3>
+        <p>Your XRPL address is in this browser session. Head to the leaderboard.</p>
+        <button type="button" class="dialog-action" id="leaderboard-continue">See the Leaderboard</button>
+      </div>
+    </dialog>
     <footer>Sailing Frog's LEAP · A distribution game on the XRP Ledger</footer>
   </div>
 <script src="js/leapParticipant.js"></script>
@@ -67,11 +88,61 @@
     const signupStatus = document.getElementById('signup-status');
     const addressInput = document.getElementById('xrpl-address');
     const submitButton = document.getElementById('submit-signup');
+    const leaderboardDialog = document.getElementById('leaderboard-dialog');
+    const leaderboardSignInCard = document.getElementById('leaderboard-signin-card');
+    const leaderboardReadyCard = document.getElementById('leaderboard-ready-card');
+    const leaderboardAddressInput = document.getElementById('leaderboard-xrpl-address');
+    const leaderboardSignInForm = document.getElementById('leaderboard-signin-form');
+    const leaderboardSignInStatus = document.getElementById('leaderboard-signin-status');
+    const leaderboardSignInSubmit = document.getElementById('leaderboard-signin-submit');
+
+    function showLeaderboardCard() {
+      const signedIn = Boolean(window.leap.participantHelpers.getParticipant()?.address);
+      leaderboardSignInCard.hidden = signedIn;
+      leaderboardReadyCard.hidden = !signedIn;
+      leaderboardAddressInput.value = '';
+      leaderboardSignInStatus.textContent = '';
+      leaderboardDialog.showModal();
+      if (!signedIn) leaderboardAddressInput.focus();
+    }
+    document.getElementById('see-leaderboard').addEventListener('click', showLeaderboardCard);
+    document.getElementById('close-leaderboard-dialog').addEventListener('click', () => leaderboardDialog.close());
+    document.getElementById('leaderboard-continue').addEventListener('click', () => { window.location.href = 'leaderboard.html'; });
+
+    async function submitAddress(form, input, button, status) {
+      button.disabled = true;
+      status.textContent = 'Sending your request…';
+      try {
+        const address = input.value.trim();
+        const response = await fetch(form.action, {
+          method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' }
+        });
+        if (!response.ok) throw new Error('Submission failed');
+        window.leap.participantHelpers.setParticipantAddress(address);
+        form.reset();
+        input.value = '';
+        status.textContent = 'Request received.';
+        return true;
+      } catch (_) {
+        status.textContent = 'Could not confirm delivery. Please try again.';
+        return false;
+      } finally { button.disabled = false; }
+    }
+    leaderboardSignInForm.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (await submitAddress(leaderboardSignInForm, leaderboardAddressInput, leaderboardSignInSubmit, leaderboardSignInStatus)) {
+        leaderboardSignInCard.hidden = true;
+        leaderboardReadyCard.hidden = false;
+      }
+    });
 
     function resetHomeIdentity() {
       window.leap.participantHelpers.clearParticipant();
       signupForm.reset();
       addressInput.value = '';
+      leaderboardSignInForm.reset();
+      leaderboardAddressInput.value = '';
+      leaderboardDialog.close();
       signupForm.hidden = true;
       showSignup.setAttribute('aria-expanded', 'false');
       signupStatus.textContent = '';
@@ -91,21 +162,10 @@
     document.getElementById('hero-signup').addEventListener('click', openSignup);
     signupForm.addEventListener('submit', async (event) => {
       event.preventDefault();
-      submitButton.disabled = true;
-      signupStatus.textContent = 'Sending your request…';
-      try {
-        const response = await fetch(signupForm.action, {
-          method: 'POST',
-          body: new FormData(signupForm),
-          headers: { 'Accept': 'application/json' }
-        });
-        if (!response.ok) throw new Error('Submission failed');
-        // A successful submission returns the visitor to a fresh, identity-free home page.
-        window.location.reload();
-      } catch (error) {
-        signupStatus.textContent = 'Could not confirm delivery. Please try again.';
-      } finally {
-        submitButton.disabled = false;
+      if (await submitAddress(signupForm, addressInput, submitButton, signupStatus)) {
+        signupForm.hidden = true;
+        showSignup.setAttribute('aria-expanded', 'false');
+        showLeaderboardCard();
       }
     });
   </script>
