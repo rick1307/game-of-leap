@@ -5,6 +5,7 @@
 (function (global) {
   'use strict';
   const KEY = 'leap.participant';
+  const REQUESTS_KEY = 'leap.requestsSent';
   const CLASSES = new Set(['P', 'B', 'N']);
   const LEVELS = new Set([100, 200]);
   const encoder = new TextEncoder();
@@ -40,6 +41,29 @@
       : { address, nodeId: null, classification: null, level: null });
   }
   function clearParticipant() { sessionStorage.removeItem(KEY); }
+  // Separate session history: clearing the current participant never clears these addresses.
+  function getRequestsSent() {
+    try {
+      const addresses = JSON.parse(sessionStorage.getItem(REQUESTS_KEY) || '[]');
+      return Array.isArray(addresses)
+        ? [...new Set(addresses.filter(address => typeof address === 'string' && /^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(address)))]
+        : [];
+    } catch (_) { return []; }
+  }
+  function hasRequestSent(address) {
+    return getRequestsSent().includes(String(address || '').trim());
+  }
+  // Call only after Basin confirms a successful submission.
+  function recordRequestSent(address) {
+    const normalized = validate({ address }).address;
+    const addresses = getRequestsSent();
+    if (!addresses.includes(normalized)) {
+      addresses.push(normalized);
+      sessionStorage.setItem(REQUESTS_KEY, JSON.stringify(addresses));
+    }
+    return addresses;
+  }
+
   function formatMemo({ nodeId, classification, level }) {
     const id = String(nodeId || '').trim().toUpperCase();
     const cls = String(classification || '').trim().toUpperCase();
@@ -139,7 +163,8 @@
     get: getParticipant, set: setParticipant
   });
   global.leap.participantHelpers = Object.freeze({
-    getParticipant, setParticipant, setParticipantAddress, clearParticipant, formatMemo, parseMemo,
+    getParticipant, setParticipant, setParticipantAddress, clearParticipant,
+    getRequestsSent, hasRequestSent, recordRequestSent, formatMemo, parseMemo,
     encodeCheckMemo, decodeCheckMemo, accountHistory, extractChecks,
     readIssuedChecks, findParticipantChecks, loadParticipantFromLedger
   });
