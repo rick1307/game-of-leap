@@ -17,10 +17,10 @@
     const classification = String(value.classification || '').trim().toUpperCase();
     const level = Number(value.level);
     if (!/^r[1-9A-HJ-NP-Za-km-z]{24,34}$/.test(address)) throw new Error('Invalid XRPL classic address');
-    if (!/^[A-Z0-9]{3}$/.test(nodeId)) throw new Error('Node ID must have three letters or digits');
-    if (!CLASSES.has(classification)) throw new Error('Classification must be P, B, or N');
-    if (!LEVELS.has(level)) throw new Error('Level must be 100 or 200');
-    return { address, nodeId, classification, level };
+    if (nodeId && !/^[A-Z0-9]{3}$/.test(nodeId)) throw new Error('Node ID must have three letters or digits');
+    if (classification && !CLASSES.has(classification)) throw new Error('Classification must be P, B, or N');
+    if (value.level != null && value.level !== '' && !LEVELS.has(level)) throw new Error('Level must be 100 or 200');
+    return { address, nodeId: nodeId || null, classification: classification || null, level: value.level == null || value.level === '' ? null : level };
   }
 
   function setParticipant(value) {
@@ -32,6 +32,12 @@
     const raw = sessionStorage.getItem(KEY);
     if (!raw) return null;
     try { return validate(JSON.parse(raw)); } catch (_) { return null; }
+  }
+  function setParticipantAddress(address) {
+    const existing = getParticipant();
+    return setParticipant(existing?.address === String(address).trim()
+      ? { ...existing, address }
+      : { address, nodeId: null, classification: null, level: null });
   }
   function clearParticipant() { sessionStorage.removeItem(KEY); }
   function formatMemo({ nodeId, classification, level }) {
@@ -133,7 +139,7 @@
     get: getParticipant, set: setParticipant
   });
   global.leap.participantHelpers = Object.freeze({
-    getParticipant, setParticipant, clearParticipant, formatMemo, parseMemo,
+    getParticipant, setParticipant, setParticipantAddress, clearParticipant, formatMemo, parseMemo,
     encodeCheckMemo, decodeCheckMemo, accountHistory, extractChecks,
     readIssuedChecks, findParticipantChecks, loadParticipantFromLedger
   });
