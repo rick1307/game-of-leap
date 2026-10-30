@@ -9,16 +9,11 @@ const valid=e=>e.validated===true&&e.meta?.TransactionResult==='tesSUCCESS';
 const order=e=>[e.ledger_index??txOf(e).ledger_index,e.meta?.TransactionIndex??0];
 const compare=(a,b)=>a[0]-b[0]||a[1]-b[1];
 const leap=a=>a&&typeof a==='object'&&a.issuer===ISSUER&&(a.currency===CURRENCY||a.currency==='LEAP')&&Number(a.value)>0;
-function memos(tx){return (tx.Memos||[]).map(m=>{
- const h=m.Memo?.MemoData||'';if(!/^(?:[\da-f]{2})+$/i.test(h))return '';
- return new TextDecoder().decode(Uint8Array.from(h.match(/../g),b=>parseInt(b,16)));
-});}
-function allocation(tx,address,n){return memos(tx).some(m=>m===n+'-'+address);}
 function checkFields(e,kind){return (e.meta?.AffectedNodes||[]).map(n=>n[kind]).find(n=>n?.LedgerEntryType==='Check');}
 function receipts(records){
  const rows=[];
  for(const e of records){
-  if(!valid(e))continue;const tx=txOf(e);let sender,destination,amount,memoTx=tx;
+  if(!valid(e))continue;const tx=txOf(e);let sender,destination,amount;
   if(tx.TransactionType==='Payment'){
    sender=tx.Account;destination=tx.Destination;
    amount=e.meta.delivered_amount??e.meta.DeliveredAmount;
@@ -27,10 +22,8 @@ function receipts(records){
    const node=checkFields(e,'DeletedNode');if(!node)continue;
    const f=node.FinalFields;sender=f?.Account;destination=f?.Destination;
    amount=e.meta.delivered_amount??e.meta.DeliveredAmount??tx.Amount;
-   // CheckCash memos belong to the recipient; allocation memos belong to CheckCreate.
-   memoTx=txOf(records.find(c=>valid(c)&&txOf(c).TransactionType==='CheckCreate'&&checkFields(c,'CreatedNode')?.LedgerIndex===tx.CheckID)||{});
   }else continue;
-  if(leap(amount)&&sender&&destination)rows.push({sender,destination,amount:Number(amount.value),at:order(e),memoTx,id:e.hash||tx.hash||order(e).join(':')});
+  if(leap(amount)&&sender&&destination)rows.push({sender,destination,amount:Number(amount.value),at:order(e),transactionType:tx.TransactionType,id:e.hash||tx.hash||order(e).join(':')});
  }
  return rows.sort((a,b)=>compare(a.at,b.at));
 }
@@ -69,7 +62,7 @@ async function load(request){
   return cache.get(account);
  }
  const issued=await history(DISTRIBUTOR);
- const allotments=receipts(issued).filter(r=>r.sender===DISTRIBUTOR&&[100,200].includes(r.amount)&&allocation(r.memoTx,r.destination,r.amount));
+ const allotments=receipts(issued).filter(r=>r.sender===DISTRIBUTOR&&[100,200].includes(r.amount));
  const players=new Map();
  for(const r of allotments){
   if(r.amount===100&&!players.has(r.destination))players.set(r.destination,{address:r.destination,start:r.at,latest:r.at,cycleId:r.id});
@@ -90,7 +83,7 @@ async function load(request){
   const balance=line?Number(line.balance):0;
   if(!Number.isFinite(balance))throw Error('Invalid balance');
   const pending=issued.some(e=>{
-   const tx=txOf(e);if(!valid(e)||tx.TransactionType!=='CheckCreate'||tx.Destination!==player.address||!leap(tx.SendMax)||Number(tx.SendMax.value)!==200||!allocation(tx,player.address,200)||compare(order(e),player.latest)<=0)return false;
+   const tx=txOf(e);if(!valid(e)||tx.TransactionType!=='CheckCreate'||tx.Account!==DISTRIBUTOR||tx.Destination!==player.address||!leap(tx.SendMax)||Number(tx.SendMax.value)!==200||compare(order(e),player.latest)<=0)return false;
    const id=checkFields(e,'CreatedNode')?.LedgerIndex;
    return id&&!issued.some(c=>valid(c)&&['CheckCash','CheckCancel'].includes(txOf(c).TransactionType)&&txOf(c).CheckID===id);
   });
