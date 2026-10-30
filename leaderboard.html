@@ -48,15 +48,6 @@ function isLeapAmount(amount, value=100){
   return amount && typeof amount==='object' && amount.issuer===ISSUER &&
     (amount.currency===CURRENCY || amount.currency==='LEAP') && Number(amount.value)===value;
 }
-function memoText(tx){
-  for(const item of tx.Memos||[]){
-    const hex=item.Memo?.MemoData;
-    if(!hex || !/^(?:[0-9a-f]{2})+$/i.test(hex))continue;
-    try { return new TextDecoder().decode(Uint8Array.from(hex.match(/../g),byte=>parseInt(byte,16))); }
-    catch {}
-  }
-  return '';
-}
 async function accountHistory(ws,account){
   const transactions=[];let marker;let pages=0;
   do {
@@ -74,30 +65,26 @@ async function checkStatus(ws){
   const [issued,recipient]=await Promise.all([
     accountHistory(ws,DISTRIBUTOR),accountHistory(ws,participantAddress)
   ]);
-  const creates=issued.transactions.filter(entry=>{
+  const received=window.leapScore.receipts([...issued.transactions,...recipient.transactions]).find(receipt=>
+    receipt.sender===DISTRIBUTOR && receipt.destination===participantAddress && receipt.amount===100
+  );
+  if(received)return {state:received.transactionType==='Payment'?'paid':'cashed',verified:true};
+  if(!issued.complete || !recipient.complete)return {state:'unknown',verified:false};
+  const outstanding=issued.transactions.some(entry=>{
     const tx=entry.tx||entry.tx_json||{};
-    return entry.validated!==false && tx.TransactionType==='CheckCreate' &&
-      tx.Account===DISTRIBUTOR && tx.Destination===participantAddress &&
-      isLeapAmount(tx.SendMax) && memoText(tx)==='100-'+participantAddress &&
-      entry.meta?.TransactionResult==='tesSUCCESS';
+    if(entry.validated!==true || entry.meta?.TransactionResult!=='tesSUCCESS' ||
+      tx.TransactionType!=='CheckCreate' || tx.Account!==DISTRIBUTOR ||
+      tx.Destination!==participantAddress || !isLeapAmount(tx.SendMax))return false;
+    const id=(entry.meta.AffectedNodes||[]).find(node=>node.CreatedNode?.LedgerEntryType==='Check')?.CreatedNode?.LedgerIndex;
+    if(!id)return false;
+    return ![...issued.transactions,...recipient.transactions].some(other=>{
+      const done=other.tx||other.tx_json||{};
+      return other.validated===true && other.meta?.TransactionResult==='tesSUCCESS' &&
+        ['CheckCash','CheckCancel'].includes(done.TransactionType) &&
+        typeof done.CheckID==='string' && done.CheckID.toUpperCase()===id.toUpperCase();
+    });
   });
-  if(!creates.length)return {state:'requested',verified:issued.complete};
-  const ids=new Set();
-  for(const entry of creates){
-    for(const node of entry.meta?.AffectedNodes||[]){
-      const created=node.CreatedNode;
-      if(created?.LedgerEntryType==='Check' && created.LedgerIndex)ids.add(created.LedgerIndex.toUpperCase());
-    }
-  }
-  const cashed=recipient.transactions.some(entry=>{
-    const tx=entry.tx||entry.tx_json||{};
-    return entry.validated!==false && entry.meta?.TransactionResult==='tesSUCCESS' &&
-      tx.TransactionType==='CheckCash' && tx.Account===participantAddress &&
-      typeof tx.CheckID==='string' && ids.has(tx.CheckID.toUpperCase());
-  });
-  if(cashed)return {state:'cashed',verified:true};
-  if(!recipient.complete)return {state:'unknown',verified:false};
-  return {state:'issued',verified:true};
+  return {state:outstanding?'issued':'requested',verified:true};
 }
 async function checkLeapReadiness(ws){
   if (!participantAddress) return;
@@ -109,16 +96,15 @@ async function checkLeapReadiness(ws){
   const capacity=line ? Number(line.limit)-Number(line.balance) : 0;
   const enabled=!!line && Number.isFinite(capacity) && capacity>=100;
   if(check.state==='unknown' || !check.verified){
-    setOnboardingNotice('Unable to verify your Check status.', 'Please reload later to check your onboarding progress.');
+    setOnboardingNotice('Unable to verify your distribution status.', 'Please reload later to check your onboarding progress.');
     return;
   }
-  if(check.state==='cashed' && enabled){requestNotice.hidden=true;return;}
+  const received=check.state==='cashed'||check.state==='paid';
+  if(received){requestNotice.hidden=true;return;}
   requestNotice.hidden=false;
-  if(check.state==='cashed'){
-    setOnboardingNotice('Enable LEAP payments.', 'Your 100 LEAP Check has been cashed. Tap below to authorize LEAP payments in Xaman.',true);
-  } else {
+  {
     const title=check.state==='issued'?'Your 100 LEAP Check is ready.':'Your LEAP request has been received.';
-    const message=check.state==='issued'?'Open Xaman to cash your 100 LEAP Check.':'Expect your 100 LEAP Check within the next 24 hours.';
+    const message=check.state==='issued'?'Open Xaman to cash your 100 LEAP Check.':'Expect your starting 100 LEAP by Payment or Check within the next 24 hours.';
     setOnboardingNotice(title, enabled?message:message+' You can enable LEAP payments now while you wait.',!enabled);
   }
 }
