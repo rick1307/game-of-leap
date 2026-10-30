@@ -78,7 +78,7 @@ async function checkStatus(ws){
     const tx=entry.tx||entry.tx_json||{};
     return entry.validated!==false && tx.TransactionType==='CheckCreate' &&
       tx.Account===DISTRIBUTOR && tx.Destination===participantAddress &&
-      isLeapAmount(tx.SendMax) && memoText(tx)===participantAddress+'-100' &&
+      isLeapAmount(tx.SendMax) && memoText(tx)==='100-'+participantAddress &&
       entry.meta?.TransactionResult==='tesSUCCESS';
   });
   if(!creates.length)return {state:'requested',verified:issued.complete};
