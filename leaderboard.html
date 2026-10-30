@@ -32,13 +32,13 @@ const CURRENCY = '4C45415000000000000000000000000000000000';
 const DISTRIBUTOR = 'rnbmFoUKhnMZ8QCJ6kA5J2uwfP8rm9cUdU';
 const SERVERS = ['wss://s1.ripple.com/', 'wss://s2.ripple.com/'];
 const results = document.getElementById('results');
-const participantAddress = window.leap?.participantHelpers?.getParticipant()?.address ?? null;
 const requestNotice = document.getElementById('request-notice');
 const noticeTitle = document.getElementById('notice-title');
 const noticeMessage = document.getElementById('notice-message');
 const enableLeap = document.getElementById('enable-leap');
-if (participantAddress) requestNotice.hidden = false;
+if (window.leap?.participant?.address) requestNotice.hidden = false;
 function setOnboardingNotice(title, message, showLink=false){
+  const participantAddress=window.leap?.participant?.address ?? null;
   if (!participantAddress) return;
   noticeTitle.textContent=title;
   noticeMessage.textContent=message;
@@ -62,6 +62,7 @@ async function accountHistory(ws,account){
   return {transactions,complete:marker===undefined};
 }
 async function checkStatus(ws){
+  const participantAddress=window.leap?.participant?.address ?? null;
   const [issued,recipient]=await Promise.all([
     accountHistory(ws,DISTRIBUTOR),accountHistory(ws,participantAddress)
   ]);
@@ -87,6 +88,7 @@ async function checkStatus(ws){
   return {state:outstanding?'issued':'requested',verified:true};
 }
 async function checkLeapReadiness(ws){
+  const participantAddress=window.leap?.participant?.address ?? null;
   if (!participantAddress) return;
   const [check, response]=await Promise.all([
     checkStatus(ws),
@@ -116,10 +118,11 @@ const meter=document.getElementById('points-meter');
 const sortPoints=document.getElementById('sort-points');
 const sortLeap=document.getElementById('sort-leap');
 let sortBy='balance', playerRows=[], currentPlayer=null;
-if(participantAddress)progressCard.hidden=false;
+if(window.leap?.participant?.address)progressCard.hidden=false;
 function requestKey(player){return 'leap.distributionRequest:'+player.address+':'+player.cycleId;}
 function requestSent(player){try{return sessionStorage.getItem(requestKey(player))==='sent';}catch{return false;}}
 function updateProgress(){
+  const participantAddress=window.leap?.participant?.address ?? null;
  currentPlayer=playerRows.find(p=>p.address===participantAddress)||null;
  if(!participantAddress)return;
  if(!currentPlayer){progressCount.textContent='0 / 100 points';progressMessage.textContent='Your points cycle begins when you receive your initial 100 LEAP.';return;}
@@ -171,6 +174,7 @@ function connect(url){return new Promise((resolve,reject)=>{
 })}
 function showStatus(message){results.replaceChildren();const el=document.createElement('div');el.className='status';el.textContent=message;results.append(el)}
 function render(holders){
+  const participantAddress=window.leap?.participant?.address ?? null;
   results.replaceChildren();
   if(!holders.length){showStatus('No onboarded players found.');return}
   holders=[...holders].sort((a,b)=>b[sortBy]-a[sortBy]||a.address.localeCompare(b.address));
@@ -181,7 +185,7 @@ function render(holders){
     const rank=document.createElement('span');rank.className='rank';rank.textContent=String(index+1);
     const walletCell=document.createElement('span');walletCell.className='wallet-cell';
     const addr=document.createElement('span');addr.className='address';
-    addr.textContent=isYou?'YOU':item.address.slice(0,6)+'…'+item.address.slice(-6);
+    addr.textContent=isYou?'Me':item.address.slice(0,6)+'…'+item.address.slice(-6);
     walletCell.append(addr);
     if(!isYou){
       const info=document.createElement('button');info.type='button';info.className='info-button';info.textContent='i';
@@ -194,7 +198,7 @@ function render(holders){
   }
   holders.slice(0,10).forEach((item,i)=>addRow(item,i,i===ownIndex));
   if(ownIndex>=10){
-    const divider=document.createElement('div');divider.className='personal-divider';divider.textContent='Your standing';
+    const divider=document.createElement('div');divider.className='personal-divider';divider.textContent='My standing';
     results.append(divider);
     addRow(holders[ownIndex],ownIndex,true);
   }
@@ -213,10 +217,17 @@ async function load(){if(running)return;running=true;showStatus('Connecting to t
     }catch(error){if(ws)ws.close()}
   }
   showStatus('Unable to verify complete player history. Please reload the page.');
-  if(participantAddress){progressCount.textContent='Points unavailable';progressMessage.textContent='Complete ledger history is needed to verify eligibility.';requestMore.disabled=true;}
+  if(window.leap?.participant?.address){progressCount.textContent='Points unavailable';progressMessage.textContent='Complete ledger history is needed to verify eligibility.';requestMore.disabled=true;}
   setOnboardingNotice('Unable to verify LEAP payments.', 'Please reload to check your LEAP trust line.');
   running=false;
 }
+window.addEventListener('pageshow',(event)=>{
+  const address=window.leap?.participant?.address ?? null;
+  requestNotice.hidden=!address;
+  progressCard.hidden=!address;
+  if(playerRows.length){render(playerRows);updateProgress();}
+  if(event.persisted)load();
+});
 load();
 </script>
 </body></html>
