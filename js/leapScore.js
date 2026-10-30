@@ -36,7 +36,7 @@ function receipts(records){
 }
 function score(records,start,latest,enabledAt,address){
  const first=new Map();
- for(const r of receipts(records))if(r.sender===address&&r.destination!==address&&r.destination!==ISSUER&&compare(r.at,start)>0&&!first.has(r.destination))first.set(r.destination,r);
+ for(const r of receipts(records))if(r.sender===address&&r.destination!==address&&r.destination!==ISSUER&&r.destination!==DISTRIBUTOR&&compare(r.at,start)>0&&!first.has(r.destination))first.set(r.destination,r);
  let points=0,cyclePoints=0;
  for(const [recipient,r] of first){
   points+=3;if(compare(r.at,latest)>0)cyclePoints+=3;
@@ -79,7 +79,7 @@ async function load(request){
  // Sequential cached lookups keep public RPC traffic bounded and IDs unambiguous.
  for(const player of players.values()){
   const records=await history(player.address);const enabledAt=new Map();
-  const recipients=new Set(receipts(records).filter(r=>r.sender===player.address&&r.destination!==player.address&&r.destination!==ISSUER&&compare(r.at,player.start)>0).map(r=>r.destination));
+  const recipients=new Set(receipts(records).filter(r=>r.sender===player.address&&r.destination!==player.address&&r.destination!==ISSUER&&r.destination!==DISTRIBUTOR&&compare(r.at,player.start)>0).map(r=>r.destination));
   for(const recipient of recipients){
    const events=await history(recipient);
    const established=events.filter(e=>valid(e)&&txOf(e).TransactionType==='TrustSet'&&txOf(e).Account===recipient&&leap(txOf(e).LimitAmount)).sort((a,b)=>compare(order(a),order(b)))[0];
