@@ -77,7 +77,7 @@ a{color:var(--lime)}.hero{text-align:center;padding:70px 0 65px}.eyebrow{color:v
 <h3 class="market-heading">The Journey from Distribution to Value</h3>
 <div class="metrics" aria-label="LEAP market discovery measurements">
 <div class="metric"><div class="metric-label">LEAP in Circulation</div><div class="metric-value" id="circulation">Loading…</div><div class="metric-detail">LEAP held outside the issuer wallet</div></div>
-<div class="metric"><div class="metric-heading"><div class="metric-label">Distribution Productivity</div><button class="info-button" id="productivity-info-button" type="button" aria-label="How is distribution productivity calculated?" aria-haspopup="dialog" aria-controls="productivity-info">i</button></div><div class="metric-value" id="productivity">Loading…</div><div class="metric-detail">LEAP holders per player</div><div class="metric-detail metric-counts" id="productivity-counts" aria-live="polite">Checking holders and players…</div></div>
+<div class="metric"><div class="metric-heading"><div class="metric-label">Distribution Productivity</div><button class="info-button" id="productivity-info-button" type="button" aria-label="How is distribution productivity calculated?" aria-haspopup="dialog" aria-controls="productivity-info">i</button></div><div class="metric-value" id="productivity">Loading…</div><div class="metric-detail">LEAP holders per player</div></div>
 <div class="metric"><div class="metric-label">LEAP Traded</div><div class="metric-value">—</div><div class="metric-detail">Lifetime completed trading volume · History not connected</div></div>
 <div class="metric"><div class="metric-label">XRP Exchanged</div><div class="metric-value">—</div><div class="metric-detail">Lifetime LEAP/XRP trades · History not connected</div></div>
 <div class="metric"><div class="metric-label">Last Traded Price</div><div class="metric-value">—</div><div class="metric-detail">XRP per LEAP · History not connected</div></div>
@@ -101,11 +101,12 @@ a{color:var(--lime)}.hero{text-align:center;padding:70px 0 65px}.eyebrow{color:v
 <dialog id="productivity-info" class="info-dialog" aria-labelledby="productivity-info-title">
 <h2 id="productivity-info-title">Distribution Productivity</h2>
 <p class="ratio-formula">LEAP holders ÷ LEAP players</p>
+<p id="productivity-counts" aria-live="polite">Checking holders and players…</p>
 <p><strong>Top number — holders:</strong> Wallets with a positive LEAP balance outside the issuer. This includes players, other holders, and the distribution wallet when it holds LEAP.</p>
 <p><strong>Bottom number — players:</strong> Wallets that received their starting 100 LEAP from the game's distribution wallet, by Payment or by cashing a Check. Each player is counted once, even if they later give away all their LEAP.</p>
-<p><strong>Example:</strong> 4 holders ÷ 2 players = 2 holders per player.</p>
-<p><strong>Why it matters:</strong> We want LEAP to reach more wallets. A rising ratio means more holding wallets for each onboarded player—a way to follow how widely LEAP is spreading relative to the size of the game.</p>
-<p>This counts wallets, not individual people. Players can also be holders, and the ratio does not show who introduced each holder.</p>
+<p><strong>Example:</strong> 4 holders ÷ 2 players = 2.00 holders per player.</p>
+<p><strong>Why it matters:</strong> We want LEAP to reach more wallets. A rising number means more holding wallets for each onboarded player—a way to follow how widely LEAP is spreading relative to the size of the game.</p>
+
 <form method="dialog"><button class="info-close">Close</button></form>
 </dialog>
 <script src="js/leapScore.js"></script>
@@ -117,7 +118,7 @@ const DISTRIBUTOR='rnbmFoUKhnMZ8QCJ6kA5J2uwfP8rm9cUdU';
 const CURRENCY='4C45415000000000000000000000000000000000';
 const SERVERS=['wss://s1.ripple.com/','wss://s2.ripple.com/'];
 const format=new Intl.NumberFormat('en-US',{maximumFractionDigits:6});
-const ratioFormat=new Intl.NumberFormat('en-US',{maximumFractionDigits:2});
+const ratioFormat=new Intl.NumberFormat('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
 const info=document.getElementById('productivity-info');
 document.getElementById('productivity-info-button').addEventListener('click',()=>info.showModal());
 function connect(url){return new Promise((resolve,reject)=>{const ws=new WebSocket(url);const timer=setTimeout(()=>{ws.close();reject(new Error('Connection timed out'))},12000);ws.addEventListener('open',()=>{clearTimeout(timer);resolve(ws)},{once:true});ws.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('Cannot connect to XRPL'))},{once:true})})}
@@ -137,8 +138,8 @@ async function countPlayers(ws,end){
  throw Error('Player history limit reached');
 }
 function showProductivity(holders,players){
- document.getElementById('productivity').textContent=players>0?ratioFormat.format(holders/players)+' : 1':'—';
- document.getElementById('productivity-counts').textContent=format.format(holders)+' LEAP holders / '+format.format(players)+' LEAP players'+(players===0?' · Ratio available after the first player joins.':'');
+ document.getElementById('productivity').textContent=players>0?ratioFormat.format(holders/players):'—';
+ document.getElementById('productivity-counts').textContent=format.format(holders)+' LEAP holders / '+format.format(players)+' LEAP players'+(players===0?' · Available after the first player joins.':'');
 }
 async function load(){
  let haveHolders=false,lastHolders=0;
