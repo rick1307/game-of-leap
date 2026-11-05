@@ -40,81 +40,23 @@
     <dialog id="leaderboard-dialog" class="leaderboard-dialog" aria-labelledby="leaderboard-dialog-title">
       <button type="button" class="dialog-close" id="close-leaderboard-dialog" aria-label="Close">×</button>
       <div id="leaderboard-signin-card">
-        <h3 id="leaderboard-dialog-title">Become a Player</h3>
-        <p>The Player's Leaderboard is viewable to players. Becoming a player is easy! Just enter your XRPL address below, and we'll send you your first 100 LEAP.</p>
-        <form id="leaderboard-signin-form" class="signup-form" action="https://usebasin.com/f/93034286b67b" method="POST" autocomplete="off">
+        <h3 id="leaderboard-dialog-title">Enter your XRPL address</h3>
+        <p>We'll check your progress on the XRP Ledger. Receive your starting 100 LEAP to enter the Player's Leaderboard.</p>
+        <form id="leaderboard-signin-form" class="signup-form" novalidate autocomplete="off">
           <label for="leaderboard-xrpl-address">Your XRPL address</label>
-          <input id="leaderboard-xrpl-address" name="xrpl_address" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="r..." minlength="25" maxlength="35" pattern="r[1-9A-HJ-NP-Za-km-z]{24,34}" required>
-          <input type="hidden" name="request_type" value="Sailing Frog's LEAP — I Want to Play">
-          <button type="submit" class="dialog-action" id="leaderboard-signin-submit">Let's Play</button>
+          <input id="leaderboard-xrpl-address" name="xrpl_address" type="text" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="r..." maxlength="80" required>
+
+          <button type="submit" class="dialog-action" id="leaderboard-signin-submit" disabled>Continue</button>
+          <button type="button" class="dialog-action" id="request-starting-leap" hidden>Request my first 100 LEAP</button>
           <p id="leaderboard-signin-status" class="signup-status" role="status" aria-live="polite"></p>
         </form>
+        <noscript><p>JavaScript is needed to check your player status. Please enable it and reload.</p></noscript>
       </div>
     </dialog>
     <footer>Game of LEAP · A Distribution Mining game on the XRP Ledger</footer>
   </div>
 <script src="js/leapParticipant.js"></script>
-<script>
-    const leaderboardDialog = document.getElementById('leaderboard-dialog');
-    const leaderboardAddressInput = document.getElementById('leaderboard-xrpl-address');
-    const leaderboardSignInForm = document.getElementById('leaderboard-signin-form');
-    const leaderboardSignInStatus = document.getElementById('leaderboard-signin-status');
-    const leaderboardSignInSubmit = document.getElementById('leaderboard-signin-submit');
-
-    function showLeaderboardCard() {
-      leaderboardSignInForm.reset();
-      leaderboardAddressInput.value = '';
-      leaderboardSignInStatus.textContent = '';
-      leaderboardDialog.showModal();
-      leaderboardAddressInput.focus();
-    }
-    document.getElementById('see-leaderboard').addEventListener('click', showLeaderboardCard);
-    document.getElementById('close-leaderboard-dialog').addEventListener('click', () => leaderboardDialog.close());
-
-    async function submitAddress(form, input, button, status) {
-      button.disabled = true;
-      status.textContent = 'Sending your request…';
-      try {
-        const address = input.value.trim();
-        const helpers = window.leap.participantHelpers;
-        if (helpers.hasRequestSent(address)) {
-          helpers.setParticipantAddress(address);
-          form.reset();
-          input.value = '';
-          status.textContent = '';
-          return true;
-        }
-        const response = await fetch(form.action, {
-          method: 'POST', body: new FormData(form), headers: { 'Accept': 'application/json' }
-        });
-        if (!response.ok) throw new Error('Submission failed');
-        helpers.setParticipantAddress(address);
-        helpers.recordRequestSent(address);
-        form.reset();
-        input.value = '';
-        status.textContent = 'Request received.';
-        return true;
-      } catch (_) {
-        status.textContent = 'Could not confirm delivery. Please try again.';
-        return false;
-      } finally { button.disabled = false; }
-    }
-    leaderboardSignInForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      if (await submitAddress(leaderboardSignInForm, leaderboardAddressInput, leaderboardSignInSubmit, leaderboardSignInStatus)) {
-        window.location.assign('leaderboard.html');
-      }
-    });
-
-    function resetHomeIdentity() {
-      window.leap.participantHelpers.clearParticipant();
-      leaderboardSignInForm.reset();
-      leaderboardAddressInput.value = '';
-      leaderboardSignInStatus.textContent = '';
-      if (leaderboardDialog.open) leaderboardDialog.close();
-    }
-    resetHomeIdentity();
-    window.addEventListener('pageshow', resetHomeIdentity);
-  </script>
+<script src="js/leapOnboarding.js"></script>
+<script src="js/leapHome.js"></script>
 </body>
 </html>
