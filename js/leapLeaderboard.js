@@ -7,6 +7,40 @@ const CURRENCY = '4C45415000000000000000000000000000000000';
 const DISTRIBUTOR = 'rnbmFoUKhnMZ8QCJ6kA5J2uwfP8rm9cUdU';
 const SERVERS = ['wss://s1.ripple.com/', 'wss://s2.ripple.com/'];
 const results = document.getElementById('results');
+const paymentSetup=document.getElementById('payment-setup');
+const paymentStatus=document.getElementById('payment-status');
+const enableLeap=document.getElementById('enable-leap');
+async function checkPaymentLimit(address,ticket){
+  paymentSetup.hidden=true;enableLeap.removeAttribute('href');
+  paymentStatus.hidden=false;paymentStatus.textContent='Checking your LEAP trust limit…';
+  for(const server of SERVERS){let ws;
+    try{
+      ws=await connect(server);
+      if(ticket!==generation)return;
+      let marker, limit;
+      do{
+        const response=await rpc(ws,{command:'account_lines',account:address,peer:ISSUER,ledger_index:'validated',...(marker===undefined?{}:{marker})});
+        if(ticket!==generation)return;
+        const line=(response.lines||[]).find(l=>l.account===ISSUER&&(l.currency===CURRENCY||l.currency==='LEAP'));
+        if(line){limit=line.limit;break;}
+        marker=response.marker;
+      }while(marker!==undefined);
+      if(typeof limit!=='string'||!limit.trim()||!Number.isFinite(Number(limit)))throw Error('Trust limit unavailable');
+      if(Number(limit)!==1000000){
+        // Only offer TrustSet after verifying the player's current limit.
+        const tx={TransactionType:'TrustSet',Account:address,Flags:131072,LimitAmount:{currency:CURRENCY,issuer:ISSUER,value:'1000000'}};
+        const hex=Array.from(new TextEncoder().encode(JSON.stringify(tx)),b=>b.toString(16).padStart(2,'0')).join('');
+        enableLeap.href='https://xaman.app/detect/'+hex;
+        paymentSetup.hidden=false;
+      }
+      paymentStatus.hidden=true;return;
+    }catch{/* Retry the read on the next ledger server. */}
+    finally{if(ws){sockets.delete(ws);ws.close();}}
+  }
+  if(ticket!==generation)return;
+  paymentStatus.textContent='Could not verify your LEAP trust limit. Refresh to try again.';
+}
+
 const progressCard=document.getElementById('progress-card');
 const progressCount=document.getElementById('progress-count');
 const progressMessage=document.getElementById('progress-message');
@@ -136,6 +170,7 @@ function closeAdmission(){
   generation++;admissionController?.abort();admissionController=null;admittedAddress=null;
   for(const ws of sockets)ws.close();sockets.clear();
   playerContent.hidden=true;gate.hidden=false;gateRetry.hidden=true;
+  paymentSetup.hidden=true;paymentStatus.hidden=true;enableLeap.removeAttribute('href');
   playerRows=[];currentPlayer=null;results.replaceChildren();
   requestMore.disabled=true;sortPoints.disabled=true;sortLeap.disabled=true;
   progressCount.textContent='Checking points…';progressMessage.textContent='100 new points since your last distribution.';
@@ -155,12 +190,8 @@ async function verifyAdmission(){
   if(ticket!==generation)return;
   if(status?.state==='player'&&status.address===address){
     admittedAddress=address;
-    // The player approves this optional TrustSet in Xaman. No transaction is submitted here.
-    const tx={TransactionType:'TrustSet',Account:address,Flags:131072,LimitAmount:{currency:CURRENCY,issuer:ISSUER,value:'1000000'}};
-    const hex=Array.from(new TextEncoder().encode(JSON.stringify(tx)),b=>b.toString(16).padStart(2,'0')).join('');
-    document.getElementById('enable-leap').href='https://xaman.app/detect/'+hex;
     gate.hidden=true;playerContent.hidden=false;progressCard.hidden=false;
-    await load(ticket);return;
+    await Promise.all([checkPaymentLimit(address,ticket),load(ticket)]);return;
   }
   gateRetry.hidden=false;
   switch(status?.state){
