@@ -1,7 +1,7 @@
 # Game of LEAP — ZIP review and rules worksheet
 
 Review date: November 18, 2026
-Planning revision: 4 — invite-only signup, two addresses, distributor check memo, and lasting onboarding credit confirmed
+Planning revision: 5 — optional inviter, uniform check-based entry, and either-order payment setup confirmed
 Source: game-of-leap-main(5).zip, SHA-256 2d6c4bedcd617dbccad5b7f81620bdeb7853e04e0349dc5e2184783168995a7f
 
 ## Scope and status
@@ -33,7 +33,7 @@ The token identifiers are repeated in several files. A shared rules/configuratio
 | js/leapParticipant.js | Session address and request history; optional legacy P/B/N classifications and 100/200 levels | Preserve address/session helpers; revisit unused legacy fields and numeric levels. Session storage is not authoritative claim accounting. |
 | js/leapScore.js | Distributor-based player discovery, receipts, 3+7 scoring, balance reads, cycle resets and pending 200 checks | Major scoring replacement: inviter attribution from distributor check-creation memos, completed player onboarding, downstream conditions, used-point reconstruction. |
 | js/leapLeaderboard.js | Admission gate, Xaman TrustSet link, scores, sorting, Basin request for 200 LEAP | Replace eligibility display and request action; retain Basin requests, show pending status, and recognize manually paid rewards from the ledger. |
-| index.html | Landing page, old rules, starter dialog, gameplay image | Add the required Inviter’s XRPL address field alongside Your XRPL address for new signup; replace old rules and graphic description. |
+| index.html | Landing page, old rules, starter dialog, gameplay image | Add the optional Inviter’s XRPL address field alongside Your XRPL address for new signup; replace old rules and graphic description. |
 | leaderboard.html | Optional payment setup, 100-point meter and 200-LEAP request | New progress counts, mandatory completion guidance, reward list and Claim now. |
 | distributionMining.html | Explainer plus inline circulation and holder/player measurements | Update economics and definitions; separate distribution reserve from LEAP in the wild. |
 | newToCryptos.html | Xaman setup and general onboarding instructions | Align with final onboarding sequence; wallet-support expansion is not part of this review. |
@@ -89,9 +89,9 @@ The circulation total sums positive holdings outside the issuer, INCLUDING the d
 ## 2. Rules already agreed in conversation
 
 1. The game rewards bringing new players on board, not sending gifts. No introductory gift is required. Gifts of any amount neither establish inviter credit nor grant player status. A wallet becomes a player by successfully cashing a 10-LEAP check from the distribution account. An uncashed check or a direct Payment is not a substitute for that check-cashing requirement under the new rule.
-2. To complete onboarding and count toward the inviter’s point, the new wallet must BOTH cash the distributor’s 10-LEAP check AND enable payments. Technically, Enable payments sets the LEAP trust-line limit to 1,000,000. There are no partial points. Both requirements also apply to each downstream onboarding used for the five-pass-it-on condition.
-3. New signup is invite-only. The applicant supplies their own XRPL address and the inviter’s XRPL address. The inviter recorded in the distributor’s qualifying 10-LEAP check-creation memo receives credit after completed onboarding. This replaces first-transfer attribution. The earlier new-to-LEAP history rule needs a precise boundary under this new flow; do not silently treat that boundary as settled.
-4. Each new wallet contributes one lifetime onboarding point to its credited inviter only after both onboarding requirements are complete. Cashing the check alone makes the wallet a player but does not award the inviter a point.
+2. Completed onboarding requires BOTH a cashed 10-LEAP distributor check AND a current LEAP trust-line limit of exactly 1,000,000 when completion is confirmed. These can happen in either order. An existing million-LEAP setting qualifies; do not require a new TrustSet after the check. Enable payments prepares that setting when needed. There are no partial points. Both requirements also apply to downstream onboarding. An inviter earns a point only when a valid inviter is recorded and the remaining introduction-credit rules are satisfied.
+3. Signup is open with or without an inviter. Your XRPL address is required; Inviter’s XRPL address is optional. If provided, Rick records the inviter address in the qualifying 10-LEAP check-creation memo. If blank, Rick leaves out the inviter address; nobody receives an invitation point. The applicant can still become a player and invite others. This replaces both invite-only signup and first-transfer attribution. Any additional historical restriction on introduction credit remains to be settled separately from player entry.
+4. Each introduced wallet can contribute at most one lifetime onboarding point to its credited inviter, only after both onboarding requirements are complete. A player who joins without an inviter contributes no invitation point. Cashing the check alone makes the wallet a player but does not award the inviter a point.
 5. Each reward requires ten unused points from ten newly onboarded players. At least five of those players must each have brought another new player through completed onboarding. Sending LEAP alone does not meet either requirement.
 6. Passing it on is a condition on an onboarding point, not an additional point for the original inviter.
 7. That downstream introduction can earn its own point for the downstream inviter. Example: Alice introduces Bob; Bob introduces Carol. Carol's completed onboarding earns Bob a point and satisfies the passed-it-on condition attached to Alice's Bob point.
@@ -112,7 +112,6 @@ Use the words used and unused for points. Avoid describing points as money being
 | Decision | Recommendation |
 |---|---|
 | Repeat starter requests | The 10-LEAP distributor check and its role in player entry are agreed. The proposed one-starter-grant-per-eligible-wallet restriction and its enforcement remain to be finalized. |
-| Existing players | Keep access and holdings; no replacement starter grant; can earn new introduction points. |
 | Launch boundary | Count introductions from an announced ledger boundary; no retroactive reward points. |
 | Selection | Use five oldest unused passed-it-on points, then five oldest remaining unused points, with a deterministic event-order tie-breaker. |
 | Reward economics | Proposed 1,000,000 total including existing issuance; 1,000 rewards; first 1,000; decline 0.16%; round each original-formula reward to two decimals. |
@@ -134,7 +133,11 @@ This replaces the earlier recommendation to grant player access from a gift plus
 | Cashed the distributor’s 10-LEAP check, but has not enabled payments | Yes | No |
 | Cashed the distributor’s 10-LEAP check and enabled payments | Yes | One point, provided new-wallet and inviter-credit requirements are satisfied |
 
-A gift plus Enable payments without cashing the distributor’s 10-LEAP check is also insufficient. The same completed-onboarding requirements apply to downstream wallets. Existing players admitted under the old 100-LEAP model still need the separate migration decision listed above; do not silently lock them out or require another starter grant.
+A gift plus Enable payments without cashing the distributor’s 10-LEAP check is insufficient. The same completed-onboarding requirements apply to downstream wallets. An old 100-LEAP allocation does not grant player status in the new game: existing holders, including Rick, must cash a qualifying 10-LEAP distributor check. Direct Payments do not substitute. Existing holdings remain theirs and can move freely. Returning old holdings is not an entry requirement.
+
+Check the current trust-line limit when confirming completion. If it is already exactly 1,000,000, no new Enable payments action is needed, even if the setting predates the check. Once completion is credited, preserve that credit under the lasting-credit rule. How to reconstruct and retain completion evidence is an implementation detail still to design.
+
+Rick plans to test with his own account: voluntarily return his old 100 LEAP, issue himself a 10-LEAP check from the distributor, and cash it. His existing million-LEAP setting satisfies setup. This is his planned manual test, not an instruction for the app to return funds or a requirement for other players.
 
 ### Agreed website wording
 
@@ -147,31 +150,30 @@ Use **Enable payments** for the action label and player instructions. Keep Trust
 
 One completed onboarding earns one point. Do not bring forward the old three-points-plus-seven-points model or award partial points for just one step.
 
-### Agreed invite-only signup and invitation record
+### Agreed signup with optional inviter and invitation record
 
-The normal onboarding path is an invitation to join through the app. The inviter does not need to send a gift or teach the applicant to create a trust line manually.
+Applicants can join through the app with or without an invitation. The inviter does not need to send a gift or teach the applicant to create a trust line manually.
 
-1. Keep the existing applicant field, labeled **Your XRPL address**.
-2. Add a second required field for new signup, labeled **Inviter’s XRPL address**.
-3. Send both addresses in the starter Basin request. Rick must be able to tell the addresses apart and copy the inviter’s address easily.
+1. Keep the existing required applicant field, labeled **Your XRPL address**.
+2. Add a second, optional field for new signup, labeled **Inviter’s XRPL address (optional)**.
+3. Send the applicant’s address and the inviter’s address, if supplied, in the starter Basin request. Make a blank inviter clear; do not invent a default inviter. Rick must be able to distinguish and copy the addresses.
 4. Rick issues the 10-LEAP check from the distribution account to the applicant’s address.
-5. Rick puts the inviter’s XRPL address in the memo of the transaction that creates the check.
+5. If an inviter was supplied, Rick puts that XRPL address in the memo of the check-creation transaction. If no inviter was supplied, no inviter address goes in the memo and nobody earns invitation credit.
 6. The applicant cashes the check and becomes a player.
-7. The player completes Enable payments. The inviter then receives one onboarding point, subject to the finalized new-player eligibility rules.
+7. Confirm that the current LEAP trust-line limit is exactly 1,000,000. Offer Enable payments if needed; accept an existing million setting. If an inviter was recorded, completed onboarding earns that inviter one point subject to the finalized introduction-credit rules. Without an inviter, onboarding is still complete but no invitation point is awarded.
 
-The ledger invitation record is the memo on the distributor’s check-creation transaction. Match the successful cashing to that original check by its check identifier. Do not expect the cashing transaction to repeat the memo, and do not accept arbitrary memos or checks from other senders as invitation evidence. The intended starter-check memo content is the inviter’s XRPL address.
+The ledger invitation record is the memo on the distributor’s check-creation transaction. Match the successful cashing to that original check by its check identifier. Do not expect the cashing transaction to repeat the memo, and do not accept arbitrary memos or checks from other senders as invitation evidence. When an inviter is supplied, the intended starter-check memo content is that inviter’s XRPL address. An intentionally absent inviter memo is valid for joining without an inviter.
 
 No invite-link system is required. The first sender of a gift does not determine credit. The distribution account sends the starter check but is not thereby the inviter; credit follows the inviter named in that check’s memo.
 
-The two fields apply to new signup. Do not require existing players to submit a fresh inviter every time they look up their progress. Existing-player access and the initial seed players remain a separate migration decision.
+The two fields apply to new signup. Do not require existing players to submit a fresh inviter every time they look up their progress. The first player, Rick, uses the same 10-LEAP check entry rule and leaves the inviter field blank. No special grandfathered entry or required inviter is needed for the initial player.
 
 ### Invitation implementation details still to settle
 
-- Define the precise new-player/new-to-LEAP cutoff. Earlier discussion required never having received LEAP before introduction. Now the introduction is recorded on a distributor check, not a first gift; specify how to handle wallets with earlier gifts without silently dropping or extending that rule.
+- Define any remaining history restriction on earning introduction credit. Existing LEAP holders are allowed to enter by cashing a qualifying 10-LEAP check. Do not use the old never-received-LEAP proposal to block that entry. Whether an inviter earns credit for an existing holder joining the new game remains a separate question.
 - Define what makes an inviter eligible, how to validate both addresses, and how to reject self-invitations or invalid inviter references.
-- Define treatment of missing or malformed memos, cancelled or replacement starter checks, and conflicting duplicate checks so one player can never create multiple lifetime onboarding points.
+- An absent inviter memo is valid and gives nobody invitation credit. Define treatment of malformed nonblank memos, cancelled or replacement starter checks, and conflicting duplicate checks so one player can never create multiple lifetime onboarding points.
 - Verify the manual wallet memo entry and decoding format during implementation. The agreed content is the inviter address; the exact encoding is not yet specified.
-- Agree the initial-player exception so existing players can invite people without a new starter check.
 
 ### Current setup versus lasting credit
 
@@ -221,7 +223,7 @@ Onboarding's continuous-history check is stronger than scoring's: scoring checks
 
 The old scorer loads distributor history, then every player's history and each recipient's history sequentially. One missing recipient history can fail the whole leaderboard. Adding downstream traversal increases this work. Plan bounded lookups and reusable, verifiable caches; distinguish selected-player eligibility from full public rankings.
 
-The existing receipt parser covers Payment and CheckCash. A never-received-LEAP rule needs an explicit policy for other balance-changing ledger operations. Do not assume absence from those two transaction types alone proves a wallet has never held LEAP.
+The existing receipt parser covers Payment and CheckCash. If any historical never-received-LEAP restriction is retained for invitation credit, define its scope and treatment of other balance-changing ledger operations. It must not override the agreed entry path for existing holders.
 
 ### Supply and measurements
 
@@ -231,7 +233,7 @@ Define separately: total outstanding supply, distribution reserve, current LEAP 
 
 ## 5. File delivery plan
 
-This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, two-address signup, inviter attribution from the distributor check memo, and lasting onboarding credit. Other proposed rules remain clearly marked as awaiting agreement. The extracted application remains identical to the supplied ZIP.
+This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, and payment setup in either order. Other proposed rules remain clearly marked as awaiting agreement. The extracted application remains identical to the supplied ZIP.
 
 Step 2: agree the open rule choices, then produce a versioned rules document with examples and acceptance criteria. A shared runtime configuration file can follow when values and eligibility definitions are settled; it must not partially change the live old model.
 
@@ -243,4 +245,4 @@ Upload this file as `docs/LEAP-Step-1-Review-and-Step-2-Rules.md` in the reposit
 
 This is an internal planning document, not new live-site behavior. No JavaScript, HTML, README, images, or deployment settings are included in this update.
 
-Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. A suggested next topic is how existing players become the first inviters under the new model. Step 2 remains in progress; step 3 is reserved for a later session.
+Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. Existing-holder entry and the first player are now settled: cash the qualifying 10-LEAP check; the inviter may be blank; a pre-existing million setting qualifies. A suggested next topic is the one-starter-check-per-wallet rule and how to handle cancelled or replacement checks. Step 2 remains in progress; step 3 is reserved for a later session.
