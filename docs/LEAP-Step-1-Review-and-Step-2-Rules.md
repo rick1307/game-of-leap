@@ -1,7 +1,7 @@
 # Game of LEAP — ZIP review and rules worksheet
 
 Review date: November 18, 2026
-Planning revision: 5 — optional inviter, uniform check-based entry, and either-order payment setup confirmed
+Planning revision: 6 — direct reward payments, camel-case reward memos, and fixed start date confirmed
 Source: game-of-leap-main(5).zip, SHA-256 2d6c4bedcd617dbccad5b7f81620bdeb7853e04e0349dc5e2184783168995a7f
 
 ## Scope and status
@@ -104,6 +104,9 @@ The circulation total sums positive holdings outside the issuer, INCLUDING the d
 14. After detecting a confirmed reward receipt, the app marks the selected ten onboarding points used and updates the public payout list. Automatic payment signing and sending are not part of this plan.
 15. A completed onboarding remains credited even if the player later changes the trust-line limit or balance. Used points remain used; a later setting change never creates a second lifetime point.
 16. The current setup target is exactly 1,000,000. For any other known limit, including zero or 10,000,000, offer Enable payments, which prepares the 1,000,000 setting. This setup prompt does not revoke an already-earned point. A failed lookup is unknown, not proof of a particular limit.
+17. Starter allocations use 10-LEAP checks. Distribution Rewards use direct LEAP Payments from the distribution account, sent manually by Rick.
+18. Each reward payment carries its reward identifier as one case-sensitive memo string: leapReward0001 through leapReward1000. The identifier specifies the reward number; amount alone does not identify a reward.
+19. The fixed start date for the new reward system is November 18, 2026. This replaces the earlier launch-day proposal. Do not move this date when implementation or deployment happens later.
 
 Use the words used and unused for points. Avoid describing points as money being spent. No LEAP is removed from players or introduced wallets when onboarding points are marked used.
 
@@ -112,7 +115,6 @@ Use the words used and unused for points. Avoid describing points as money being
 | Decision | Recommendation |
 |---|---|
 | Repeat starter requests | The 10-LEAP distributor check and its role in player entry are agreed. The proposed one-starter-grant-per-eligible-wallet restriction and its enforcement remain to be finalized. |
-| Launch boundary | Count introductions from an announced ledger boundary; no retroactive reward points. |
 | Selection | Use five oldest unused passed-it-on points, then five oldest remaining unused points, with a deterministic event-order tie-breaker. |
 | Reward economics | Proposed 1,000,000 total including existing issuance; 1,000 rewards; first 1,000; decline 0.16%; round each original-formula reward to two decimals. |
 
@@ -190,7 +192,7 @@ This replaces the earlier proposal for an automatic claim-and-payment service. K
 3. Clicking the button rechecks eligibility and sends a Basin request to Rick.
 4. After Basin confirms submission, show Request pending. This means the request was sent and the player is waiting for Rick to handle it.
 5. Rick reviews the request and checks that the player still has the required unused points before paying.
-6. Rick sends the next available reward manually. Rick chooses which valid request to handle first.
+6. Rick sends the next available reward manually as a direct LEAP Payment from the distribution account, with its reward number in the memo (for example, leapReward0001). Rick chooses which valid request to handle first.
 7. When the app detects the confirmed reward receipt on the ledger, the app marks the selected ten points used, crosses off the reward, and shows the recipient’s abbreviated wallet address.
 8. Any extra unused points remain available toward another reward.
 
@@ -204,12 +206,38 @@ Example: Alice and Bob both send requests. Rick handles Alice first and pays rew
 
 This example illustrates display and order only; the proposed reward amounts remain subject to approval. Abbreviated addresses follow the leaderboard style and do not make public ledger activity private.
 
+### Agreed reward payment memo and automatic display
+
+Rick pays rewards directly into the qualified player’s wallet. Starter checks remain a separate onboarding mechanism. Rewards do not require a check-cashing step.
+
+| Reward number | Exact memo text |
+|---|---|
+| 1 | `leapReward0001` |
+| 2 | `leapReward0002` |
+| 10 | `leapReward0010` |
+| 100 | `leapReward0100` |
+| 1,000 | `leapReward1000` |
+
+The text uses lowercase leap, uppercase R, lowercase eward, and four digits with leading zeros. It is one string with no spaces. The starter-check memo has a different purpose: it records the optional inviter address. Do not confuse those two memo types.
+
+The planned page reads confirmed, successful reward Payments from the configured distribution account. It matches the decoded memo to the reward number, verifies the correct LEAP token and actual delivered amount against the agreed schedule, and displays the recipient’s abbreviated wallet address beside the paid reward. Arbitrary payments from other accounts do not count, even with a matching memo.
+
+The app updates from ledger evidence. Rick does not need to tell the AI about each payment or upload a new HTML page after each payout. Manual payment remains Rick’s job; reading the ledger and updating the display is the app’s job. A memo identifies the reward, but does not by itself specify the ten onboarding points used; that accounting rule remains to be finalized.
+
+### Agreed fixed start date
+
+The new system starts counting from **November 18, 2026**, even if the code is deployed later. Rick explicitly chose this date to avoid revisiting the launch cutoff. This does not start a daily reward schedule: rewards still advance only as Rick pays valid requests.
+
+Implementation convention: use the start of that calendar day in Rick’s timezone, America/Panama: `2026-11-18T00:00:00-05:00` (`2026-11-18T05:00:00Z`). This timezone convention makes the agreed date precise; no ledger index has been queried or verified in this documentation pass. Resolve the corresponding validated-ledger boundary during implementation rather than inventing an index.
+
+Do not import the old three-plus-seven point totals. Reconstruct qualifying new-system activity from the fixed cutoff. Preserve the agreed exception for an already-existing million-LEAP setup: a TrustSet predating the cutoff or starter check does not prevent completion. Historical reads needed to establish setup or uniqueness may extend before the cutoff. Exact treatment of a starter check created before the cutoff but cashed afterward remains an implementation boundary case to specify.
+
 ### Details still to design for manual fulfillment
 
 These are implementation questions, not changes to the agreed flow:
 
-- How a confirmed distribution transaction identifies its reward number and the ten onboarding points used. Do not assume amount alone proves a reward claim. Choose a simple, reliable manual-payment convention and deterministic point accounting.
-- Whether rewards use direct Payments or Checks. If Checks are used, define how an issued but uncashed Check affects the next available reward; issuing a Check is not receipt of LEAP. This choice is still open.
+- Finalize the deterministic choice of ten used onboarding points for each confirmed reward. The memo now identifies the reward number, but selection and replay of the same ten points across browsers still need a defined rule. Chronology alone does not replace the requirement that five of the selected players have passed it on.
+- Verify manual memo entry and decoding, and define how duplicate reward numbers, malformed memos, out-of-order numbers, wrong amounts or mistaken payments are flagged for review. Do not silently count one reward twice or consume a different set of points after a retry.
 - What eligibility evidence accompanies the Basin request so Rick can review it easily. No request field supplied by a browser should be treated as proof without verification.
 - How Request pending survives reloads, new browser sessions or devices, and how rejected or stale requests are cleared. Existing session-only flags cannot establish a durable shared request queue. Basin requests are not on the ledger.
 - How repeat submissions and interrupted requests are handled without duplicate fulfillment. A timed-out submission may still have reached Basin. A payment with an uncertain result must be checked before Rick retries it.
@@ -233,7 +261,7 @@ Define separately: total outstanding supply, distribution reserve, current LEAP 
 
 ## 5. File delivery plan
 
-This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, and payment setup in either order. Other proposed rules remain clearly marked as awaiting agreement. The extracted application remains identical to the supplied ZIP.
+This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, payment setup in either order, direct reward payments, leapReward0001-style memos, and the fixed November 18, 2026 start date. Other proposed rules remain clearly marked as awaiting agreement. The extracted application remains identical to the supplied ZIP.
 
 Step 2: agree the open rule choices, then produce a versioned rules document with examples and acceptance criteria. A shared runtime configuration file can follow when values and eligibility definitions are settled; it must not partially change the live old model.
 
