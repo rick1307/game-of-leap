@@ -1,7 +1,7 @@
 # Game of LEAP — ZIP review and rules worksheet
 
 Review date: November 18, 2026
-Planning revision: 8 — ten-point round cap, five distinct players passing it on, and no carryover confirmed
+Planning revision: 9 — exact half-and-half allocation and Distribution Rewards page approved
 Updated: November 19, 2026
 Source: game-of-leap-main(5).zip, SHA-256 2d6c4bedcd617dbccad5b7f81620bdeb7853e04e0349dc5e2184783168995a7f
 
@@ -36,7 +36,8 @@ The token identifiers are repeated in several files. A shared rules/configuratio
 | js/leapLeaderboard.js | Admission gate, Xaman TrustSet link, scores, sorting, Basin request for 200 LEAP | Replace eligibility display and request action; retain Basin requests, show pending status, and recognize manually paid rewards from the ledger. |
 | index.html | Landing page, old rules, starter dialog, gameplay image | Add the optional Inviter’s XRPL address field alongside Your XRPL address for new signup; replace old rules and graphic description. |
 | leaderboard.html | Optional payment setup, 100-point meter and 200-LEAP request | New progress counts, mandatory completion guidance, reward list and Claim now. |
-| distributionMining.html | Explainer plus inline circulation and holder/player measurements | Update economics and definitions; separate distribution reserve from LEAP in the wild. |
+| distributionMining.html | Explainer plus inline circulation and holder/player measurements | Explain the exact half-and-half allocation, add See the rewards linking to the new rewards page, and separate reserve from LEAP in the wild. |
+| Distribution Rewards page (new; filename to choose during implementation) | Not present in the reviewed ZIP | Match Distribution Mining styling; show all 1,000 rewards, highlight Next available reward, and update paid rows and abbreviated recipients from the ledger. |
 | newToCryptos.html | Xaman setup and general onboarding instructions | Align with final onboarding sequence; wallet-support expansion is not part of this review. |
 | README.md and README.txt | Old 100 starter / 200 additional distribution description | Update after rules approval. |
 | gameplay.png | Home-page rules graphic | Review and replace artwork before launch; its HTML alt text explicitly describes old rules. Image pixels were not inspected in this review. |
@@ -114,15 +115,28 @@ The circulation total sums positive holdings outside the issuer, INCLUDING the d
 
 Use current round and completed round in player explanations. Do not describe points as money being spent or show a bank of unused points. No LEAP is removed from players or introduced wallets when a round closes.
 
-## 3. Recommendations awaiting explicit agreement
+## 3. Agreed supply allocation and reward economics
 
-| Decision | Recommendation |
+| Item | Agreed plan |
 |---|---|
-| Reward economics | Proposed 1,000,000 total including existing issuance; 1,000 rewards; first 1,000; decline 0.16%; round each original-formula reward to two decimals. |
+| Total supply target | 1,000,000 LEAP, including existing issuance |
+| Distribution Rewards allocation | Exactly 500,000 LEAP |
+| Starter allocation | Exactly 500,000 LEAP, with existing issuance counted against this half |
+| New-player starter | 10 LEAP by distributor check |
+| Number of rewards | 1,000 |
+| First reward | 1,000.00 LEAP |
+| Following rewards | Gradually decline; choose the precise decline rate needed to meet the exact allocation |
+| Payout precision | Two decimal places |
 
-Reward n = round(1000 × 0.9984^(n−1), 2), n=1 through 1000. Total rewards: 498,976.23 LEAP. Last: 201.96 LEAP. Outside rewards: 501,023.77 LEAP, BEFORE subtracting already-issued tokens or other allocations. Actual prior issuance remains unverified.
+Rick approved the simple explanation: **One million LEAP. Half for joining. Half for helping the game grow.** The starter half is for the 10-LEAP starter allocations, accounting for tokens already issued; it is not an unspecified other-distribution budget. Existing holdings are not reclaimed by the app.
 
-These recommendations must not silently become approved implementation requirements.
+The exact 500,000-LEAP reward budget replaces the earlier 0.16% proposal. Do not retain the old 498,976.23 reward total, 501,023.77 remainder, or 201.96 final reward as current schedule values. The last reward will be determined by the corrected schedule.
+
+Rick authorizes choosing sufficient decimal precision for the decline rate. The implementation must calculate the decreasing schedule and handle rounding deterministically so **the actual 1,000 two-decimal payouts sum to exactly 500,000.00 LEAP**, not merely approximately that amount before rounding. Keep the first reward at 1,000.00 and verify all amounts are positive and decrease. Calculate using exact decimal or integer hundredths accounting and document any rounding reconciliation. The final rate and payout table have not been generated or verified in this documentation-only revision.
+
+The starter half has a gross capacity of 50,000 ten-LEAP checks before accounting for existing issuance. If exactly 1,000 LEAP remains previously issued against that half, 499,000 LEAP remains for 49,900 new starter checks. This is an illustration, not a live balance claim; verify actual issuance and reconcile any returned tokens without double-counting before publishing remaining capacity.
+
+These are approved allocation targets, not evidence that the live ledger already has a fixed million-token supply. Supply and account-setting verification remains outstanding.
 
 ## 4. Decisions surfaced by the ZIP review
 
@@ -242,7 +256,7 @@ Example: Alice and Bob both send requests. Rick handles Alice first and pays rew
 | 2 | Crossed off as paid | Bob’s abbreviated wallet address |
 | 3 | Next available | Not paid yet |
 
-This example illustrates display and order only; the proposed reward amounts remain subject to approval. Abbreviated addresses follow the leaderboard style and do not make public ledger activity private.
+This example illustrates display and order only. The half-million reward allocation is approved; the precise decreasing payout table still needs calculation and validation. Abbreviated addresses follow the leaderboard style and do not make public ledger activity private.
 
 ### Agreed reward payment memo and automatic display
 
@@ -261,6 +275,22 @@ The text uses lowercase leap, uppercase R, lowercase eward, and four digits with
 The planned page reads confirmed, successful reward Payments from the configured distribution account. It matches the decoded memo to the reward number, verifies the correct LEAP token and actual delivered amount against the agreed schedule, and displays the recipient’s abbreviated wallet address beside the paid reward. Arbitrary payments from other accounts do not count, even with a matching memo.
 
 The app updates from ledger evidence. Rick does not need to tell the AI about each payment or upload a new HTML page after each payout. Manual payment remains Rick’s job; reading the ledger and updating the display is the app’s job. The memo identifies the reward. Its confirmed payment closes the recipient’s current round; no list of ten selected points is required. Deterministic round membership and historical replay still need implementation.
+
+### Agreed Distribution Rewards page — planned build work
+
+Create a dedicated **Distribution Rewards** HTML page later in implementation. Use the same look and feel as **Distribution Mining**, not a newly invented visual style. Add a **See the rewards** link from the Distribution Mining page.
+
+The top of the new page explains:
+
+- **1,000,000 LEAP total**.
+- **500,000 LEAP for starter allocations**, including the existing issuance charged to that half.
+- **500,000 LEAP across 1,000 Distribution Rewards**.
+
+List all 1,000 numbered rewards and their two-decimal LEAP amounts. Paid rows are crossed off and show the recipient’s shortened wallet address in the same style as the leaderboard. Highlight the next unpaid reward prominently with the exact label **Next available reward**; future reward amounts remain visible below it.
+
+Read the confirmed qualifying direct payments from the distribution wallet, identified by leapReward0001 through leapReward1000. After payment confirmation, mark the corresponding row paid and move the highlight to the next available reward. Do not mark a reward paid or reserve its row merely because someone qualifies or sends a Basin request. Handle missing ledger data as unknown, not proof that a reward is available. After all 1,000 are paid, show that the reward schedule is complete rather than inventing reward 1,001.
+
+No new HTML upload is needed after each payment. The page reads the ledger and updates its display. This feature belongs on the implementation checklist; no rewards page is built in this revision.
 
 ### Agreed fixed start date
 
@@ -299,11 +329,23 @@ Define separately: total outstanding supply, distribution reserve, current LEAP 
 
 ## 5. File delivery plan
 
-This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, payment setup in either order, direct reward payments, leapReward0001-style memos, the fixed November 18, 2026 start date, one starter grant per wallet, already-a-player and no-self-invitation requirements, introduction credit for existing holders entering the new game, ten-point round caps, five distinct players passing it on, and fresh rounds with no carryover after payment. Other proposed rules remain clearly marked as awaiting agreement. The extracted application remains identical to the supplied ZIP.
+This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, payment setup in either order, direct reward payments, leapReward0001-style memos, the fixed November 18, 2026 start date, one starter grant per wallet, already-a-player and no-self-invitation requirements, introduction credit for existing holders entering the new game, ten-point round caps, five distinct players passing it on, fresh rounds with no carryover after payment, the exact 500,000/500,000 allocation, and the planned Distribution Rewards page. Unresolved implementation details remain explicitly marked. The extracted application remains identical to the supplied ZIP.
 
 Step 2: agree the open rule choices, then produce a versioned rules document with examples and acceptance criteria. A shared runtime configuration file can follow when values and eligibility definitions are settled; it must not partially change the live old model.
 
 Step 3, a later session: implement revised starter onboarding and deliver only the changed/new files with exact relative paths and an upload checklist. Continue the remaining numbered implementation stages after that. Rick uploads changes to his repository; do not access or update it on his behalf.
+
+### Added implementation checklist — schedule and rewards page
+
+- [ ] Calculate and fix the 1,000-payout decreasing schedule: first payout 1,000.00 LEAP, two decimals per payout, total exactly 500,000.00 LEAP.
+- [ ] Validate schedule length, numbering, positive decreasing amounts, exact total, and deterministic rounding. Share one schedule definition between display and payment recognition.
+- [ ] Verify actual existing issuance and remaining starter reserve against the 500,000-LEAP starter allocation.
+- [ ] Create the Distribution Rewards HTML page using Distribution Mining styling.
+- [ ] Add See the rewards to Distribution Mining and explain the half-and-half split on both pages as appropriate.
+- [ ] Display all 1,000 rewards and highlight Next available reward.
+- [ ] Cross off paid rewards and show abbreviated recipients, based on confirmed distributor reward payments and their memos.
+- [ ] Verify pending requests do not reserve rewards; unavailable ledger data does not create false availability; the completed schedule shows no next reward.
+- [ ] Deliver the new/changed files to Rick for manual repository upload. No repository access or deployment by the assistant.
 
 ## 6. Upload instructions and next discussion
 
@@ -311,4 +353,4 @@ Upload this file as `docs/LEAP-Step-1-Review-and-Step-2-Rules.md` in the reposit
 
 This is an internal planning document, not new live-site behavior. No JavaScript, HTML, README, images, or deployment settings are included in this update.
 
-Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. Existing-holder entry and the first player are now settled: cash the qualifying 10-LEAP check; the inviter may be blank; a pre-existing million setting qualifies. The one-starter-grant rule, inviter eligibility, and existing-holder credit are now agreed and recorded. The round model is now clear: ten points maximum, any five players from that round pass it on, and no carryover after confirmed payment. The next main rule discussion is final reward economics; round-boundary edge cases remain implementation work. Do not reopen the settled rules as unanswered questions. Step 2 remains in progress; step 3 is reserved for a later session.
+Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. Existing-holder entry and the first player are now settled: cash the qualifying 10-LEAP check; the inviter may be blank; a pre-existing million setting qualifies. The one-starter-grant rule, inviter eligibility, and existing-holder credit are now agreed and recorded. The round model is now clear: ten points maximum, any five players from that round pass it on, and no carryover after confirmed payment. The exact half-and-half economics and Distribution Rewards page are now agreed. The next rule discussion is which round an introduction belongs to when a check or payment setup completes across a reward-payment boundary. The declining payout table still needs calculation, not another decision on the approved budget. Do not reopen the settled rules as unanswered questions. Step 2 remains in progress; step 3 is reserved for a later session.
