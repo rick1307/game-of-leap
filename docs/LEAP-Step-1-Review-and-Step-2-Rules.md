@@ -1,7 +1,7 @@
 # Game of LEAP — ZIP review and rules worksheet
 
 Review date: November 18, 2026
-Planning revision: 9 — exact half-and-half allocation and Distribution Rewards page approved
+Planning revision: 10 — starter-check creation fixes round membership; late completion stays in the original round
 Updated: November 19, 2026
 Source: game-of-leap-main(5).zip, SHA-256 2d6c4bedcd617dbccad5b7f81620bdeb7853e04e0349dc5e2184783168995a7f
 
@@ -91,7 +91,7 @@ The circulation total sums positive holdings outside the issuer, INCLUDING the d
 ## 2. Rules already agreed in conversation
 
 1. The game rewards bringing new players on board, not sending gifts. No introductory gift is required. Gifts of any amount neither establish inviter credit nor grant player status. A wallet becomes a player by successfully cashing a 10-LEAP check from the distribution account. An uncashed check or a direct Payment is not a substitute for that check-cashing requirement under the new rule.
-2. Completed onboarding requires BOTH a cashed 10-LEAP distributor check AND a current LEAP trust-line limit of exactly 1,000,000 when completion is confirmed. These can happen in either order. An existing million-LEAP setting qualifies; do not require a new TrustSet after the check. Enable payments prepares that setting when needed. There are no partial points. Both requirements also apply to downstream onboarding. A completed onboarding can increase the inviter’s current-round points only when a valid inviter is recorded and the round is below the ten-point cap. Each introduction belongs to one round only.
+2. Completed onboarding requires BOTH a cashed 10-LEAP distributor check AND a current LEAP trust-line limit of exactly 1,000,000 when completion is confirmed. These can happen in either order. An existing million-LEAP setting qualifies; do not require a new TrustSet after the check. Enable payments prepares that setting when needed. There are no partial points. Both requirements also apply to downstream onboarding. A completed onboarding can increase points only in its assigned round, while that round is still open and below the ten-point cap, with a valid inviter recorded. Each introduction belongs to the inviter’s round active when the distributor creates the qualifying starter check. Later cashing or payment setup never moves it to a newer round.
 3. Signup is open with or without an inviter. Your XRPL address is required; Inviter’s XRPL address is optional. If provided, Rick records the inviter address in the qualifying 10-LEAP check-creation memo. If blank, Rick leaves out the inviter address; nobody receives an invitation point. The applicant can still become a player and invite others. This replaces both invite-only signup and first-transfer attribution. Prior LEAP holdings do not disqualify a first-time entrant to the new game from counting toward the inviter’s point.
 4. Each introduced player can increase the inviter’s points at most once, after completed onboarding, subject to the ten-point cap per round. Further completed introductions in the same round do not add points, but those players can satisfy that round’s passed-it-on requirement. A player joining without an inviter contributes no invitation credit. Cashing the check alone does not complete onboarding.
 5. Each round requires at least ten completed player onboardings, but the points stop at ten. Any five distinct players introduced during that round must each bring another player through completed onboarding. The five need not be among the first ten. A player may need 25 or 100 introductions to reach five who pass it on. Sending LEAP alone does not meet either requirement.
@@ -178,7 +178,7 @@ Applicants can join through the app with or without an invitation. The inviter d
 4. Rick issues the 10-LEAP check from the distribution account to the applicant’s address.
 5. If an inviter was supplied, Rick puts that XRPL address in the memo of the check-creation transaction. If no inviter was supplied, no inviter address goes in the memo and nobody earns invitation credit.
 6. The applicant cashes the check and becomes a player.
-7. Confirm that the current LEAP trust-line limit is exactly 1,000,000. Offer Enable payments if needed; accept an existing million setting. If a valid inviter was recorded, completed onboarding counts in that inviter’s round, including when the applicant already held LEAP. It adds one point only below the ten-point cap; above the cap the introduced player can still pass it on for that round. Without an inviter, onboarding is still complete but no invitation point is awarded.
+7. Confirm that the current LEAP trust-line limit is exactly 1,000,000. Offer Enable payments if needed; accept an existing million setting. If a valid inviter was recorded, completed onboarding counts in that inviter’s round, including when the applicant already held LEAP. It adds one point only while the assigned round remains open and below the ten-point cap; above the cap the introduced player can still pass it on for that open round. Late completion after that round closes does not count toward a later round. Without an inviter, onboarding is still complete but no invitation point is awarded.
 
 The ledger invitation record is the memo on the distributor’s check-creation transaction. Match the successful cashing to that original check by its check identifier. Do not expect the cashing transaction to repeat the memo, and do not accept arbitrary memos or checks from other senders as invitation evidence. When an inviter is supplied, the intended starter-check memo content is that inviter’s XRPL address. An intentionally absent inviter memo is valid for joining without an inviter.
 
@@ -195,7 +195,7 @@ The two fields apply to new signup. Do not require existing players to submit a 
 - Reject self-invitations. A blank inviter is still allowed and gives nobody an invitation point.
 - A first-time player in the new game may already own LEAP. That prior holding does not block the inviter’s point once the new player completes onboarding. Each introduced wallet belongs to one round for its inviter and cannot be reused in a later round.
 
-Example: Alice owns LEAP from before the redesign but has never joined the new game. Bob is already a player and invites Alice. Alice’s distributor check identifies Bob in the memo. Alice cashes the 10-LEAP check and has the required million-LEAP setting. Alice counts toward Bob’s current round and adds one point if Bob is below ten. Alice’s old holdings do not prevent credit; Alice cannot create another introduction through another starter check.
+Example: Alice owns LEAP from before the redesign but has never joined the new game. Bob is already a player and invites Alice. Alice’s distributor check identifies Bob in the memo. Alice cashes the 10-LEAP check and has the required million-LEAP setting. Alice belongs to Bob’s round active when her starter check was created. If that round is still open when Alice completes onboarding, she adds one point if Bob is below ten. Alice’s old holdings do not prevent credit; Alice cannot create another introduction through another starter check.
 
 ### Invitation implementation details still to settle
 
@@ -234,6 +234,33 @@ Suggested player display:
 | Reward confirmed; fresh round begins | 0 of 10 | 0 of 5 | No |
 
 Examples assume no pending request already blocks another submission. This is the agreed game rule, not an implementation completed in this update.
+
+### Agreed round assignment — starter-check creation
+
+The distributor’s successful starter-check creation fixes which round the introduction belongs to for the inviter named in the memo. Use the inviter’s round active at that ledger event. This is assignment only: points still require the check to be cashed and payments to be enabled.
+
+The introductory conversation, Basin request, later CheckCash, and later Enable payments action do not set a different round. The confirmed reward payment closes the inviter’s round and starts the next one. A check created after that payment belongs to the new round; a check created before that payment stays with the old round.
+
+Example:
+
+1. During Bob’s first round, the distributor creates Alice’s 10-LEAP starter check with Bob’s address in the memo.
+2. Bob qualifies through other players and receives his first reward. Bob’s first round closes.
+3. Alice later cashes the check and completes Enable payments.
+4. Alice still belongs to Bob’s first round. Alice gives Bob no points or passed-it-on credit toward round two. Alice can still play and earn her own rewards normally.
+
+The same result applies if Alice cashed her check before Bob’s reward but only completed Enable payments afterward. Nothing about late completion creates carryover, reopens the old round, or changes an already-confirmed payout. Bob’s next reward requires fresh introductions assigned to Bob’s new round.
+
+This rule supports the intended leadership incentive: help the players introduced in the current round complete onboarding and help at least five of those players bring someone else through onboarding. Inviting more players is allowed, but extra or unfinished introductions from a closed round are not saved for the next reward.
+
+Implementation acceptance examples:
+
+| Check creation relative to inviter’s reward payment | Completion | Inviter round credit |
+|---|---|---|
+| Before payment | Before payment | Original round, subject to the ten-point cap and other requirements |
+| Before payment | After payment | Remains assigned to original round; no new-round credit |
+| After payment | After payment | New round, subject to completed onboarding and other requirements |
+
+These examples refer to confirmed ledger events. Same-ledger ordering and cancelled/replacement checks still need implementation handling; the ordinary round-assignment rule is settled.
 
 ### Agreed request and manual payment flow
 
@@ -304,7 +331,7 @@ Do not import the old three-plus-seven point totals. Reconstruct qualifying new-
 
 These are implementation questions, not changes to the agreed flow:
 
-- Implement deterministic round boundaries at confirmed reward payments and consistent historical replay. Specify exactly which event assigns an introduction to a round, including a check issued before payment but cashed afterward or setup completed later. The rule is no carryover of old-round introductions; this boundary detail must not silently reintroduce carryover.
+- Implement the agreed round assignment from starter-check creation and round closing from confirmed reward payment. Replay in validated ledger order, using transaction order within a ledger to handle a check and reward in the same ledger. Do not use webpage visits, Basin submission time, cashing time, or later setup time to move an introduction to another round. Define cancelled/replacement-check linkage so it cannot silently reassign an existing introduction or duplicate credit.
 - Verify manual memo entry and decoding, and define how duplicate reward numbers, malformed memos, out-of-order numbers, wrong amounts or mistaken payments are flagged for review. Do not silently count one reward twice or close more than one round after a retry.
 - What eligibility evidence accompanies the Basin request so Rick can review it easily. No request field supplied by a browser should be treated as proof without verification.
 - How Request pending survives reloads, new browser sessions or devices, and how rejected or stale requests are cleared. Existing session-only flags cannot establish a durable shared request queue. Basin requests are not on the ledger.
@@ -329,13 +356,16 @@ Define separately: total outstanding supply, distribution reserve, current LEAP 
 
 ## 5. File delivery plan
 
-This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, payment setup in either order, direct reward payments, leapReward0001-style memos, the fixed November 18, 2026 start date, one starter grant per wallet, already-a-player and no-self-invitation requirements, introduction credit for existing holders entering the new game, ten-point round caps, five distinct players passing it on, fresh rounds with no carryover after payment, the exact 500,000/500,000 allocation, and the planned Distribution Rewards page. Unresolved implementation details remain explicitly marked. The extracted application remains identical to the supplied ZIP.
+This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, payment setup in either order, direct reward payments, leapReward0001-style memos, the fixed November 18, 2026 start date, one starter grant per wallet, already-a-player and no-self-invitation requirements, introduction credit for existing holders entering the new game, ten-point round caps, five distinct players passing it on, fresh rounds with no carryover after payment, the exact 500,000/500,000 allocation, the planned Distribution Rewards page, and fixed round membership from starter-check creation even when onboarding finishes late. Unresolved implementation details remain explicitly marked. The extracted application remains identical to the supplied ZIP.
 
 Step 2: agree the open rule choices, then produce a versioned rules document with examples and acceptance criteria. A shared runtime configuration file can follow when values and eligibility definitions are settled; it must not partially change the live old model.
 
 Step 3, a later session: implement revised starter onboarding and deliver only the changed/new files with exact relative paths and an upload checklist. Continue the remaining numbered implementation stages after that. Rick uploads changes to his repository; do not access or update it on his behalf.
 
-### Added implementation checklist — schedule and rewards page
+### Added implementation checklist — round accounting, schedule and rewards page
+
+- [ ] Assign introductions to inviter rounds from successful starter-check creation; reset rounds only at confirmed reward payment.
+- [ ] Verify late cashing or late Enable payments never creates carryover; cover the three round-assignment examples above.
 
 - [ ] Calculate and fix the 1,000-payout decreasing schedule: first payout 1,000.00 LEAP, two decimals per payout, total exactly 500,000.00 LEAP.
 - [ ] Validate schedule length, numbering, positive decreasing amounts, exact total, and deterministic rounding. Share one schedule definition between display and payment recognition.
@@ -353,4 +383,4 @@ Upload this file as `docs/LEAP-Step-1-Review-and-Step-2-Rules.md` in the reposit
 
 This is an internal planning document, not new live-site behavior. No JavaScript, HTML, README, images, or deployment settings are included in this update.
 
-Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. Existing-holder entry and the first player are now settled: cash the qualifying 10-LEAP check; the inviter may be blank; a pre-existing million setting qualifies. The one-starter-grant rule, inviter eligibility, and existing-holder credit are now agreed and recorded. The round model is now clear: ten points maximum, any five players from that round pass it on, and no carryover after confirmed payment. The exact half-and-half economics and Distribution Rewards page are now agreed. The next rule discussion is which round an introduction belongs to when a check or payment setup completes across a reward-payment boundary. The declining payout table still needs calculation, not another decision on the approved budget. Do not reopen the settled rules as unanswered questions. Step 2 remains in progress; step 3 is reserved for a later session.
+Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. Existing-holder entry and the first player are now settled: cash the qualifying 10-LEAP check; the inviter may be blank; a pre-existing million setting qualifies. The one-starter-grant rule, inviter eligibility, and existing-holder credit are now agreed and recorded. The round model is now clear: ten points maximum, any five players from that round pass it on, and no carryover after confirmed payment. The exact half-and-half economics and Distribution Rewards page are now agreed. Round assignment is also settled: starter-check creation fixes the inviter’s round, and late completion stays with that round. Remaining work includes implementation handling for replacement checks, pending requests and ledger replay; do not reopen the ordinary round-timing rule. The declining payout table still needs calculation, not another decision on the approved budget. Do not reopen the settled rules as unanswered questions. Step 2 remains in progress; step 3 is reserved for a later session.
