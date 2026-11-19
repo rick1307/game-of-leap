@@ -1,7 +1,7 @@
 # Game of LEAP — ZIP review and rules worksheet
 
 Review date: November 18, 2026
-Planning revision: 11 — manual cancellation after about 24 hours and fresh requests after cancellation
+Planning revision: 13 — Xaman cancellation and Check again session reset confirmed after source audit
 Updated: November 19, 2026
 Source: game-of-leap-main(5).zip, SHA-256 2d6c4bedcd617dbccad5b7f81620bdeb7853e04e0349dc5e2184783168995a7f
 
@@ -30,8 +30,8 @@ The token identifiers are repeated in several files. A shared rules/configuratio
 | File | Current responsibility | Redesign implication |
 |---|---|---|
 | js/leapOnboarding.js | Address checksum validation; validated snapshot; exact 100-LEAP distributor receipt or outstanding check; states player/new/check_pending/invalid/unactivated/unknown | Separate existing-player admission, starter-grant eligibility, new-to-LEAP introduction eligibility, and completed onboarding. These are different questions. |
-| js/leapHome.js | Address dialog; status messages; explicit starter request to Basin; session duplicate suppression | Include applicant and inviter addresses in the starter Basin request; update guidance and preserve stale-response cancellation and rechecks. |
-| js/leapParticipant.js | Session address and request history; optional legacy P/B/N classifications and 100/200 levels | Preserve address/session helpers; revisit unused legacy fields and numeric levels. Session storage is not authoritative claim accounting. |
+| js/leapHome.js | Address dialog; status messages; explicit starter request to Basin; session duplicate suppression | Verify any supplied inviter before sending both addresses to Basin; preserve both fields on network failure; on Check again, detect confirmed cancellation and clear the associated stale request flags; preserve stale-response cancellation and rechecks. |
+| js/leapParticipant.js | Session address and request history; optional legacy P/B/N classifications and 100/200 levels | Preserve address/session helpers; add targeted clearing of the cancelled starter attempt’s request flag; revisit unused legacy fields and numeric levels. Session storage is not authoritative claim accounting. |
 | js/leapScore.js | Distributor-based player discovery, receipts, 3+7 scoring, balance reads, cycle resets and pending 200 checks | Major scoring replacement: inviter attribution from distributor check-creation memos, completed player onboarding, downstream conditions, round membership and payment-triggered resets. |
 | js/leapLeaderboard.js | Admission gate, Xaman TrustSet link, scores, sorting, Basin request for 200 LEAP | Replace eligibility display and request action; retain Basin requests, show pending status, and recognize manually paid rewards from the ledger. |
 | index.html | Landing page, old rules, starter dialog, gameplay image | Add the optional Inviter’s XRPL address field alongside Your XRPL address for new signup; replace old rules and graphic description. |
@@ -174,7 +174,7 @@ Applicants can join through the app with or without an invitation. The inviter d
 
 1. Keep the existing required applicant field, labeled **Your XRPL address**.
 2. Add a second, optional field for new signup, labeled **Inviter’s XRPL address (optional)**.
-3. Send the applicant’s address and the inviter’s address, if supplied, in the starter Basin request. Make a blank inviter clear; do not invent a default inviter. Rick must be able to distinguish and copy the addresses.
+3. Before sending to Basin, verify the applicant and any supplied inviter. Only after required checks succeed, send the applicant’s address and the inviter’s address, if supplied, in the starter Basin request. Make a blank inviter clear; do not invent a default inviter. Rick must be able to distinguish and copy the addresses.
 4. Rick issues the 10-LEAP check from the distribution account to the applicant’s address.
 5. If an inviter was supplied, Rick puts that XRPL address in the memo of the check-creation transaction. If no inviter was supplied, no inviter address goes in the memo and nobody earns invitation credit.
 6. The applicant cashes the check and becomes a player.
@@ -185,6 +185,34 @@ The ledger invitation record is the memo on the distributor’s check-creation t
 No invite-link system is required. The first sender of a gift does not determine credit. The distribution account sends the starter check but is not thereby the inviter; credit follows the inviter named in that check’s memo.
 
 The two fields apply to new signup. Do not require existing players to submit a fresh inviter every time they look up their progress. The first player, Rick, uses the same 10-LEAP check entry rule and leaves the inviter field blank. No special grandfathered entry or required inviter is needed for the initial player.
+
+### Agreed inviter verification before Basin submission
+
+Check a supplied inviter address before sending the starter request to Basin. The inviter must already be a player under the agreed 10-LEAP distributor-check rule, and cannot be the applicant’s own wallet.
+
+If the lookup establishes that the supplied address is not a player, show:
+
+> This address isn’t a player yet. Check the address, or leave the inviter field blank to join without an inviter.
+
+Keep the entry available for correction. Do not silently remove it or submit without it. The applicant may correct the inviter address or explicitly clear the optional field. A blank inviter remains a valid choice; required applicant checks still apply.
+
+If a network failure prevents verification, show exactly:
+
+> Network unavailable. Please try again.
+
+Keep both address fields filled in exactly as the applicant entered them so the applicant can retry without starting over. Do not classify the inviter as invalid or not a player merely because verification failed. Do not send the Basin request until the required verification succeeds. Retrying performs a new check and must use the current field values, not a stale result for an earlier address.
+
+These are distinct cases: a verified non-player needs a correction or an intentionally blank inviter; a failed lookup needs a retry. Missing or incomplete evidence must remain unknown rather than being converted into a negative player finding. No claim is made here that network-failure wording diagnoses every possible history-data problem.
+
+Acceptance checks for later implementation:
+
+| Case | Expected behavior |
+|---|---|
+| Supplied inviter verified as an eligible player | Permit submission after all other required checks succeed |
+| Supplied inviter verified as not a player | Show the correction/blank-field message; do not send to Basin |
+| Network failure during verification | Show Network unavailable. Please try again.; retain both fields; do not send to Basin |
+| Applicant explicitly clears optional inviter | Allow joining without inviter credit after required applicant checks succeed |
+| Fields change while a lookup runs | Ignore the stale result and verify the current values before submission |
 
 ### Agreed starter-grant and inviter rules
 
@@ -264,7 +292,7 @@ These examples refer to confirmed ledger events. Same-ledger ordering still need
 
 ### Agreed starter-check cancellation and fresh requests
 
-Rick plans to manually cancel starter checks left uncashed for about **24 hours**, to avoid accumulating outstanding checks and their reserve requirements. This is a manual operating policy, not an automatic expiration or an exact-time guarantee.
+Rick uses **Xaman directly from the distribution wallet** to manually cancel starter checks left uncashed for about **24 hours**, to avoid accumulating outstanding checks and their reserve requirements. This is a manual operating policy, not an automatic expiration or an exact-time guarantee.
 
 Website guidance:
 
@@ -283,6 +311,40 @@ Example: Alice forgets to name Bob as inviter. Alice leaves the first check unca
 This supersedes the earlier suggestion to keep the original inviter and round when replacing a cancelled check. It does not change the rule for an uncancelled check: if that check is cashed late, it still belongs to its original round.
 
 Implementation must let confirmed cancellation clear stale starter-request/session blocks so the applicant can actually submit again. Before allowing the new request, recheck for any successful starter cashing or other outstanding starter check. If the ledger result is unknown, show that the app cannot yet verify cancellation rather than assuming a reset.
+
+### Agreed cancellation experience — Xaman and Check again
+
+Rick creates checks, sends payments, and cancels checks directly in Xaman from the distribution wallet. Those actions are outside the app. Do not build an app cancellation button, automatic cancellation job, distributor-wallet approval process, or control over Rick’s wallet.
+
+The agreed flow is:
+
+1. Rick manually cancels the uncashed starter check in Xaman.
+2. The applicant selects **Check again** in the app.
+3. The app reads the ledger and detects the confirmed cancellation of the relevant distributor check.
+4. The app clears the old request-sent block for that cancelled attempt, including both browser-session storage and any in-page duplicate-request flag.
+5. The applicant can submit a fresh request and enter a different inviter or no inviter.
+
+The app follows what Rick has already done. It does not authorize or perform his cancellation. Existing entry rules still apply: a successful starter cashing ends starter eligibility, and another outstanding starter check remains pending. Network failure uses the agreed retry message and does not clear request state based on an unverified assumption.
+
+The clearing must be scoped to the cancelled attempt: after the applicant submits a fresh Basin request, an older cancellation must not repeatedly erase that new request’s pending flag. The exact bookkeeping is implementation work, not another player-facing rule.
+
+### Follow-up audit of current request handling
+
+The original ZIP was audited again before proposing a new pending-request policy. Source files were checked against the ZIP and were unchanged. A simulated controller exercise used mocked ledger responses and a mocked Basin success; it sent no real requests and made no wallet transactions.
+
+Confirmed current behavior:
+
+- Starter requests are remembered after Basin reports success, using sessionStorage plus an in-page set of addresses.
+- Check again reads the ledger; the starter-submit action also rechecks before posting to Basin.
+- The same browser session, including a page reload, suppresses a repeated starter request.
+- A waiting check is shown as ready to cash. A confirmed qualifying receipt admits the player.
+- When the ledger checker returns new after cancellation, the home controller can still show the old request-received message and block another request because the old request flag is never cleared.
+- A fresh session has no memory of a previous Basin request; if the ledger reports new, the app offers another request.
+- Existing additional-distribution requests also use session-based suppression, keyed to the player and distribution cycle. This can be adapted to the new reward rounds.
+
+The verified cancellation issue is the change to implement. Retain the lightweight session-based approach rather than introducing a requirement for a durable cross-device Basin queue. Session flags do not prevent every duplicate request across browsers; Rick continues reviewing and fulfilling requests manually. The app must not mistake a duplicate request for another confirmed reward payment.
+
+The broad question about how long a pending request must survive across devices was withdrawn after this audit. Do not reopen it as an unanswered game-rule decision. Complete the cancellation reset and adapt existing session behavior during the onboarding implementation.
 
 ### Agreed request and manual payment flow
 
@@ -356,7 +418,7 @@ These are implementation questions, not changes to the agreed flow:
 - Implement the agreed round assignment from starter-check creation and round closing from confirmed reward payment. Replay in validated ledger order, using transaction order within a ledger to handle a check and reward in the same ledger. Do not use webpage visits, Basin submission time, cashing time, or later setup time to move an introduction to another round. Apply the agreed cancellation exception: discard the cancelled, uncashed check from eligibility accounting; a newly issued check establishes fresh attribution and round membership. Do not reassign a successfully cashed starter or award duplicate credit.
 - Verify manual memo entry and decoding, and define how duplicate reward numbers, malformed memos, out-of-order numbers, wrong amounts or mistaken payments are flagged for review. Do not silently count one reward twice or close more than one round after a retry.
 - What eligibility evidence accompanies the Basin request so Rick can review it easily. No request field supplied by a browser should be treated as proof without verification.
-- How Request pending survives reloads, new browser sessions or devices, and how rejected or stale requests are cleared. Existing session-only flags cannot establish a durable shared request queue. Basin requests are not on the ledger.
+- Adapt existing session-based request suppression to the new onboarding and reward rounds. Implement the agreed Check again cancellation reset, including preventing old cancellations from clearing a newer request. Do not assume Basin requests appear on the ledger or promise cross-device request memory.
 - How repeat submissions and interrupted requests are handled without duplicate fulfillment. A timed-out submission may still have reached Basin. A payment with an uncertain result must be checked before Rick retries it.
 - Whether a request needs wallet proof or may be submitted for an eligible address while always paying that same eligible address. Address entry currently proves no ownership.
 
@@ -378,17 +440,23 @@ Define separately: total outstanding supply, distribution reserve, current LEAP 
 
 ## 5. File delivery plan
 
-This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, payment setup in either order, direct reward payments, leapReward0001-style memos, the fixed November 18, 2026 start date, one starter grant per wallet, already-a-player and no-self-invitation requirements, introduction credit for existing holders entering the new game, ten-point round caps, five distinct players passing it on, fresh rounds with no carryover after payment, the exact 500,000/500,000 allocation, the planned Distribution Rewards page, fixed round membership from starter-check creation even when onboarding finishes late, and a fresh start after confirmed manual cancellation of an uncashed check. Unresolved implementation details remain explicitly marked. The extracted application remains identical to the supplied ZIP.
+This revision updates the planning document only. It records the agreed manual Basin request/payment flow, fulfillment order, pending status, public payout recipients, required 10-LEAP check for player entry, completed-onboarding point requirement, Enable payments website wording, signup with an optional inviter, inviter attribution from the distributor check memo, lasting onboarding credit, check-based entry for existing holders, payment setup in either order, direct reward payments, leapReward0001-style memos, the fixed November 18, 2026 start date, one starter grant per wallet, already-a-player and no-self-invitation requirements, introduction credit for existing holders entering the new game, ten-point round caps, five distinct players passing it on, fresh rounds with no carryover after payment, the exact 500,000/500,000 allocation, the planned Distribution Rewards page, fixed round membership from starter-check creation even when onboarding finishes late, a fresh start after confirmed manual cancellation of an uncashed check, inviter verification with field-preserving network retry before Basin submission, and the audited Xaman cancellation / Check again session-reset flow. Unresolved implementation details remain explicitly marked. The extracted application remains identical to the supplied ZIP.
 
 Step 2: agree the open rule choices, then produce a versioned rules document with examples and acceptance criteria. A shared runtime configuration file can follow when values and eligibility definitions are settled; it must not partially change the live old model.
 
 Step 3, a later session: implement revised starter onboarding and deliver only the changed/new files with exact relative paths and an upload checklist. Continue the remaining numbered implementation stages after that. Rick uploads changes to his repository; do not access or update it on his behalf.
 
-### Added implementation checklist — round accounting, schedule and rewards page
+### Added implementation checklist — signup verification, round accounting, schedule and rewards page
+
+- [ ] Verify a supplied inviter before sending a starter Basin request; provide the agreed non-player correction/blank-field message without silently removing the inviter.
+- [ ] On verification network failure, show Network unavailable. Please try again.; retain both fields and block Basin submission until checks succeed.
+- [ ] Verify retries and changed input cannot use stale validation results.
 
 - [ ] Assign introductions to inviter rounds from successful starter-check creation; reset rounds only at confirmed reward payment.
 - [ ] Add the 24-hour cashing guidance without promising automatic expiry.
-- [ ] Detect confirmed cancellation of uncashed starter checks, clear stale request blocks, and permit a fresh Basin request with an editable optional inviter.
+- [ ] On Check again, detect Rick’s confirmed Xaman cancellation of the relevant distributor starter check, clear that attempt’s session and in-page request blocks, and permit a fresh Basin request with an editable optional inviter.
+- [ ] Confirm a prior cancellation does not clear a newly submitted request’s pending flag. Keep all distributor signing and cancellation outside the app.
+- [ ] Exercise same-session reload, pending check, confirmed cancellation, cashed starter, fresh request, and network-failure paths with mocked responses before live testing.
 - [ ] Verify the new check uses its own memo and creation-based round; cancelled checks earn no credit; pending or already-cashed starters block another grant.
 - [ ] Verify late cashing or late Enable payments never creates carryover; cover the three round-assignment examples above.
 
@@ -408,4 +476,4 @@ Upload this file as `docs/LEAP-Step-1-Review-and-Step-2-Rules.md` in the reposit
 
 This is an internal planning document, not new live-site behavior. No JavaScript, HTML, README, images, or deployment settings are included in this update.
 
-Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. Existing-holder entry and the first player are now settled: cash the qualifying 10-LEAP check; the inviter may be blank; a pre-existing million setting qualifies. The one-starter-grant rule, inviter eligibility, and existing-holder credit are now agreed and recorded. The round model is now clear: ten points maximum, any five players from that round pass it on, and no carryover after confirmed payment. The exact half-and-half economics and Distribution Rewards page are now agreed. Round assignment is also settled: starter-check creation fixes the inviter’s round, and late completion stays with that round. Cancellation behavior is now settled: Rick cancels uncashed checks after about 24 hours; confirmed cancellation permits a fresh request and fresh attribution from the new check. Remaining work includes implementing pending-request handling and ledger replay; do not reopen the agreed round or cancellation rules. The declining payout table still needs calculation, not another decision on the approved budget. Do not reopen the settled rules as unanswered questions. Step 2 remains in progress; step 3 is reserved for a later session.
+Next, discuss one open rule at a time. Player entry and completed onboarding are now settled above. Inviter attribution is now settled: use the inviter address in the distributor’s 10-LEAP check-creation memo. Existing-holder entry and the first player are now settled: cash the qualifying 10-LEAP check; the inviter may be blank; a pre-existing million setting qualifies. The one-starter-grant rule, inviter eligibility, and existing-holder credit are now agreed and recorded. The round model is now clear: ten points maximum, any five players from that round pass it on, and no carryover after confirmed payment. The exact half-and-half economics and Distribution Rewards page are now agreed. Round assignment is also settled: starter-check creation fixes the inviter’s round, and late completion stays with that round. Cancellation behavior is now settled: Rick cancels uncashed checks after about 24 hours; confirmed cancellation permits a fresh request and fresh attribution from the new check. The cancellation UI is also settled: Rick cancels in Xaman, and Check again reads that cancellation and clears the old request flag. The source audit supports retaining the lightweight session approach. Remaining work includes implementing scoped session resets and ledger replay; do not reopen the agreed round, cancellation, or cross-device pending-policy discussion. The declining payout table still needs calculation, not another decision on the approved budget. Do not reopen the settled rules as unanswered questions. Step 2 remains in progress; step 3 is reserved for a later session.
